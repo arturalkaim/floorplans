@@ -57,7 +57,7 @@ being blocked. Drags land on 5 cm; hold Alt for millimetres.
 A press only becomes a drag after 3 px, so clicking a wall changes nothing, and each
 move re-applies from the document as it was when the gesture began — so however many
 moves arrive, the wall lands where the pointer is rather than accumulating. Undo
-(⌘Z) takes one step per gesture, and Reset returns the plan to the example.
+(⌘Z) and redo (⇧⌘Z) take one step per gesture, and Reset returns the plan to the example.
 
 `draggableWalls(text, model)` and `applyDrag(text, draggable, metres)` are library
 functions — the app only turns pointer events into coordinates.

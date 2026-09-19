@@ -8,6 +8,9 @@ import { useFloorplan } from "../lib/useFloorplan";
 import type { Options } from "../lib/useFloorplan";
 
 const DEFAULTS: Omit<Options, "theme"> = { scale: 40, areas: "clear", labels: "auto", mark: "warning" };
+/** how many steps of history to keep, each way */
+const HISTORY = 50;
+const EMPTY_HISTORY = { past: [] as string[], future: [] as string[] };
 
 /** Follows the page's resolved theme so the drawing inverts with it. */
 function useResolvedTheme(): "light" | "dark" {
@@ -36,7 +39,7 @@ export function Playground() {
   const { id } = useParams({ from: "/plan/$id" });
   const example = byId(id);
   const [text, setText] = useState(() => example?.source ?? "");
-  const [past, setPast] = useState<string[]>([]);
+  const [hist, setHist] = useState<{ past: string[]; future: string[] }>(EMPTY_HISTORY);
   const [opts, setOpts] = useState(DEFAULTS);
   const theme = useResolvedTheme();
 
@@ -44,7 +47,7 @@ export function Playground() {
   useEffect(() => {
     if (example) {
       setText(example.source);
-      setPast([]);
+      setHist(EMPTY_HISTORY);
     }
   }, [example]);
 
@@ -52,15 +55,34 @@ export function Playground() {
   const textRef = useRef(text);
   textRef.current = text;
 
-  /** snapshot the document before a change that should be undoable as one step */
-  const mark = useCallback(() => setPast((p) => [...p.slice(-49), textRef.current]), []);
+  const histRef = useRef(hist);
+  histRef.current = hist;
+
+  /**
+   * Snapshot the document before a change that should be undoable as one step. A new
+   * edit abandons whatever was ahead, the way every editor behaves.
+   *
+   * These read the live values through refs and set state directly rather than from
+   * inside an updater: React may call an updater twice, which would push twice.
+   */
+  const mark = useCallback(() => {
+    setHist((h) => ({ past: [...h.past, textRef.current].slice(-HISTORY), future: [] }));
+  }, []);
 
   const undo = useCallback(() => {
-    setPast((p) => {
-      if (p.length === 0) return p;
-      setText(p[p.length - 1]!);
-      return p.slice(0, -1);
-    });
+    const { past, future } = histRef.current;
+    const prev = past[past.length - 1];
+    if (prev === undefined) return;
+    setHist({ past: past.slice(0, -1), future: [textRef.current, ...future].slice(0, HISTORY) });
+    setText(prev);
+  }, []);
+
+  const redo = useCallback(() => {
+    const { past, future } = histRef.current;
+    const next = future[0];
+    if (next === undefined) return;
+    setHist({ past: [...past, textRef.current].slice(-HISTORY), future: future.slice(1) });
+    setText(next);
   }, []);
 
   const reset = useCallback(() => {
@@ -75,7 +97,10 @@ export function Playground() {
     (next: string) => {
       window.clearTimeout(typingTimer.current);
       const before = textRef.current;
-      typingTimer.current = window.setTimeout(() => setPast((p) => [...p.slice(-49), before]), 600);
+      typingTimer.current = window.setTimeout(
+        () => setHist((h) => ({ past: [...h.past, before].slice(-HISTORY), future: [] })),
+        600,
+      );
       setText(next);
     },
     [],
@@ -83,14 +108,19 @@ export function Playground() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const k = e.key.toLowerCase();
+      if (k === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
+      } else if ((k === "z" && e.shiftKey) || k === "y") {
+        e.preventDefault();
+        redo();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo]);
+  }, [undo, redo]);
 
   const outcome = useFloorplan(text, { ...opts, theme });
   const set = useCallback(<K extends keyof typeof opts>(k: K, v: (typeof opts)[K]) => setOpts((o) => ({ ...o, [k]: v })), []);
@@ -209,8 +239,11 @@ export function Playground() {
               <label htmlFor="opt-format">Source</label>
               <div className="rangerow">
                 <button id="opt-format" type="button" onClick={format}>Format</button>
-                <button type="button" onClick={undo} disabled={past.length === 0} title="⌘Z">
-                  Undo{past.length ? ` (${past.length})` : ""}
+                <button type="button" onClick={undo} disabled={hist.past.length === 0} title="⌘Z">
+                  Undo{hist.past.length ? ` (${hist.past.length})` : ""}
+                </button>
+                <button type="button" onClick={redo} disabled={hist.future.length === 0} title="⇧⌘Z">
+                  Redo{hist.future.length ? ` (${hist.future.length})` : ""}
                 </button>
                 <button type="button" onClick={reset} disabled={text === example.source}>Reset</button>
               </div>
