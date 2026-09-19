@@ -87,6 +87,28 @@ describe("edit: moving a wall rewrites the source and nothing else", () => {
     assert.equal(applyDrag(text, d, d.c), text);
   });
 
+  it("re-applying from the gesture's start never compounds", () => {
+    // a drag sends many moves; the UI re-applies each one from the text as it was when
+    // the gesture began, so the tenth move must land exactly where one move to the same
+    // place would. Applying move-on-top-of-move instead would double the travel.
+    const text = load("casa-patio");
+    const model = modelOf(text);
+    const d = [...draggableWalls(text, model).values()].find((x) => x.axis === "v")!;
+    const target = d.c + 0.8;
+    const direct = applyDrag(text, d, target);
+    let stepwise = text;
+    for (let i = 1; i <= 10; i++) stepwise = applyDrag(text, d, d.c + (0.8 * i) / 10);
+    assert.equal(stepwise, direct, "ten moves must land where one move lands");
+  });
+
+  it("is stable when the same target is applied twice", () => {
+    const text = load("casa-patio");
+    const model = modelOf(text);
+    const d = [...draggableWalls(text, model).values()][0]!;
+    const once = applyDrag(text, d, d.c + 0.35);
+    assert.equal(applyDrag(text, d, d.c + 0.35), once);
+  });
+
   it("keeps the document parseable and canonical through a long drag", () => {
     let text = load("casa-patio");
     for (let i = 0; i < 12; i++) {

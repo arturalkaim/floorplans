@@ -1,7 +1,7 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { formatText } from "floorplan";
 import type { Severity } from "floorplan";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Drawing } from "../components/Drawing";
 import { EXAMPLES, byId } from "../lib/plans";
 import { useFloorplan } from "../lib/useFloorplan";
@@ -36,17 +36,74 @@ export function Playground() {
   const { id } = useParams({ from: "/plan/$id" });
   const example = byId(id);
   const [text, setText] = useState(() => example?.source ?? "");
+  const [past, setPast] = useState<string[]>([]);
   const [opts, setOpts] = useState(DEFAULTS);
   const theme = useResolvedTheme();
 
-  // switching plan replaces the document
+  // switching plan replaces the document and starts a fresh history
   useEffect(() => {
-    if (example) setText(example.source);
+    if (example) {
+      setText(example.source);
+      setPast([]);
+    }
   }, [example]);
+
+  // the live document, readable from callbacks that must not re-create on every keystroke
+  const textRef = useRef(text);
+  textRef.current = text;
+
+  /** snapshot the document before a change that should be undoable as one step */
+  const mark = useCallback(() => setPast((p) => [...p.slice(-49), textRef.current]), []);
+
+  const undo = useCallback(() => {
+    setPast((p) => {
+      if (p.length === 0) return p;
+      setText(p[p.length - 1]!);
+      return p.slice(0, -1);
+    });
+  }, []);
+
+  const reset = useCallback(() => {
+    if (!example) return;
+    mark();
+    setText(example.source);
+  }, [example, mark]);
+
+  // typing is its own undo step, collapsed while you keep typing
+  const typingTimer = useRef<number | undefined>(undefined);
+  const onType = useCallback(
+    (next: string) => {
+      window.clearTimeout(typingTimer.current);
+      const before = textRef.current;
+      typingTimer.current = window.setTimeout(() => setPast((p) => [...p.slice(-49), before]), 600);
+      setText(next);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo]);
 
   const outcome = useFloorplan(text, { ...opts, theme });
   const set = useCallback(<K extends keyof typeof opts>(k: K, v: (typeof opts)[K]) => setOpts((o) => ({ ...o, [k]: v })), []);
-  const format = useCallback(() => setText((t) => { try { return formatText(t); } catch { return t; } }), []);
+  const format = useCallback(() => {
+    mark();
+    setText((t) => {
+      try {
+        return formatText(t);
+      } catch {
+        return t;
+      }
+    });
+  }, [mark]);
 
   if (!example)
     return (
@@ -112,7 +169,7 @@ export function Playground() {
             spellCheck={false}
             aria-label="Plan JSON"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => onType(e.target.value)}
           />
           <div className="controls">
             <div className="ctl">
@@ -150,7 +207,13 @@ export function Playground() {
             </div>
             <div className="ctl">
               <label htmlFor="opt-format">Source</label>
-              <button id="opt-format" type="button" onClick={format}>Format</button>
+              <div className="rangerow">
+                <button id="opt-format" type="button" onClick={format}>Format</button>
+                <button type="button" onClick={undo} disabled={past.length === 0} title="⌘Z">
+                  Undo{past.length ? ` (${past.length})` : ""}
+                </button>
+                <button type="button" onClick={reset} disabled={text === example.source}>Reset</button>
+              </div>
             </div>
           </div>
         </section>
@@ -162,6 +225,7 @@ export function Playground() {
               model={outcome.result.model}
               text={text}
               scale={opts.scale}
+              onDragStart={mark}
               onChange={setText}
             />
           ) : (

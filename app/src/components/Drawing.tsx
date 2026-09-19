@@ -1,66 +1,77 @@
-import { projection } from "floorplan";
-import type { Model } from "floorplan";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { applyDrag, draggableWalls } from "floorplan";
-import type { Draggable } from "floorplan";
+import { applyDrag, draggableWalls, projection } from "floorplan";
+import type { Draggable, Model } from "floorplan";
+import { useEffect, useRef, useState } from "react";
 
 interface Props {
   svg: string;
   model: Model;
   text: string;
   scale: number;
+  /** called once per gesture, before the first change, so undo has one entry per drag */
+  onDragStart: () => void;
   onChange: (next: string) => void;
 }
 
+/** how far the pointer must travel before a press becomes a drag, in screen pixels */
+const THRESHOLD_PX = 3;
+
 /**
- * The drawing, with its walls draggable. A drag never touches the model: it works out
- * the new coordinate, rewrites the source, and the ordinary pipeline redraws — so what
- * you see is always a pure function of the text in the editor.
+ * The drawing, with its walls draggable. A drag never touches the model: it works out the
+ * new coordinate, rewrites the source, and the ordinary pipeline redraws — so what you see
+ * is always a pure function of the text in the editor.
  */
-export function Drawing({ svg, model, text, scale, onChange }: Props) {
+export function Drawing({ svg, model, text, scale, onDragStart, onChange }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const [hint, setHint] = useState<string | null>(null);
-  // the drag in flight, kept in a ref so pointermove never re-subscribes
-  const drag = useRef<{ d: Draggable; svg: SVGSVGElement } | null>(null);
+  const drag = useRef<{
+    d: Draggable;
+    /** the document as it was when the gesture began: every move re-applies from here,
+     *  so a drag is idempotent however many moves arrive */
+    startText: string;
+    /** where on the wall it was grabbed, so the wall moves with the pointer rather than
+     *  jumping its centreline to it */
+    offset: number;
+    moved: boolean;
+  } | null>(null);
 
   const walls = draggableWalls(text, model);
 
-  // mark what can be grabbed, after every redraw
   useEffect(() => {
     const root = host.current?.querySelector("svg");
     if (!root) return;
     for (const el of root.querySelectorAll<SVGElement>("[data-wall]")) {
-      const id = el.dataset["wall"]!;
-      const d = walls.get(id);
+      const d = walls.get(el.dataset["wall"]!);
       el.style.cursor = d ? (d.axis === "v" ? "ew-resize" : "ns-resize") : "";
       el.style.pointerEvents = "stroke";
       if (d) el.dataset["draggable"] = "true";
       else delete el.dataset["draggable"];
     }
-  }, [svg, text]);
+  });
 
-  /** client pixels to metres, through the SVG's own transform so CSS scaling is handled */
-  const toMetres = useCallback(
-    (root: SVGSVGElement, clientX: number, clientY: number) => {
-      const ctm = root.getScreenCTM();
-      if (!ctm) return null;
-      const pt = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
-      return projection(model, { scale }).toModel(pt.x, pt.y);
-    },
-    [model, scale],
-  );
+  /**
+   * Client pixels to metres. The SVG node is looked up every time, never cached: each
+   * redraw replaces it, and getScreenCTM() on the old detached node returns nonsense.
+   */
+  const toMetres = (clientX: number, clientY: number): [number, number] | null => {
+    const root = host.current?.querySelector("svg");
+    if (!root) return null;
+    const ctm = root.getScreenCTM();
+    if (!ctm) return null;
+    const p = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
+    return projection(model, { scale }).toModel(p.x, p.y) as [number, number];
+  };
+
+  const along = (d: Draggable, m: [number, number]) => (d.axis === "v" ? m[0] : m[1]);
 
   const onPointerDown = (e: React.PointerEvent) => {
-    const target = e.target as SVGElement;
-    const id = target.dataset?.["wall"];
-    const d = id ? walls.get(id) : undefined;
-    if (!d) return;
-    const root = host.current?.querySelector("svg");
-    if (!root) return;
+    const d = walls.get((e.target as SVGElement).dataset?.["wall"] ?? "");
+    if (!d || e.button !== 0) return;
+    const m = toMetres(e.clientX, e.clientY);
+    if (!m) return;
     e.preventDefault();
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-    drag.current = { d, svg: root };
-    setHint(`${d.axis === "v" ? "x" : "y"} = ${d.c} m · writes ${d.writes}`);
+    // capture on the container, which survives every redraw, not on the line
+    host.current?.setPointerCapture(e.pointerId);
+    drag.current = { d, startText: text, offset: along(d, m) - d.c, moved: false };
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -70,17 +81,23 @@ export function Drawing({ svg, model, text, scale, onChange }: Props) {
       setHint(d ? `drag to move · writes ${d.writes}` : null);
       return;
     }
-    const m = toMetres(active.svg, e.clientX, e.clientY);
+    const m = toMetres(e.clientX, e.clientY);
     if (!m) return;
-    const wanted = active.d.axis === "v" ? m[0] : m[1];
-    const next = applyDrag(text, active.d, wanted, e.altKey);
-    setHint(`${active.d.axis === "v" ? "x" : "y"} = ${Math.round(wanted * 100) / 100} m · ${active.d.writes}`);
-    if (next !== text) onChange(next);
+    const next = along(active.d, m) - active.offset;
+    if (!active.moved) {
+      if (Math.abs(next - active.d.c) * scale < THRESHOLD_PX) return; // a click is not a drag
+      active.moved = true;
+      onDragStart();
+    }
+    // always re-apply from where the gesture started, so moves cannot compound
+    const out = applyDrag(active.startText, active.d, next, e.altKey);
+    setHint(`${active.d.axis === "v" ? "x" : "y"} = ${(Math.round(next * 100) / 100).toFixed(2)} m · ${active.d.writes}`);
+    if (out !== text) onChange(out);
   };
 
   const end = (e: React.PointerEvent) => {
     if (!drag.current) return;
-    (e.target as Element).releasePointerCapture?.(e.pointerId);
+    host.current?.releasePointerCapture(e.pointerId);
     drag.current = null;
     setHint(null);
   };
