@@ -25,24 +25,64 @@ const FONT = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Ar
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const px = (n: number) => String(Math.round(n * 100) / 100);
 
-/** Render a derived model to a standalone SVG string. Pure; no DOM. */
-export function renderSvg(model: Model, opts: RenderOptions = {}): string {
-  const S = opts.scale ?? 40;
-  const plan = model.plan;
-  const env = model.envelope;
-  const outdoorBox = model.plan.outdoor.flatMap((o) => o.poly);
-  const allPts = [...model.rooms.flatMap((r) => r.room.poly), ...outdoorBox];
+/**
+ * Where the drawing puts a point. Exported because a caller that wants to interact with
+ * the SVG — hit-testing a wall, dragging it — has to turn client pixels back into metres,
+ * and must use the very same transform the renderer used or the two will disagree.
+ */
+export interface Projection {
+  /** pixels per metre */
+  scale: number;
+  /** drawing origin in SVG units */
+  ox: number;
+  oy: number;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  toScreen(p: Pt): Pt;
+  /** SVG user units back to metres */
+  toModel(x: number, y: number): Pt;
+}
+
+export function projection(model: Model, opts: RenderOptions = {}): Projection {
+  const scale = opts.scale ?? 40;
+  const allPts = [...model.rooms.flatMap((r) => r.room.poly), ...model.plan.outdoor.flatMap((o) => o.poly)];
   const minX = Math.min(...allPts.map((p) => p[0]));
   const minY = Math.min(...allPts.map((p) => p[1]));
   const maxX = Math.max(...allPts.map((p) => p[0]));
   const maxY = Math.max(...allPts.map((p) => p[1]));
+  const title = opts.title ?? model.plan.title;
+  const dims = opts.dimensions ?? true;
+  const ox = (dims ? 78 : 24) + 0;
+  const oy = (dims ? 56 : 24) + (title ? 30 : 0);
+  return {
+    scale,
+    ox,
+    oy,
+    minX,
+    minY,
+    maxX,
+    maxY,
+    toScreen: (p) => [ox + (p[0] - minX) * scale, oy + (p[1] - minY) * scale],
+    toModel: (x, y) => [(x - ox) / scale + minX, (y - oy) / scale + minY],
+  };
+}
+
+/** Render a derived model to a standalone SVG string. Pure; no DOM. */
+export function renderSvg(model: Model, opts: RenderOptions = {}): string {
+  const proj = projection(model, opts);
+  const S = proj.scale;
+  const plan = model.plan;
+  const env = model.envelope;
+  const { minX, minY, maxX, maxY } = proj;
   const title = opts.title ?? plan.title;
   const dims = opts.dimensions ?? true;
   const fmt = new Intl.NumberFormat(opts.locale ?? "en", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const fmt2 = new Intl.NumberFormat(opts.locale ?? "en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const OX = (dims ? 78 : 24) + 0;
-  const OY = (dims ? 56 : 24) + (title ? 30 : 0);
+  const OX = proj.ox;
+  const OY = proj.oy;
   const X = (m: number) => OX + (m - minX) * S;
   const Y = (m: number) => OY + (m - minY) * S;
   const L = (m: number) => m * S;
@@ -115,10 +155,11 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
       const bb = (w.axis === "h" ? X(b) : Y(b)) + (ee ? ext : 0);
       const c = w.axis === "h" ? Y(w.c) : X(w.c);
       const opacity = w.kind === "exterior" ? "1" : ".9";
+      const tag = `data-wall="${w.id}" data-axis="${w.axis}" data-c="${w.c}"`;
       body +=
         w.axis === "h"
-          ? `<line x1="${px(aa)}" y1="${px(c)}" x2="${px(bb)}" y2="${px(c)}" stroke="var(--wall)" stroke-opacity="${opacity}" stroke-width="${px(t)}" stroke-linecap="butt"/>`
-          : `<line x1="${px(c)}" y1="${px(aa)}" x2="${px(c)}" y2="${px(bb)}" stroke="var(--wall)" stroke-opacity="${opacity}" stroke-width="${px(t)}" stroke-linecap="butt"/>`;
+          ? `<line ${tag} x1="${px(aa)}" y1="${px(c)}" x2="${px(bb)}" y2="${px(c)}" stroke="var(--wall)" stroke-opacity="${opacity}" stroke-width="${px(t)}" stroke-linecap="butt"/>`
+          : `<line ${tag} x1="${px(c)}" y1="${px(aa)}" x2="${px(c)}" y2="${px(bb)}" stroke="var(--wall)" stroke-opacity="${opacity}" stroke-width="${px(t)}" stroke-linecap="butt"/>`;
     }
   }
 

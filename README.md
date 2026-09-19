@@ -15,6 +15,48 @@ npm run examples     # renders fixtures/*.json → examples/*.svg
 node src/cli.ts fixtures/casa-t3.json --out casa.svg --lint
 ```
 
+## Playground app
+
+A separate React app under `app/` — a demo of the library and a place to try the plan
+language. It depends on the library as a package (`node_modules/floorplan` is a symlink
+to this repo), so it can only use what the library exports; a test enforces that it never
+reaches into `src/`.
+
+```
+npm run dev:app      # build the library, then vite dev on :5173
+npm run build:app    # production build into app/dist
+npm run check:all    # library checks, then the app typechecks against the built library
+```
+
+Routes: a gallery of the example plans, `/plan/$id` for the editor, and `/reference` —
+the DSL documentation, which renders the parser's own vocabularies and the library's rule
+catalogue rather than a copy of them.
+
+### Dragging walls
+
+Walls in the drawing can be dragged, and a drag **edits the source**. The text stays the
+single source of truth: moving a wall works out the new coordinate, splices it into the
+document, and the ordinary pipeline redraws — text → parse → derive → rules → SVG, which
+measures 0.3–1.2 ms, so the whole plan is recomputed on every pointer move rather than
+patched. Nothing is held in two places, so the drawing and the editor cannot drift.
+
+A wall is offered for dragging only when the move has a representation in the source:
+
+| authored as | a drag writes | offered when |
+|---|---|---|
+| a `layout` grid | `cols[i]` and `cols[i+1]`, one growing by what the other loses | the wall sits on an interior track boundary |
+| room polygons | the shared coordinate in every room on that wall | the wall spans the whole of each edge it touches |
+
+The second condition is the interesting one: if a room has a vertex on that line outside
+the wall's run, moving it would need the edge split and vertices inserted, which is a
+different operation than a drag — so the wall is simply not draggable. Everything else is
+clamped rather than forbidden, and because `derive()` reports problems as findings rather
+than throwing, a drag that makes the plan invalid turns the findings red live instead of
+being blocked. Drags land on 5 cm; hold Alt for millimetres.
+
+`draggableWalls(text, model)` and `applyDrag(text, draggable, metres)` are library
+functions — the app only turns pointer events into coordinates.
+
 ## CLI
 
 ```
@@ -206,8 +248,13 @@ area by default; `--areas centreline` switches. Fixtures are deducted again to g
 src/parse.ts      schema → Plan (+ grid compiler)
 src/derive.ts     Plan → walls, openings, room metrics, access graph, geometry findings
 src/rules.ts      semantic rules over the model
-src/svg.ts        Model → SVG string
+src/svg.ts        Model → SVG string (+ the projection, for hit-testing)
+src/catalogue.ts  the rule catalogue: what the documentation reads
+src/format.ts     canonical formatting for plan documents
+src/jsonpos.ts    JSON with source positions, to edit one value in place
+src/edit.ts       which walls can be dragged, and what moving one writes
 src/cli.ts        command line
+app/              the playground (React, TanStack Router, Vite)
 fixtures/         casa-t3 (seed house), apartment-t2 (grid), cabin,
                   casa-patio (courtyard), quinta (garden + pool + shack),
                   casa-piscina (fixtures), broken

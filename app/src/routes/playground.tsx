@@ -2,6 +2,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { formatText } from "floorplan";
 import type { Severity } from "floorplan";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Drawing } from "../components/Drawing";
 import { EXAMPLES, byId } from "../lib/plans";
 import { useFloorplan } from "../lib/useFloorplan";
 import type { Options } from "../lib/useFloorplan";
@@ -155,14 +156,20 @@ export function Playground() {
         </section>
 
         <div className="drawing-col">
-          <section className="panel">
-            <div className="panel-head">
-              <h2>Drawing</h2>
-              <span className="note">north up · y grows south</span>
-            </div>
-            {outcome.ok ? (
-              <div className="sheet-body" dangerouslySetInnerHTML={{ __html: outcome.result.svg }} />
-            ) : (
+          {outcome.ok ? (
+            <Drawing
+              svg={outcome.result.svg}
+              model={outcome.result.model}
+              text={text}
+              scale={opts.scale}
+              onChange={setText}
+            />
+          ) : (
+            <section className="panel">
+              <div className="panel-head">
+                <h2>Drawing</h2>
+                <span className="note">north up · y grows south</span>
+              </div>
               <div className="schemaerr">
                 {outcome.title}:
                 <ul>
@@ -173,8 +180,8 @@ export function Playground() {
                   ))}
                 </ul>
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
           {outcome.ok && <ScheduleTable schedule={outcome.result.schedule} />}
           {outcome.ok && <FindingsList findings={outcome.result.findings} />}
