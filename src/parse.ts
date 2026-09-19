@@ -46,6 +46,8 @@ const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFin
 export function parse(input: unknown): Plan {
   const issues: PlanIssue[] = [];
   const bad = (path: string, message: string) => issues.push({ path, message });
+  // ids whose poly was supplied but rejected; readPoly already reported why
+  const badPoly = new Set<string>();
 
   const doc: J = isObj(input) ? input : {};
   if (!isObj(input)) bad("", "plan must be a JSON object");
@@ -107,6 +109,7 @@ export function parse(input: unknown): Plan {
     if (v["poly"] !== undefined) {
       const p = readPoly(`rooms.${id}.poly`, v["poly"]);
       if (p) polys.set(id, p);
+      else badPoly.add(id);
     }
   }
   for (const [id, v] of Object.entries(outdoorIn)) {
@@ -119,6 +122,7 @@ export function parse(input: unknown): Plan {
     if (v["poly"] !== undefined) {
       const p = readPoly(`outdoor.${id}.poly`, v["poly"]);
       if (p) polys.set(id, p);
+      else badPoly.add(id);
     }
   }
 
@@ -132,7 +136,7 @@ export function parse(input: unknown): Plan {
     if (!isObj(v)) continue;
     const poly = polys.get(id);
     if (!poly) {
-      bad(`rooms.${id}`, "has no geometry: give a poly or place it in layout.areas");
+      if (!badPoly.has(id)) bad(`rooms.${id}`, "has no geometry: give a poly or place it in layout.areas");
       continue;
     }
     const kindRaw = v["kind"] ?? "other";
@@ -163,7 +167,7 @@ export function parse(input: unknown): Plan {
     if (!isObj(v)) continue;
     const poly = polys.get(id);
     if (!poly) {
-      bad(`outdoor.${id}`, "has no geometry: give a poly or place it in layout.areas");
+      if (!badPoly.has(id)) bad(`outdoor.${id}`, "has no geometry: give a poly or place it in layout.areas");
       continue;
     }
     outdoor.push({ id, name: typeof v["name"] === "string" ? v["name"] : id, poly, covered: v["covered"] === true });

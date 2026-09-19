@@ -89,6 +89,14 @@ describe("parse: schema errors carry paths", () => {
   it("requires geometry for every room", () => {
     assert.deepEqual(issuesOf({ rooms: { a: { name: "A" } } }), ["rooms.a"]);
   });
+  it("reports a bad poly once, not also as missing geometry", () => {
+    const bent = [[0, 0], [2, 0], [5, 7], [0, 7]];
+    assert.deepEqual(issuesOf({ rooms: { a: { poly: bent } } }), ["rooms.a.poly"]);
+    assert.deepEqual(
+      issuesOf({ rooms: { a: { poly: rect(0, 0, 2, 2) } }, outdoor: { p: { poly: bent } } }),
+      ["outdoor.p.poly"],
+    );
+  });
   it("accepts a numeric position as metres from start", () => {
     const plan = parse(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, position: 1.25 }] }));
     assert.deepEqual(plan.openings[0]!.position, { from: "start", distance: 1.25 });
