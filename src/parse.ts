@@ -16,7 +16,7 @@ export class PlanError extends Error {
   }
 }
 
-const ROOM_KINDS: ReadonlySet<string> = new Set<RoomKind>([
+export const ROOM_KINDS: ReadonlySet<string> = new Set<RoomKind>([
   "bedroom",
   "living",
   "kitchen",
@@ -30,9 +30,9 @@ const ROOM_KINDS: ReadonlySet<string> = new Set<RoomKind>([
   "garage",
   "other",
 ]);
-const SIDES: ReadonlySet<string> = new Set<Side>(["north", "south", "east", "west"]);
-const OPENING_TYPES: ReadonlySet<string> = new Set<OpeningType>(["door", "window", "cased"]);
-const FIXTURE_TYPES: ReadonlySet<string> = new Set<FixtureType>([
+export const SIDES: ReadonlySet<string> = new Set<Side>(["north", "south", "east", "west"]);
+export const OPENING_TYPES: ReadonlySet<string> = new Set<OpeningType>(["door", "window", "cased"]);
+export const FIXTURE_TYPES: ReadonlySet<string> = new Set<FixtureType>([
   "pool",
   "bath",
   "shower",

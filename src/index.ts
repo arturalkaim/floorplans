@@ -16,6 +16,15 @@ import type { RuleOptions } from "./rules.ts";
 import type { RenderOptions } from "./svg.ts";
 
 export { parse, PlanError, derive, checkRules, renderSvg, sortFindings };
+// the parser's own vocabularies, so documentation cannot drift from what it accepts
+export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES } from "./parse.ts";
+export { RULES, ruleById } from "./catalogue.ts";
+export type { RuleDoc } from "./catalogue.ts";
+// authoring support: keep a document canonical, and edit one value in place
+export { formatPlan, formatText } from "./format.ts";
+export { JsonPosError, metres, nodeAt, parseWithPositions, pathToString, spliceAll, spliceAt } from "./jsonpos.ts";
+export type { FormatOptions } from "./format.ts";
+export type { JsonKind, JsonNode, JsonPath } from "./jsonpos.ts";
 export type * from "./types.ts";
 export type { PlanIssue } from "./parse.ts";
 export type { RuleOptions } from "./rules.ts";

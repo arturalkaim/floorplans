@@ -17,13 +17,19 @@
     "dist",
     "README.md"
   ],
+  "workspaces": [
+    "app"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/**/*.test.ts\"",
     "check": "npm run typecheck && npm test",
     "demo": "npm run build && node scripts/build-demo.ts",
-    "examples": "for f in casa-t3 apartment-t2 cabin casa-patio quinta casa-piscina broken; do node src/cli.ts fixtures/$f.json --out examples/$f.svg --mark info; done; true"
+    "examples": "for f in casa-t3 apartment-t2 cabin casa-patio quinta casa-piscina broken; do node src/cli.ts fixtures/$f.json --out examples/$f.svg --mark info; done; true",
+    "build:app": "npm run build && npm -w @floorplan/playground run build",
+    "dev:app": "npm run build && npm -w @floorplan/playground run dev",
+    "check:all": "npm run check && npm run build && npm -w @floorplan/playground run typecheck"
   },
   "engines": {
     "node": ">=22.18"
