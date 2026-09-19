@@ -1,0 +1,39 @@
+{
+  "title": "Apartamento T2",
+  "walls": { "exterior": 0.25, "partition": 0.11 },
+  "layout": {
+    "cols": [3.2, 1.1, 2.0, 2.4],
+    "rows": [3.2, 1.3, 1.5, 3.4],
+    "areas": [
+      "quarto1 hall quarto2 quarto2",
+      "quarto1 hall wc      quarto2",
+      "sala    hall wc      lavandaria",
+      "sala    sala cozinha cozinha"
+    ]
+  },
+  "rooms": {
+    "quarto1":    { "name": "Quarto 1",   "kind": "bedroom",  "zone": "night" },
+    "quarto2":    { "name": "Quarto 2",   "kind": "bedroom",  "zone": "night" },
+    "wc":         { "name": "WC",         "kind": "bath",     "zone": "night" },
+    "hall":       { "name": "Hall",       "kind": "hall",     "zone": "day" },
+    "sala":       { "name": "Sala",       "kind": "living",   "zone": "day" },
+    "cozinha":    { "name": "Cozinha",    "kind": "kitchen",  "zone": "day" },
+    "lavandaria": { "name": "Lavandaria", "kind": "utility",  "zone": "work" }
+  },
+  "openings": [
+    { "type": "door",   "between": ["exterior", "hall"],   "on": { "room": "hall", "side": "north" }, "width": 0.9, "hinge": "start", "swingInto": "hall", "entrance": true },
+    { "type": "door",   "between": ["hall", "quarto1"],    "position": { "from": "end", "distance": 0.55 }, "width": 0.8, "hinge": "end", "swingInto": "quarto1" },
+    { "type": "door",   "between": ["hall", "quarto2"],    "position": { "from": "end", "distance": 0.55 }, "width": 0.8, "hinge": "end", "swingInto": "quarto2" },
+    { "type": "door",   "between": ["hall", "wc"],         "position": { "from": "start", "distance": 0.55 }, "width": 0.7, "hinge": "start", "swingInto": "wc" },
+    { "type": "cased",  "between": ["hall", "sala"],       "on": { "room": "hall", "side": "south" }, "width": 1.1 },
+    { "type": "cased",  "between": ["sala", "cozinha"],    "position": { "from": "start", "distance": 1.4 }, "width": 1.8 },
+    { "type": "door",   "between": ["cozinha", "lavandaria"], "position": { "from": "end", "distance": 0.5 }, "width": 0.7, "hinge": "end", "swingInto": "lavandaria" },
+
+    { "type": "window", "between": ["exterior", "quarto1"], "on": { "room": "quarto1", "side": "west" },  "position": 2.2, "width": 1.6 },
+    { "type": "window", "between": ["exterior", "quarto2"], "on": { "room": "quarto2", "side": "north" }, "position": 2.6, "width": 1.6 },
+    { "type": "window", "between": ["exterior", "sala"],    "on": { "room": "sala", "side": "south" },    "position": 2.1, "width": 2.6 },
+    { "type": "window", "between": ["exterior", "sala"],    "on": { "room": "sala", "side": "west" },     "position": 3.0, "width": 1.4 },
+    { "type": "window", "between": ["exterior", "cozinha"], "on": { "room": "cozinha", "side": "south" }, "position": 2.2, "width": 1.6 },
+    { "type": "window", "between": ["exterior", "lavandaria"], "width": 0.8 }
+  ]
+}

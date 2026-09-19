@@ -1,0 +1,315 @@
+<title>T3 + Escritório</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --ground:#f6f7f9; --surface:#ffffff; --surface-2:#eef1f5;
+  --ink:#10151c; --ink-2:#55606f; --ink-3:#8391a3;
+  --rule:#dde3ea; --rule-2:#c7d0da;
+  --night:#2a78d6; --day:#eb6834; --work:#1baf7a;
+  --night-f:rgba(42,120,214,.10); --day-f:rgba(235,104,52,.11); --work-f:rgba(27,175,122,.11);
+  --wall:#10151c; --void:#f6f7f9; --warn:#b45309;
+  --shadow:0 1px 2px rgba(16,21,28,.05),0 8px 24px -12px rgba(16,21,28,.16);
+  --f-d:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --f-b:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif;
+  --f-m:'IBM Plex Mono','SF Mono',Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --ground:#12161c; --surface:#171d26; --surface-2:#1e2632;
+  --ink:#eef2f7; --ink-2:#9aa7b8; --ink-3:#6b7a8d;
+  --rule:#263140; --rule-2:#334154;
+  --night:#3987e5; --day:#d95926; --work:#199e70;
+  --night-f:rgba(57,135,229,.16); --day-f:rgba(217,89,38,.17); --work-f:rgba(25,158,112,.16);
+  --wall:#c3d0de; --void:#171d26; --warn:#f0a94c;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#12161c; --surface:#171d26; --surface-2:#1e2632;
+  --ink:#eef2f7; --ink-2:#9aa7b8; --ink-3:#6b7a8d;
+  --rule:#263140; --rule-2:#334154;
+  --night:#3987e5; --day:#d95926; --work:#199e70;
+  --night-f:rgba(57,135,229,.16); --day-f:rgba(217,89,38,.17); --work-f:rgba(25,158,112,.16);
+  --wall:#c3d0de; --void:#171d26; --warn:#f0a94c;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-b);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 24px 72px}
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px;border-bottom:2px solid var(--ink);padding-bottom:18px}
+.mast h1{font-family:var(--f-d);font-weight:700;font-size:clamp(30px,4.4vw,46px);letter-spacing:-.025em;line-height:1.02;margin:0}
+.mast .sub{color:var(--ink-2);max-width:64ch;margin:9px 0 0;font-size:14.5px}
+.stamp{font-family:var(--f-m);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);text-align:right;line-height:1.9;white-space:nowrap}
+section{margin-top:26px}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:22px;box-shadow:var(--shadow)}
+h2{font-family:var(--f-d);font-size:19px;font-weight:600;letter-spacing:-.012em;margin:0 0 4px}
+.lede{color:var(--ink-2);font-size:14px;margin:0 0 4px;max-width:74ch}
+figure{margin:0}
+figcaption{color:var(--ink-2);font-size:12.5px;margin-top:12px;max-width:80ch;border-top:1px solid var(--rule);padding-top:11px}
+svg{display:block;max-width:100%;height:auto}
+.scroll{overflow-x:auto;overflow-y:hidden}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin:14px 0 10px;align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:12px;height:12px;border-radius:2px;border:1.5px solid;flex:none}
+.rm polygon{transition:fill-opacity .12s}
+.rm:hover .f{fill-opacity:.6}
+.rn{font-family:var(--f-b);font-size:10.5px;font-weight:500;fill:var(--ink);pointer-events:none}
+.ra{font-family:var(--f-m);font-size:8.5px;fill:var(--ink-3);pointer-events:none}
+.dim{font-family:var(--f-m);font-size:9.5px;fill:var(--ink-3)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:14px}
+th,td{text-align:right;padding:7px 10px;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums;font-family:var(--f-m)}
+th{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--rule-2)}
+th:first-child,td:first-child{text-align:left;font-family:var(--f-b)}
+tbody tr:hover{background:var(--surface-2)}
+tfoot td{font-weight:600;border-top:1px solid var(--rule-2);border-bottom:none}
+.zt{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;position:relative;top:-1px}
+.ctrl{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:16px 0 4px;padding:13px 15px;background:var(--surface-2);border-radius:4px}
+.ctrl label{font-size:13px;color:var(--ink-2);display:inline-flex;align-items:center;gap:8px}
+.ctrl input[type=number]{width:78px;font-family:var(--f-m);font-size:13px;font-weight:500;text-align:right;padding:5px 7px;background:var(--surface);color:var(--ink);border:1px solid var(--rule);border-radius:3px}
+.ctrl input:focus-visible{outline:2px solid var(--night);outline-offset:1px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media (max-width:820px){.cols{grid-template-columns:1fr}}
+.notes{margin:0;padding-left:18px;color:var(--ink-2);font-size:13.5px}
+.notes li{margin-bottom:9px} .notes li:last-child{margin-bottom:0}
+.notes b{color:var(--ink);font-weight:600}
+.flag{border-left:3px solid var(--warn);padding-left:13px;margin-top:16px;font-size:13.5px;color:var(--ink-2)}
+.flag b{color:var(--ink)}
+.disc{border-left:3px solid var(--warn)}
+.disc h2{font-size:15px;margin-bottom:9px}
+.disc p{margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div>
+      <h1>T3 + Escritório</h1>
+      <p class="sub">A single-storey moradia for four — three bedrooms, an office a client can reach without passing a bedroom, living opening south. Drawn with wall thickness, door swings and window openings so the circulation can actually be checked.</p>
+    </div>
+    <div class="stamp">Piso único · 178 m² bruto<br>16,80 × 10,60 m<br>Escala 1:100</div>
+  </header>
+
+  <section class="panel disc">
+    <h2>What this drawing is, and is not</h2>
+    <p class="lede">A brief you can argue with — room sizes, adjacencies and circulation, at scale. It is <b>not</b> a licensable project. In Portugal the <i>projeto de arquitetura</i> submitted to the câmara has to be authored by a registered architect, so this exists to arrive at that meeting knowing what you want, not to replace it. Structure, spans, foundations, thermal and acoustic regulation, accessibility and drainage are all unresolved here.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Floor plan</h2>
+    <p class="lede">Hover any room to lift it. Doors show their swing; window openings are the gaps in the outer wall.</p>
+    <div class="legend">
+      <span><i style="border-color:var(--night);background:var(--night-f)"></i>Night</span>
+      <span><i style="border-color:var(--day);background:var(--day-f)"></i>Day</span>
+      <span><i style="border-color:var(--work);background:var(--work-f)"></i>Work &amp; service</span>
+      <span style="color:var(--ink-3);font-family:var(--f-m);font-size:11.5px">exterior wall 0,30 m · partitions 0,12 m</span>
+    </div>
+    <figure>
+      <div class="scroll"><div id="plan"></div></div>
+      <figcaption><b>Every room is entered from somewhere.</b> The hall takes the front door and opens four ways — office, WC social, east into the distribuidor that serves the boys' rooms and the family bathroom, and north straight into the suite. The suite's closet and WC open off the bedroom, not a corridor. Sala reaches the kitchen through a 1,6 m cased opening and the garden through the south glazing.</figcaption>
+    </figure>
+  </section>
+
+  <section class="cols">
+    <div class="panel">
+      <h2>Room schedule</h2>
+      <p class="lede">Clear internal areas, before wall thickness.</p>
+      <div class="scroll"><table id="sched"></table></div>
+    </div>
+    <div class="panel">
+      <h2>Does €250k build it?</h2>
+      <p class="lede">Portuguese turnkey construction runs roughly €1 200–1 800/m². Terrace and garage count at a reduced rate — they are cheaper per m² than heated space.</p>
+      <div class="ctrl">
+        <label>Rate <input id="rate" type="number" step="50" value="1400"> €/m²</label>
+        <label><input id="incT" type="checkbox" checked> Alpendre</label>
+        <label><input id="incG" type="checkbox" checked> Garagem 36 m²</label>
+      </div>
+      <div class="scroll"><table id="cost"></table></div>
+      <p class="flag" id="verdict"></p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>What changed, and what is still weak</h2>
+    <div class="cols">
+      <ul class="notes">
+        <li><b>Fixed: the suite was not a suite.</b> Its closet and WC sat across a wall with no door from the bedroom — they would have been entered from the corridor. They now open off the bedroom.</li>
+        <li><b>Fixed: the guest WC was 14 m from the front door</b>, at the far end past the kitchen. It now sits directly off the hall.</li>
+        <li><b>Fixed: a room with no way in.</b> The old storage room was reachable only through the family bathroom. It is gone; the bathroom took the space and storage moved to the service side by the kitchen.</li>
+      </ul>
+      <ul class="notes">
+        <li><b>Still weak — the corridor.</b> 17,1 m², a tenth of the house, doing nothing but connecting. Two floors, or bedrooms on both sides of a shorter corridor, would recover most of it.</li>
+        <li><b>Still weak — the office is shallow.</b> 4,60 × 2,60 m works for a desk and shelving, not for two people or a meeting.</li>
+        <li><b>The suite opens off the entrance hall.</b> Parents are far from the boys and a visitor sees the bedroom door. Some families want exactly that separation; if not, the distribuidor would need to extend west one bay.</li>
+        <li><b>The WC social has no window</b> — it needs mechanical extraction, normal but a real cost line.</li>
+        <li><b>No structure yet.</b> The 7,4 m sala span and the south glazing need a beam nobody has sized.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const S=40, OX=78, OY=56;
+const W=16.8, H=10.6;
+const EW=0.30, IW=0.12;
+const X=m=>OX+m*S, Y=m=>OY+m*S;
+
+const R=(x,y,w,h)=>[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
+const ROOMS=[
+ {n:"Suite parental",z:"night",p:R(0,0,4.6,4.4)},
+ {n:"WC suite",      z:"night",p:R(4.6,0,2.2,2.2)},
+ {n:"Closet",        z:"night",p:R(4.6,2.2,2.2,2.2)},
+ {n:"Quarto 1",      z:"night",p:R(6.8,0,3.6,4.4)},
+ {n:"Quarto 2",      z:"night",p:R(10.4,0,3.6,4.4)},
+ {n:"WC comum",      z:"night",p:R(14.0,0,2.8,4.4)},
+ {n:"Distribuidor",  z:"night",p:R(4.6,4.4,12.2,1.4)},
+ {n:"Hall",          z:"day",  p:R(0,4.4,4.6,3.6)},
+ {n:"Escritório",    z:"work", p:R(0,8.0,4.6,2.6)},
+ {n:"WC social",     z:"day",  p:R(4.6,5.8,2.0,2.0)},
+ {n:"Sala comum",    z:"day",  p:[[6.6,5.8],[12.0,5.8],[12.0,10.6],[4.6,10.6],[4.6,7.8],[6.6,7.8]]},
+ {n:"Cozinha",       z:"day",  p:[[12.0,5.8],[15.0,5.8],[15.0,7.6],[16.8,7.6],[16.8,10.6],[12.0,10.6]]},
+ {n:"Despensa",      z:"work", p:R(15.0,5.8,1.8,1.8)},
+];
+const TERRACE={n:"Alpendre",p:R(6.6,10.6,5.4,2.8)};
+
+// hinge point (m), leaf length, closed angle, open angle — degrees, 0 = east, 90 = south
+const DOORS=[
+ {h:[0,6.6],   r:1.0,c:-90,o:0,  ext:true},
+ {h:[4.6,6.8], r:0.8,c:-90,o:0},
+ {h:[1.2,8.0], r:0.8,c:0,  o:90},
+ {h:[3.9,4.4], r:0.9,c:180,o:270},
+ {h:[4.6,1.4], r:0.8,c:-90,o:0},
+ {h:[4.6,3.4], r:0.8,c:-90,o:0},
+ {h:[8.3,4.4], r:0.9,c:180,o:270},
+ {h:[11.9,4.4],r:0.9,c:180,o:270},
+ {h:[15.5,4.4],r:0.9,c:180,o:270},
+ {h:[15.6,7.6],r:0.8,c:0,  o:90},
+];
+const OPENINGS=[
+ {x:4.6,y:4.4,l:1.4,o:"v"},
+ {x:7.0,y:5.8,l:1.6,o:"h"},
+ {x:12.0,y:7.0,l:1.6,o:"v"},
+];
+const WINDOWS=[
+ {x:1.2,y:0,l:2.2,o:"h"},{x:7.8,y:0,l:1.8,o:"h"},{x:11.4,y:0,l:1.8,o:"h"},{x:15.0,y:0,l:1.0,o:"h"},
+ {x:5.0,y:10.6,l:1.2,o:"h"},{x:7.4,y:10.6,l:3.6,o:"h"},{x:13.0,y:10.6,l:2.0,o:"h"},{x:1.0,y:10.6,l:2.2,o:"h"},
+ {x:0,y:8.6,l:1.4,o:"v"},{x:16.8,y:6.2,l:1.0,o:"v"},
+];
+const ZC={night:["var(--night)","var(--night-f)"],day:["var(--day)","var(--day-f)"],work:["var(--work)","var(--work-f)"]};
+const shoelace=p=>{let a=0;for(let i=0;i<p.length;i++){const q=p[i],r=p[(i+1)%p.length];a+=q[0]*r[1]-r[0]*q[1];}return Math.abs(a)/2;};
+const cen=p=>{let x=0,y=0;for(const q of p){x+=q[0];y+=q[1];}return [x/p.length,y/p.length];};
+const num=(n,d=1)=>n.toLocaleString("pt-PT",{minimumFractionDigits:d,maximumFractionDigits:d});
+const eur=n=>new Intl.NumberFormat("pt-PT",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
+const GROSS=W*H;
+const pts=p=>p.map(q=>X(q[0])+","+Y(q[1])).join(" ");
+
+(function(){
+  const vw=OX+W*S+108, vh=OY+(H+2.8)*S+76;
+  let s='<svg viewBox="0 0 '+vw+' '+vh+'" role="img" aria-label="Scaled floor plan, 16.8 by 10.6 metres: three bedrooms and family bathroom behind a corridor, hall with office and guest WC, L-shaped living room and kitchen facing south" style="min-width:760px">';
+
+  s+='<polygon points="'+pts(TERRACE.p)+'" fill="var(--day-f)" stroke="var(--day)" stroke-width="1" stroke-dasharray="5 4"/>';
+  const tc=cen(TERRACE.p);
+  s+='<text class="rn" x="'+X(tc[0])+'" y="'+(Y(tc[1])-2)+'" text-anchor="middle">Alpendre</text>'+
+     '<text class="ra" x="'+X(tc[0])+'" y="'+(Y(tc[1])+11)+'" text-anchor="middle">'+num(shoelace(TERRACE.p),1)+' m² coberto</text>';
+
+  for(const r of ROOMS){
+    const st=ZC[r.z][0], fl=ZC[r.z][1], c=cen(r.p), A=shoelace(r.p);
+    s+='<g class="rm"><title>'+r.n+' — '+num(A,1)+' m²</title>'+
+       '<polygon class="f" points="'+pts(r.p)+'" fill="'+fl+'" fill-opacity="1" stroke="'+st+'" stroke-width="'+(IW*S)+'" stroke-opacity=".55"/>'+
+       '<text class="rn" x="'+X(c[0])+'" y="'+(Y(c[1])-2)+'" text-anchor="middle">'+r.n+'</text>'+
+       '<text class="ra" x="'+X(c[0])+'" y="'+(Y(c[1])+11)+'" text-anchor="middle">'+num(A,1)+' m²</text></g>';
+  }
+
+  s+='<rect x="'+X(0)+'" y="'+Y(0)+'" width="'+(W*S)+'" height="'+(H*S)+'" fill="none" stroke="var(--wall)" stroke-width="'+(EW*S)+'"/>';
+
+  for(const w of WINDOWS){
+    const hz=w.o==="h";
+    const x=X(w.x)-(hz?0:EW*S/2), y=Y(w.y)-(hz?EW*S/2:0);
+    const ww=hz?w.l*S:EW*S, hh=hz?EW*S:w.l*S;
+    s+='<rect x="'+x+'" y="'+y+'" width="'+ww+'" height="'+hh+'" fill="var(--void)"/>';
+    if(hz){const my=Y(w.y);
+      s+='<line x1="'+X(w.x)+'" y1="'+(my-3)+'" x2="'+X(w.x+w.l)+'" y2="'+(my-3)+'" stroke="var(--wall)" stroke-width="1"/>'+
+         '<line x1="'+X(w.x)+'" y1="'+(my+3)+'" x2="'+X(w.x+w.l)+'" y2="'+(my+3)+'" stroke="var(--wall)" stroke-width="1"/>';
+    }else{const mx=X(w.x);
+      s+='<line x1="'+(mx-3)+'" y1="'+Y(w.y)+'" x2="'+(mx-3)+'" y2="'+Y(w.y+w.l)+'" stroke="var(--wall)" stroke-width="1"/>'+
+         '<line x1="'+(mx+3)+'" y1="'+Y(w.y)+'" x2="'+(mx+3)+'" y2="'+Y(w.y+w.l)+'" stroke="var(--wall)" stroke-width="1"/>';
+    }
+  }
+
+  for(const o of OPENINGS){
+    const hz=o.o==="h";
+    s+='<rect x="'+(X(o.x)-(hz?0:IW*S/2))+'" y="'+(Y(o.y)-(hz?IW*S/2:0))+'" width="'+(hz?o.l*S:IW*S)+'" height="'+(hz?IW*S:o.l*S)+'" fill="var(--void)"/>';
+  }
+
+  const rad=d=>d*Math.PI/180;
+  for(const d of DOORS){
+    const cx=X(d.h[0]), cy=Y(d.h[1]), r=d.r*S;
+    const a0=rad(d.c), a1=rad(d.o);
+    const p0=[cx+r*Math.cos(a0), cy+r*Math.sin(a0)];
+    const p1=[cx+r*Math.cos(a1), cy+r*Math.sin(a1)];
+    const ex=Math.round(Math.cos(a0)), ey=Math.round(Math.sin(a0)), tw=(d.ext?EW:IW)*S;
+    const gx=Math.min(cx,p0[0])-(ex?0:tw/2), gy=Math.min(cy,p0[1])-(ey?0:tw/2);
+    s+='<rect x="'+gx+'" y="'+gy+'" width="'+(ex?r:tw)+'" height="'+(ey?r:tw)+'" fill="var(--void)"/>';
+    const sweep=(((d.o-d.c)%360)+360)%360>180?0:1;
+    s+='<path d="M'+p0[0]+' '+p0[1]+' A'+r+' '+r+' 0 0 '+sweep+' '+p1[0]+' '+p1[1]+'" fill="none" stroke="var(--ink-3)" stroke-width="1"/>'+
+       '<line x1="'+cx+'" y1="'+cy+'" x2="'+p1[0]+'" y2="'+p1[1]+'" stroke="var(--wall)" stroke-width="2"/>';
+    if(d.ext)s+='<text class="ra" x="'+(cx-16)+'" y="'+(cy-20)+'" text-anchor="middle" transform="rotate(-90 '+(cx-16)+' '+(cy-20)+')" style="font-size:9px;fill:var(--day);font-weight:600">ENTRADA</text>';
+  }
+
+  const dy=Y(0)-26, dx=X(0)-34;
+  s+='<line x1="'+X(0)+'" y1="'+dy+'" x2="'+X(W)+'" y2="'+dy+'" stroke="var(--ink-3)" stroke-width="1"/>'+
+     '<line x1="'+X(0)+'" y1="'+(dy-5)+'" x2="'+X(0)+'" y2="'+(dy+5)+'" stroke="var(--ink-3)" stroke-width="1"/>'+
+     '<line x1="'+X(W)+'" y1="'+(dy-5)+'" x2="'+X(W)+'" y2="'+(dy+5)+'" stroke="var(--ink-3)" stroke-width="1"/>'+
+     '<text class="dim" x="'+X(W/2)+'" y="'+(dy-7)+'" text-anchor="middle">16,80 m</text>'+
+     '<line x1="'+dx+'" y1="'+Y(0)+'" x2="'+dx+'" y2="'+Y(H)+'" stroke="var(--ink-3)" stroke-width="1"/>'+
+     '<line x1="'+(dx-5)+'" y1="'+Y(0)+'" x2="'+(dx+5)+'" y2="'+Y(0)+'" stroke="var(--ink-3)" stroke-width="1"/>'+
+     '<line x1="'+(dx-5)+'" y1="'+Y(H)+'" x2="'+(dx+5)+'" y2="'+Y(H)+'" stroke="var(--ink-3)" stroke-width="1"/>'+
+     '<text class="dim" x="'+(dx-8)+'" y="'+Y(H/2)+'" text-anchor="middle" transform="rotate(-90 '+(dx-8)+' '+Y(H/2)+')">10,60 m</text>';
+
+  const nx=X(W)+58, ny=Y(0)+30;
+  s+='<line x1="'+nx+'" y1="'+(ny+20)+'" x2="'+nx+'" y2="'+(ny-14)+'" stroke="var(--ink-2)" stroke-width="1.5"/>'+
+     '<path d="M'+nx+' '+(ny-20)+' L'+(nx-5)+' '+(ny-9)+' L'+(nx+5)+' '+(ny-9)+' z" fill="var(--ink-2)"/>'+
+     '<text class="dim" x="'+nx+'" y="'+(ny+34)+'" text-anchor="middle">N</text>'+
+     '<text class="ra" x="'+nx+'" y="'+(Y(H)-20)+'" text-anchor="middle" transform="rotate(-90 '+nx+' '+(Y(H)-20)+')" style="font-size:9.5px">jardim e sol a sul →</text>';
+  const sbx=X(0), sby=Y(H+2.8)+40;
+  s+='<line x1="'+sbx+'" y1="'+sby+'" x2="'+(sbx+5*S)+'" y2="'+sby+'" stroke="var(--ink-2)" stroke-width="2"/>';
+  for(let i=0;i<=5;i++)s+='<line x1="'+(sbx+i*S)+'" y1="'+(sby-4)+'" x2="'+(sbx+i*S)+'" y2="'+(sby+4)+'" stroke="var(--ink-2)" stroke-width="1"/>';
+  s+='<text class="dim" x="'+sbx+'" y="'+(sby+17)+'">0</text><text class="dim" x="'+(sbx+5*S)+'" y="'+(sby+17)+'" text-anchor="middle">5 m</text>';
+  s+='</svg>';
+  document.getElementById("plan").innerHTML=s;
+})();
+
+(function(){
+  const order={night:0,day:1,work:2}, lbl={night:"Night",day:"Day",work:"Work"};
+  const rows=ROOMS.slice().sort((a,b)=>order[a.z]-order[b.z]||shoelace(b.p)-shoelace(a.p));
+  let net=0,body="";
+  for(const r of rows){const A=shoelace(r.p);net+=A;
+    body+='<tr><td><i class="zt" style="background:'+ZC[r.z][0]+'"></i>'+r.n+'</td><td>'+lbl[r.z]+'</td><td>'+num(A,1)+'</td></tr>';}
+  document.getElementById("sched").innerHTML=
+    '<thead><tr><th>Room</th><th>Zone</th><th>m²</th></tr></thead><tbody>'+body+'</tbody>'+
+    '<tfoot><tr><td>Interior, clear</td><td></td><td>'+num(net,1)+'</td></tr>'+
+    '<tr><td>Alpendre (coberto)</td><td></td><td>'+num(shoelace(TERRACE.p),1)+'</td></tr></tfoot>';
+})();
+
+function cost(){
+  const rate=parseFloat(document.getElementById("rate").value)||1400;
+  const lines=[{l:"House, gross floor area",a:GROSS,f:1.0}];
+  if(document.getElementById("incT").checked)lines.push({l:"Alpendre",a:shoelace(TERRACE.p),f:0.5});
+  if(document.getElementById("incG").checked)lines.push({l:"Garagem",a:36,f:0.6});
+  let tot=0,body="";
+  for(const x of lines){const v=x.a*rate*x.f;tot+=v;
+    body+='<tr><td>'+x.l+'</td><td>'+num(x.a,1)+'</td><td>'+num(x.f*100,0)+' %</td><td>'+eur(v)+'</td></tr>';}
+  document.getElementById("cost").innerHTML=
+    '<thead><tr><th>Item</th><th>m²</th><th>Rate</th><th>Cost</th></tr></thead><tbody>'+body+'</tbody>'+
+    '<tfoot><tr><td>Total at '+eur(rate)+'/m²</td><td></td><td></td><td>'+eur(tot)+'</td></tr></tfoot>';
+  const over=tot-250000;
+  document.getElementById("verdict").innerHTML= over<=0
+    ? 'Fits the <b>€250 000</b> build line with <b>'+eur(-over)+'</b> spare — hold that as contingency, not spec.'
+    : '<b>'+eur(over)+' over</b> the €250 000 build line. The house alone is '+eur(GROSS*rate)+'; the alpendre and garagem push it past. Raise the build line, drop the garage to a carport, or take the corridor out.';
+}
+for(const id of ["rate","incT","incG"])document.getElementById(id).addEventListener("input",cost);
+cost();
+</script>

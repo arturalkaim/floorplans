@@ -1,0 +1,51 @@
+{
+  "title": "Casa T3",
+  "units": "m",
+  "walls": { "exterior": 0.3, "partition": 0.12 },
+  "north": 0,
+  "rooms": {
+    "suite":      { "name": "Suite parental", "kind": "bedroom",  "zone": "night", "poly": [[0, 0], [4.6, 0], [4.6, 4.4], [0, 4.4]] },
+    "wc_suite":   { "name": "WC suite",       "kind": "bath",     "zone": "night", "poly": [[4.6, 0], [6.8, 0], [6.8, 2.2], [4.6, 2.2]] },
+    "closet":     { "name": "Closet",         "kind": "storage",  "zone": "night", "poly": [[4.6, 2.2], [6.8, 2.2], [6.8, 4.4], [4.6, 4.4]] },
+    "quarto1":    { "name": "Quarto 1",       "kind": "bedroom",  "zone": "night", "poly": [[6.8, 0], [10.4, 0], [10.4, 4.4], [6.8, 4.4]] },
+    "quarto2":    { "name": "Quarto 2",       "kind": "bedroom",  "zone": "night", "poly": [[10.4, 0], [14, 0], [14, 4.4], [10.4, 4.4]] },
+    "wc_comum":   { "name": "WC comum",       "kind": "bath",     "zone": "night", "poly": [[14, 0], [16.8, 0], [16.8, 4.4], [14, 4.4]] },
+    "distrib":    { "name": "Distribuidor",   "kind": "corridor", "zone": "night", "poly": [[4.6, 4.4], [16.8, 4.4], [16.8, 5.8], [4.6, 5.8]] },
+    "hall":       { "name": "Hall",           "kind": "hall",     "zone": "day",   "poly": [[0, 4.4], [4.6, 4.4], [4.6, 8], [0, 8]] },
+    "escritorio": { "name": "Escritório",     "kind": "office",   "zone": "work",  "poly": [[0, 8], [4.6, 8], [4.6, 10.6], [0, 10.6]] },
+    "wc_social":  { "name": "WC social",      "kind": "wc",       "zone": "day",   "poly": [[4.6, 5.8], [6.6, 5.8], [6.6, 7.8], [4.6, 7.8]] },
+    "sala":       { "name": "Sala comum",     "kind": "living",   "zone": "day",   "poly": [[6.6, 5.8], [12, 5.8], [12, 10.6], [4.6, 10.6], [4.6, 7.8], [6.6, 7.8]] },
+    "cozinha":    { "name": "Cozinha",        "kind": "kitchen",  "zone": "day",   "poly": [[12, 5.8], [15, 5.8], [15, 7.6], [16.8, 7.6], [16.8, 10.6], [12, 10.6]] },
+    "despensa":   { "name": "Despensa",       "kind": "storage",  "zone": "work",  "poly": [[15, 5.8], [16.8, 5.8], [16.8, 7.6], [15, 7.6]] }
+  },
+  "outdoor": {
+    "alpendre": { "name": "Alpendre", "poly": [[6.6, 10.6], [12, 10.6], [12, 13.4], [6.6, 13.4]], "covered": true }
+  },
+  "openings": [
+    { "type": "door",   "between": ["exterior", "hall"],     "position": { "from": "start", "distance": 1.7 },  "width": 1.0, "hinge": "end",   "swingInto": "hall",     "entrance": true },
+    { "type": "door",   "between": ["hall", "wc_social"],    "position": { "from": "start", "distance": 0.6 },  "width": 0.8, "hinge": "end",   "swingInto": "wc_social" },
+    { "type": "door",   "between": ["hall", "escritorio"],   "position": { "from": "start", "distance": 1.6 },  "width": 0.8, "hinge": "start", "swingInto": "escritorio" },
+    { "type": "door",   "between": ["hall", "suite"],        "position": { "from": "start", "distance": 3.45 }, "width": 0.9, "hinge": "end",   "swingInto": "suite" },
+    { "type": "door",   "between": ["suite", "wc_suite"],    "position": { "from": "start", "distance": 1.0 },  "width": 0.8, "hinge": "end",   "swingInto": "wc_suite" },
+    { "type": "door",   "between": ["suite", "closet"],      "position": { "from": "start", "distance": 0.8 },  "width": 0.8, "hinge": "end",   "swingInto": "closet" },
+    { "type": "door",   "between": ["distrib", "quarto1"],   "position": { "from": "start", "distance": 1.05 }, "width": 0.9, "hinge": "end",   "swingInto": "quarto1" },
+    { "type": "door",   "between": ["distrib", "quarto2"],   "position": { "from": "start", "distance": 1.05 }, "width": 0.9, "hinge": "end",   "swingInto": "quarto2" },
+    { "type": "door",   "between": ["distrib", "wc_comum"],  "position": { "from": "start", "distance": 1.05 }, "width": 0.9, "hinge": "end",   "swingInto": "wc_comum" },
+    { "type": "door",   "between": ["despensa", "cozinha"],  "on": { "room": "despensa", "side": "south" }, "position": { "from": "start", "distance": 1.0 },  "width": 0.8, "hinge": "start", "swingInto": "cozinha" },
+
+    { "type": "cased",  "between": ["hall", "distrib"],      "width": 1.4 },
+    { "type": "cased",  "between": ["distrib", "sala"],      "position": { "from": "start", "distance": 1.2 },  "width": 1.6 },
+    { "type": "cased",  "between": ["sala", "cozinha"],      "position": { "from": "start", "distance": 2.0 },  "width": 1.6 },
+
+    { "type": "window", "between": ["exterior", "suite"],      "on": { "room": "suite", "side": "north" },      "position": 2.3, "width": 2.2 },
+    { "type": "window", "between": ["exterior", "quarto1"],    "position": 1.9, "width": 1.8 },
+    { "type": "window", "between": ["exterior", "quarto2"],    "position": 1.9, "width": 1.8 },
+    { "type": "window", "between": ["exterior", "wc_comum"],   "on": { "room": "wc_comum", "side": "north" },   "position": 1.5, "width": 1.0 },
+    { "type": "window", "between": ["exterior", "sala"],       "position": 1.0, "width": 1.2 },
+    { "type": "window", "between": ["exterior", "sala"],       "position": 4.6, "width": 3.6 },
+    { "type": "window", "between": ["exterior", "cozinha"],    "on": { "room": "cozinha", "side": "south" },    "position": 2.0, "width": 2.0 },
+    { "type": "window", "between": ["exterior", "escritorio"], "on": { "room": "escritorio", "side": "south" }, "position": 2.1, "width": 2.2 },
+    { "type": "window", "between": ["exterior", "escritorio"], "on": { "room": "escritorio", "side": "west" },  "position": 1.3, "width": 1.4 },
+    { "type": "window", "between": ["exterior", "despensa"],   "position": 0.9, "width": 1.0 }
+  ]
+}

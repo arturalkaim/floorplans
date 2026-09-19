@@ -1,0 +1,34 @@
+{
+  "name": "floorplan",
+  "version": "0.1.0",
+  "description": "Declarative floor-plan renderer and linter. Text in, scaled SVG out, with findings.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "floorplan": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "check": "npm run typecheck && npm test",
+    "examples": "for f in casa-t3 apartment-t2 cabin broken; do node src/cli.ts fixtures/$f.json --out examples/$f.svg --mark info; done; true"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "typescript": "^7.0.2"
+  }
+}

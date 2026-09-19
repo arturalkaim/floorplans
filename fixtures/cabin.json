@@ -1,0 +1,21 @@
+{
+  "title": "Cabana",
+  "walls": { "exterior": 0.2, "partition": 0.1 },
+  "rooms": {
+    "sala":    { "name": "Sala e cozinha", "kind": "living",  "poly": [[0, 0], [5, 0], [5, 4], [0, 4]] },
+    "wc":      { "name": "Casa de banho",  "kind": "wc",      "poly": [[5, 0], [6.2, 0], [6.2, 2], [5, 2]] },
+    "arrumos": { "name": "Arrumos",        "kind": "storage", "poly": [[5, 2], [6.2, 2], [6.2, 4], [5, 4]] }
+  },
+  "outdoor": {
+    "deck": { "name": "Deck", "poly": [[0, 4], [5, 4], [5, 6], [0, 6]] }
+  },
+  "openings": [
+    { "type": "door",   "between": ["exterior", "sala"], "on": { "room": "sala", "side": "south" }, "position": 0.9, "width": 0.9, "hinge": "start", "swingInto": "sala" },
+    { "type": "door",   "between": ["sala", "wc"],       "position": { "from": "end", "distance": 0.5 }, "width": 0.7, "hinge": "end", "swingInto": "wc" },
+    { "type": "door",   "between": ["sala", "arrumos"],  "position": { "from": "start", "distance": 0.5 }, "width": 0.7, "hinge": "start", "swingInto": "arrumos" },
+    { "type": "window", "between": ["exterior", "sala"], "on": { "room": "sala", "side": "north" }, "position": 2.5, "width": 2.4 },
+    { "type": "window", "between": ["exterior", "sala"], "on": { "room": "sala", "side": "south" }, "position": 3.4, "width": 2.0 },
+    { "type": "window", "between": ["exterior", "sala"], "on": { "room": "sala", "side": "west" },  "width": 1.2 },
+    { "type": "window", "between": ["exterior", "wc"],   "on": { "room": "wc", "side": "east" },    "width": 0.6 }
+  ]
+}
