@@ -49,7 +49,16 @@ export interface Schedule {
   footprint: number;
   /** total pool surface, m² */
   waterArea: number;
-  outdoor: Array<{ id: string; name: string; area: number; covered: boolean }>;
+  outdoor: Array<{
+    id: string;
+    name: string;
+    area: number;
+    /** floor taken by fixtures standing in this outdoor space, m² */
+    fixtureArea: number;
+    /** area less fixtureArea: a deck net of its pool */
+    usableArea: number;
+    covered: boolean;
+  }>;
 }
 
 export function schedule(model: Model): Schedule {
@@ -69,7 +78,19 @@ export function schedule(model: Model): Schedule {
     interiorClearArea: Math.round(rooms.reduce((s, r) => s + r.clearArea, 0) * 1000) / 1000,
     footprint: model.envelope.area,
     waterArea: Math.round(model.fixtures.filter((f) => f.fixture.type === "pool").reduce((s, f) => s + f.area, 0) * 1000) / 1000,
-    outdoor: model.plan.outdoor.map((o) => ({ id: o.id, name: o.name, area: Math.abs(polyArea(o.poly)), covered: o.covered })),
+    outdoor: model.plan.outdoor.map((o) => {
+      const area = Math.abs(polyArea(o.poly));
+      const fixtureArea =
+        Math.round(model.fixtures.filter((f) => f.fixture.in === o.id).reduce((s, f) => s + f.area, 0) * 1000) / 1000;
+      return {
+        id: o.id,
+        name: o.name,
+        area,
+        fixtureArea,
+        usableArea: Math.round(Math.max(0, area - fixtureArea) * 1000) / 1000,
+        covered: o.covered,
+      };
+    }),
   };
 }
 

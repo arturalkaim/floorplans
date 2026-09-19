@@ -24,8 +24,11 @@
   },
   "outdoor": {
     "jardim":  { "name": "Jardim interior", "covered": false },
-    "piscina": { "name": "Piscina",         "poly": [[0.6,13.0],[5.6,13.0],[5.6,16.0],[0.6,16.0]], "covered": false }
+    "terraco": { "name": "Terraço",         "poly": [[0.2,12.6],[6.0,12.6],[6.0,16.4],[0.2,16.4]], "covered": false }
   },
+  "fixtures": [
+    { "type": "pool", "in": "terraco", "name": "Piscina", "at": [0.6, 13.0], "size": [5.0, 3.0], "depth": 1.5 }
+  ],
   "openings": [
     { "type": "door", "between": ["exterior", "corredor"], "on": { "room": "corredor", "side": "north" },
       "width": 1.0, "swingInto": "corredor", "entrance": true },

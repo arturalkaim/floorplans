@@ -158,17 +158,21 @@ export function derive(plan: Plan): Analysis {
   }
 
   // ---- fixtures standing inside rooms ----
-  const roomPoly = new Map(rooms.map((r) => [r.id, r.poly]));
+  // a fixture stands in a room or in an outdoor space — a pool is a pool either way
+  const hostPoly = new Map<string, Pt[]>([
+    ...rooms.map((r) => [r.id, r.poly] as const),
+    ...plan.outdoor.map((o) => [o.id, o.poly] as const),
+  ]);
   const fixtureModels: FixtureModel[] = plan.fixtures.map((fixture) => ({
     fixture,
     bbox: bbox(fixture.poly),
     area: snap(Math.abs(shoelace(fixture.poly))),
   }));
   for (const fm of fixtureModels) {
-    const host = roomPoly.get(fm.fixture.in);
+    const host = hostPoly.get(fm.fixture.in);
     if (host && !polyInside(fm.fixture.poly, host)) {
       findings.push({
-        rule: "fixture.outside_room",
+        rule: "fixture.outside_space",
         severity: "error",
         message: `${fm.fixture.name} (fixture #${fm.fixture.index}) is not fully inside ${fm.fixture.in}`,
         at: [snap((fm.bbox.x0 + fm.bbox.x1) / 2), snap((fm.bbox.y0 + fm.bbox.y1) / 2)],

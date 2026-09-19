@@ -231,6 +231,30 @@ describe("rules: fixtures", () => {
   });
 });
 
+describe("rules: a pool is a pool wherever it stands", () => {
+  const plan = twoRooms({
+    outdoor: { deck: { name: "Deck", poly: rect(0, 4, 6, 3) } },
+    fixtures: [{ type: "pool", in: "deck", name: "Piscina", at: [1, 4.5], size: [3, 2], depth: 1.6 }],
+  });
+
+  it("an outdoor pool is still a fixture, not an anonymous polygon", () => {
+    const { model } = analyze(parse(plan));
+    assert.equal(model.fixtures.length, 1);
+    assert.equal(model.fixtures[0]!.fixture.type, "pool");
+    assert.equal(model.fixtures[0]!.area, 6);
+  });
+
+  it("a fixture escaping its outdoor space is still an error", () => {
+    const f = run({ ...plan, fixtures: [{ type: "pool", in: "deck", at: [1, 4.5], size: [3, 9] }] });
+    assert.equal(only(f, "fixture.outside_space").length, 1);
+  });
+
+  it("does not report the deck itself as a gap or a room", () => {
+    const f = run(plan);
+    assert.ok(!has(f, "tiling.gap"));
+  });
+});
+
 describe("findings ordering", () => {
   it("sorts error → warning → info", () => {
     const f = run(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8 }] }));

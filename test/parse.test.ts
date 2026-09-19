@@ -152,6 +152,21 @@ describe("parse: fixtures", () => {
     );
   });
 
+  it("accepts an outdoor space as the host", () => {
+    const plan = parse(twoRooms({
+      outdoor: { deck: { name: "Deck", poly: rect(0, 4, 6, 3) } },
+      fixtures: [{ type: "pool", in: "deck", at: [1, 4.5], size: [3, 2], depth: 1.6 }],
+    }));
+    assert.equal(plan.fixtures[0]!.in, "deck");
+  });
+
+  it("rejects a host that is neither a room nor an outdoor space", () => {
+    assert.deepEqual(
+      issuesOf(twoRooms({ fixtures: [{ type: "pool", in: "nowhere", at: [1, 1], size: [1, 1] }] })),
+      ["fixtures[0].in"],
+    );
+  });
+
   it("defaults to no fixtures", () => {
     assert.deepEqual(parse(twoRooms()).fixtures, []);
   });

@@ -21,12 +21,13 @@
     "sala":    { "name": "Sala",    "kind": "living",  "zone": "day" }
   },
   "outdoor": {
-    "deck":     { "name": "Deck",             "poly": [[0,10.2],[4.8,10.2],[4.8,13.0],[0,13.0]], "covered": false },
-    "piscina_e": { "name": "Piscina exterior", "poly": [[5.4,10.2],[10.4,10.2],[10.4,13.0],[5.4,13.0]], "covered": false }
+    "deck": { "name": "Deck", "poly": [[0,10.2],[10.4,10.2],[10.4,13.4],[0,13.4]], "covered": false }
   },
   "fixtures": [
     { "type": "pool", "in": "spa", "name": "Piscina interior",
       "poly": [[0.8,1.0],[4.0,1.0],[4.0,8.4],[0.8,8.4]], "depth": 1.4 },
+    { "type": "pool", "in": "deck", "name": "Piscina exterior",
+      "at": [5.4, 10.6], "size": [4.6, 2.4], "depth": 1.6 },
     { "type": "bath",    "in": "wc", "name": "Banheira",  "at": [4.95, 6.15], "size": [1.7, 0.75] },
     { "type": "wc",      "in": "wc", "name": "Sanita",    "at": [7.30, 6.15], "size": [0.4, 0.7] },
     { "type": "sink",    "in": "wc", "name": "Lavatório", "at": [4.95, 9.20], "size": [0.6, 0.5] },

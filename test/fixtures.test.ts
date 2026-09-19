@@ -121,8 +121,11 @@ describe("fixture: quinta (inner garden, pool, detached shack)", () => {
   it("has no findings above info", () => {
     assert.deepEqual(rulesOf(r.findings.filter((f) => f.severity !== "info")), []);
   });
-  it("carries the garden and pool as outdoor, the shack as a detached room", () => {
-    assert.deepEqual(r.schedule.outdoor.map((o) => o.name).sort(), ["Jardim interior", "Piscina"]);
+  it("carries the garden and terrace as outdoor, the pool as a fixture on it", () => {
+    assert.deepEqual(r.schedule.outdoor.map((o) => o.name).sort(), ["Jardim interior", "Terraço"]);
+    const pool = r.model.fixtures.find((f) => f.fixture.type === "pool")!;
+    assert.equal(pool.fixture.in, "terraco");
+    assert.equal(r.schedule.waterArea, pool.area);
     const shack = r.schedule.rooms.find((x) => x.id === "arrecadacao")!;
     assert.equal(shack.kind, "storage");
     // detached from the house, yet still walled and reachable through its own door
@@ -146,16 +149,22 @@ describe("fixture: casa-piscina (fixtures layer)", () => {
     assert.equal(spa.fixtureArea, 23.68);
     assert.equal(spa.usableArea, Math.round((spa.clearArea - spa.fixtureArea) * 1000) / 1000);
     assert.ok(spa.usableArea < spa.clearArea / 2, "water is most of that room");
-    assert.equal(r.schedule.waterArea, 23.68);
   });
   it("leaves rooms without fixtures untouched", () => {
     const hall = r.schedule.rooms.find((x) => x.id === "hall")!;
     assert.equal(hall.fixtureArea, 0);
     assert.equal(hall.usableArea, hall.clearArea);
   });
-  it("renders each fixture and marks the pool as water", () => {
-    assert.equal((r.svg.match(/class="fixture"/g) ?? []).length, 6);
-    assert.ok(r.svg.includes('data-type="pool"'));
-    assert.ok(r.svg.includes("var(--water)"));
+  it("renders each fixture and marks both pools as water", () => {
+    assert.equal((r.svg.match(/class="fixture"/g) ?? []).length, 7);
+    assert.equal((r.svg.match(/data-type="pool"/g) ?? []).length, 2);
+    assert.equal((r.svg.match(/fill="var\(--water\)"/g) ?? []).length, 2);
+  });
+  it("a pool on the deck is a fixture too, and the deck nets it off", () => {
+    const deck = r.schedule.outdoor.find((o) => o.id === "deck")!;
+    assert.equal(deck.fixtureArea, 11.04);
+    assert.equal(deck.usableArea, Math.round((deck.area - deck.fixtureArea) * 1000) / 1000);
+    // waterArea counts pools wherever they stand
+    assert.equal(r.schedule.waterArea, 34.72);
   });
 });

@@ -147,16 +147,21 @@ do not divide space (no walls, no openings); they take up floor.
 | Field | Meaning |
 |---|---|
 | `type` | `pool` `bath` `shower` `wc` `sink` `counter` `island` `stairs` `other` |
-| `in` | id of the room that contains it; the footprint must lie inside that room |
+| `in` | id of the room **or outdoor space** that contains it; the footprint must lie inside |
 | `poly` | rectilinear polygon, absolute metres — or use `at` + `size` |
 | `at` / `size` | convenience rectangle: `[x, y]` corner (absolute) and `[width, height]` |
 | `name` | defaults to the capitalised type |
 | `depth` | pools only, metres; shown in the tooltip |
 
 Every room reports `clearArea`, `fixtureArea` and `usableArea` (clear less fixtures), so
-an interior pool stops counting as floor you can stand on. `schedule.waterArea` totals
-the pools. A pool is water; an outdoor space is open sky — a poolside deck is `outdoor`,
-the pool itself is a fixture if it sits in a room and an `outdoor` space if it does not.
+an interior pool stops counting as floor you can stand on; outdoor spaces net off their
+fixtures the same way, giving a deck's area clear of its pool. `schedule.waterArea`
+totals the pools wherever they stand.
+
+A pool is a `pool` whether it sits in a spa room or on a terrace — that is why `in`
+accepts an outdoor id. Model the terrace as the `outdoor` space and the water as a
+fixture standing on it, rather than calling the pool itself an outdoor space; otherwise
+the same object is a fixture indoors and an anonymous polygon outdoors.
 
 ### Findings
 
@@ -175,7 +180,7 @@ Every finding is `{ rule, severity, message, at?, rooms?, opening? }`.
 | `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |
 | `opening.near_corner` | warning | sliver of wall < 0.1 m beside an opening |
-| `fixture.outside_room` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |
+| `fixture.outside_space` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |
 | `fixture.clearance` | warning | gap between two fixtures too narrow to walk through |
 | `door.swing_hits_fixture` | warning | a door leaf sweeps into a fixture |
 | `circulation.share` | info | halls and corridors above 10 % of the interior |

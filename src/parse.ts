@@ -189,6 +189,7 @@ export function parse(input: unknown): Plan {
   const openingsIn = doc["openings"] ?? [];
   if (!Array.isArray(openingsIn)) bad("openings", "must be an array");
   const roomIds = new Set(Object.keys(roomsIn));
+  const spaceIds = new Set([...Object.keys(roomsIn), ...Object.keys(outdoorIn)]);
   const spaceRef = (path: string, v: unknown): string | undefined => {
     if (typeof v !== "string") {
       bad(path, "must be a room id or \"exterior\"");
@@ -297,9 +298,9 @@ export function parse(input: unknown): Plan {
     const type = v["type"];
     if (!FIXTURE_TYPES.has(type as string))
       bad(`${path}.type`, `must be one of ${[...FIXTURE_TYPES].join(", ")}`);
-    const inRoom = v["in"];
-    if (typeof inRoom !== "string" || !roomIds.has(inRoom))
-      bad(`${path}.in`, `must name a room; got ${JSON.stringify(inRoom)}`);
+    const host = v["in"];
+    if (typeof host !== "string" || !spaceIds.has(host))
+      bad(`${path}.in`, `must name a room or outdoor space; got ${JSON.stringify(host)}`);
 
     // geometry: either an explicit poly, or at + size as a convenience rectangle
     const hasPoly = v["poly"] !== undefined;
@@ -333,9 +334,9 @@ export function parse(input: unknown): Plan {
       else depth = snap(depthRaw);
     }
 
-    if (!poly || typeof inRoom !== "string" || !FIXTURE_TYPES.has(type as string)) return;
+    if (!poly || typeof host !== "string" || !spaceIds.has(host) || !FIXTURE_TYPES.has(type as string)) return;
     const name = typeof v["name"] === "string" ? v["name"] : (type as string).replace(/^./, (c) => c.toUpperCase());
-    fixtures.push({ index: i, type: type as FixtureType, name, in: inRoom, poly, depth });
+    fixtures.push({ index: i, type: type as FixtureType, name, in: host, poly, depth });
   });
 
   if (rooms.length === 0 && issues.length === 0) bad("rooms", "a plan needs at least one room");
