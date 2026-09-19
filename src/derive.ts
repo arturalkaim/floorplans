@@ -39,6 +39,7 @@ export function derive(plan: Plan): Analysis {
   const xset = new Set<number>();
   const yset = new Set<number>();
   for (const r of rooms) for (const [x, y] of r.poly) (xset.add(x), yset.add(y));
+  for (const o of plan.outdoor) for (const [x, y] of o.poly) (xset.add(x), yset.add(y));
   const xs = [...xset].sort((a, b) => a - b);
   const ys = [...yset].sort((a, b) => a - b);
   const cols = xs.length - 1;
@@ -64,6 +65,21 @@ export function derive(plan: Plan): Analysis {
     if (i < 0 || j < 0 || i >= cols || j >= rowsN || outside[i]![j] || ownersOf[i]![j]!.length > 0) continue;
     outside[i]![j] = true;
     stack.push([i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]);
+  }
+  // A declared outdoor space is open sky, so a courtyard fully enclosed by rooms is
+  // "outside" even though the border flood fill cannot reach it.
+  // INVARIANT: cells marked here are the only "outside" ones not connected to the
+  // border. This is what makes courtyard-facing walls derive as exterior, so a window
+  // onto a patio satisfies habitable.no_window rather than tripping window.not_exterior.
+  for (const o of plan.outdoor) {
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rowsN; j++) {
+        if (outside[i]![j] || ownersOf[i]![j]!.length > 0) continue;
+        const cx = (xs[i]! + xs[i + 1]!) / 2;
+        const cy = (ys[j]! + ys[j + 1]!) / 2;
+        if (pointInPoly([cx, cy], o.poly)) outside[i]![j] = true;
+      }
+    }
   }
   const owner = (i: number, j: number): Owner => {
     if (i < 0 || j < 0 || i >= cols || j >= rowsN) return "exterior";

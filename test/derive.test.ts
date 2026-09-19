@@ -44,6 +44,26 @@ describe("derive: walls", () => {
 });
 
 describe("derive: tiling", () => {
+  it("treats an enclosed void declared as outdoor as exterior, not a gap", () => {
+    const courtyard = {
+      rooms: {
+        n: { poly: rect(0, 0, 3, 1) },
+        s: { poly: rect(0, 2, 3, 1) },
+        w: { poly: rect(0, 1, 1, 1) },
+        e: { poly: rect(2, 1, 1, 1) },
+      },
+      outdoor: { patio: { poly: rect(1, 1, 1, 1) } },
+    };
+    const { model, findings } = analyze(courtyard);
+    assert.ok(!has(findings, "tiling.gap"), "a declared courtyard is not a hole");
+    assert.equal(model.walls.filter((w) => w.neg === "gap" || w.pos === "gap").length, 0);
+    // the four walls around the courtyard are exterior walls, at exterior thickness
+    const facing = model.walls.filter((w) => w.neg === "exterior" || w.pos === "exterior");
+    assert.ok(facing.every((w) => w.kind === "exterior"));
+    const south = model.walls.find((w) => w.axis === "h" && w.c === 1 && w.from === 1 && w.to === 2)!;
+    assert.equal(south.kind, "exterior");
+    assert.equal(south.thickness, 0.3);
+  });
   it("flags a hole enclosed by rooms as tiling.gap, not exterior", () => {
     const ring = {
       rooms: {

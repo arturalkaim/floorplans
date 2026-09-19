@@ -97,3 +97,40 @@ describe("fixture: broken (one of every error)", () => {
     assert.ok(r.svg.includes('class="finding"'));
   });
 });
+
+describe("fixture: casa-patio (courtyard)", () => {
+  const r = floorplan(load("casa-patio"));
+
+  it("has no findings above info: the courtyard is not a hole", () => {
+    assert.deepEqual(rulesOf(r.findings.filter((f) => f.severity !== "info")), []);
+  });
+  it("lights the Sala through the courtyard and keeps the patio out of the interior", () => {
+    const sala = r.model.rooms.find((m) => m.room.id === "sala")!;
+    assert.ok(sala.exteriorWindow, "Sala's only window faces the patio");
+    assert.deepEqual(r.schedule.outdoor.map((o) => o.name), ["Pátio"]);
+    const patio = r.schedule.outdoor[0]!;
+    assert.equal(patio.area, 16);
+    assert.ok(!r.schedule.rooms.some((x) => x.name === "Pátio"), "the patio is not a room");
+    assert.ok(r.schedule.interiorClearArea < 111, "patio area is excluded from the interior");
+  });
+});
+
+describe("fixture: quinta (inner garden, pool, detached shack)", () => {
+  const r = floorplan(load("quinta"));
+
+  it("has no findings above info", () => {
+    assert.deepEqual(rulesOf(r.findings.filter((f) => f.severity !== "info")), []);
+  });
+  it("carries the garden and pool as outdoor, the shack as a detached room", () => {
+    assert.deepEqual(r.schedule.outdoor.map((o) => o.name).sort(), ["Jardim interior", "Piscina"]);
+    const shack = r.schedule.rooms.find((x) => x.id === "arrecadacao")!;
+    assert.equal(shack.kind, "storage");
+    // detached from the house, yet still walled and reachable through its own door
+    assert.ok(!rulesOf(r.findings).includes("reach.unreachable"));
+    assert.ok(!rulesOf(r.findings).includes("tiling.gap"));
+  });
+  it("places the inner garden from the track grid, not a poly", () => {
+    assert.equal(load("quinta").outdoor.jardim.poly, undefined);
+    assert.equal(r.model.plan.outdoor.find((o) => o.id === "jardim")!.poly.length, 4);
+  });
+});

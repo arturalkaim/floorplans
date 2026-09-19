@@ -53,6 +53,35 @@ describe("rules: light", () => {
     assert.equal(w.length, 2);
     assert.match(w.find((x) => x.rooms![0] === "b")!.message, /north\/south\/east|exterior wall/);
   });
+  it("a window onto a courtyard counts as daylight", () => {
+    const plan = (outdoor: Record<string, unknown> | undefined) => ({
+      walls: { exterior: 0.3, partition: 0.12 },
+      rooms: {
+        hall: { kind: "hall", poly: rect(0, 0, 3, 1) },
+        bed: { kind: "bedroom", poly: rect(0, 1, 1, 1) },
+        kit: { kind: "kitchen", poly: rect(2, 1, 1, 1) },
+        liv: { kind: "living", poly: rect(0, 2, 3, 1) },
+      },
+      ...(outdoor ? { outdoor } : {}),
+      openings: [
+        { type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "north" }, width: 0.9, entrance: true },
+        { type: "door", between: ["hall", "bed"], width: 0.8 },
+        { type: "door", between: ["hall", "kit"], width: 0.8 },
+        { type: "door", between: ["kit", "liv"], width: 0.8 },
+        // bed's ONLY window faces the courtyard
+        { type: "window", between: ["exterior", "bed"], on: { room: "bed", side: "east" }, width: 0.6 },
+        { type: "window", between: ["exterior", "kit"], on: { room: "kit", side: "east" }, width: 0.6 },
+        { type: "window", between: ["exterior", "liv"], on: { room: "liv", side: "south" }, width: 1.2 },
+      ],
+    });
+    const withPatio = run(plan({ patio: { poly: rect(1, 1, 1, 1) } }));
+    assert.ok(!has(withPatio, "habitable.no_window"), "courtyard window lights the bedroom");
+    assert.ok(!has(withPatio, "window.not_exterior"));
+    assert.ok(!has(withPatio, "tiling.gap"));
+    // without the courtyard declared, that same wall is interior and the void is a hole
+    const without = run(plan(undefined));
+    assert.ok(has(without, "tiling.gap"));
+  });
   it("wet.no_window is a warning and habitable wins over wet", () => {
     const f = run({
       rooms: { a: { kind: "living", poly: rect(0, 0, 4, 3) }, w: { kind: "wc", poly: rect(4, 0, 2, 3) } },

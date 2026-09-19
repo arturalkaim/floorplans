@@ -41,6 +41,8 @@ const svg = renderSvg(model, { findings, theme: "auto" });
 
 Coordinates are metres on **wall centrelines**, y grows downwards (north up).
 Rooms must tile the footprint exactly; walls are derived from shared edges.
+A void on the boundary is simply the shape of the building; an *enclosed* void is a
+`tiling.gap` error unless you declare it as an outdoor space (see below).
 
 ```jsonc
 {
@@ -80,6 +82,29 @@ same token in several cells makes one rectilinear room, `.` is void.
   "rooms": { "quarto1": { "kind": "bedroom" }, "hall": { "kind": "hall" }, /* … */ }
 }
 ```
+
+### Outdoor spaces
+
+`outdoor` entries are open sky, not floor: they carry `name`, `covered`, and either a
+`poly` or a token in `layout.areas`. They stay out of `interiorArea` and appear in
+`schedule.outdoor`.
+
+Declaring one *inside* the footprint makes a courtyard. The walls around it derive as
+**exterior** walls, so a window onto a patio counts as daylight
+(`habitable.no_window` is satisfied, `window.not_exterior` stays quiet) — which is the
+whole point of a patio house. Without the declaration the same void is a `tiling.gap`.
+
+```jsonc
+{
+  "layout": { "cols": [3.6, 4.0, 3.6], "rows": [3.4, 4.0, 3.4],
+              "areas": ["sala sala cozinha", "sala . cozinha", "hall hall hall"] },
+  "outdoor": { "patio": { "name": "Pátio", "poly": [[3.6,3.4],[7.6,3.4],[7.6,7.4],[3.6,7.4]] } }
+}
+```
+
+A pool or a terrace is the same thing with a different name. A garden shack is better
+modelled as a detached **room**: give it a poly away from the house and its own exterior
+door, and it derives real walls without tripping `tiling.gap` or `reach.unreachable`.
 
 ### Rooms
 
@@ -140,5 +165,6 @@ src/derive.ts     Plan → walls, openings, room metrics, access graph, geometry
 src/rules.ts      semantic rules over the model
 src/svg.ts        Model → SVG string
 src/cli.ts        command line
-fixtures/         casa-t3 (seed house), apartment-t2 (grid), cabin, broken
+fixtures/         casa-t3 (seed house), apartment-t2 (grid), cabin,
+                  casa-patio (courtyard), quinta (garden + pool + shack), broken
 ```
