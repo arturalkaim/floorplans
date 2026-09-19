@@ -134,12 +134,23 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
     const alpha = water ? ".30" : ".16";
     const b = fm.bbox;
     const label = `${f.name}${f.depth ? ` · ${fmt.format(f.depth)} m deep` : ""} — ${fmt2.format(fm.area)} m²`;
-    body += `<g class="fixture" data-type="${esc(f.type)}"><title>${esc(label)}</title>`;
-    body += `<polygon points="${pts(f.poly)}" fill="${fill}" fill-opacity="${alpha}" stroke="${fill}" stroke-width="1"${water ? "" : ' stroke-dasharray="3 2"'}/>`;
+    body += `<g class="fixture" data-fixture="${f.index}" data-type="${esc(f.type)}"><title>${esc(label)}</title>`;
+    body += `<polygon data-fixture="${f.index}" data-body="1" points="${pts(f.poly)}" fill="${fill}" fill-opacity="${alpha}" stroke="${fill}" stroke-width="1"${water ? "" : ' stroke-dasharray="3 2"'} pointer-events="fill"/>`;
     // name it only where the shape can hold the text, and sit the label at the top of the
     // footprint: a fixture that fills most of its room would otherwise land on the room name
     if ((b.x1 - b.x0) * S > 54 && (b.y1 - b.y0) * S > 18)
       body += text(X((b.x0 + b.x1) / 2), Y(b.y0) + 13, f.name, "fx");
+    // a handle per side to resize, over a body that can be picked up and moved
+    for (const [side, x1v, y1v, x2v, y2v] of [
+      ["west", b.x0, b.y0, b.x0, b.y1],
+      ["east", b.x1, b.y0, b.x1, b.y1],
+      ["north", b.x0, b.y0, b.x1, b.y0],
+      ["south", b.x0, b.y1, b.x1, b.y1],
+    ] as const)
+      body +=
+        `<line data-fixture="${f.index}" data-side="${side}" data-axis="${side === "west" || side === "east" ? "v" : "h"}"` +
+        ` x1="${px(X(x1v))}" y1="${px(Y(y1v))}" x2="${px(X(x2v))}" y2="${px(Y(y2v))}"` +
+        ` stroke="transparent" stroke-width="8" pointer-events="stroke"/>`;
     body += `</g>`;
   }
 

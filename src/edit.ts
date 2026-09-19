@@ -3,12 +3,15 @@
 // expressed as a splice into its text, never as a mutation of the derived model.
 import { metres, spliceAll } from "./jsonpos.ts";
 import type { JsonPath } from "./jsonpos.ts";
-import type { Model, WallSegment } from "./types.ts";
+import type { Model, Pt, WallSegment } from "./types.ts";
 
 /** Rooms and tracks may not be dragged below this, in metres. */
 const MIN_TRACK = 0.4;
 /** Drags land on 5 cm unless a modifier asks for free movement. */
 const SNAP = 0.05;
+/** A fixture may not be shrunk below this in either direction, in metres. */
+const MIN_SIZE = 0.2;
+const snapMm = (n: number) => Math.round(n * 1000) / 1000;
 
 export interface Draggable {
   wallId: string;
@@ -244,4 +247,127 @@ export function draggableOutdoorEdges(text: string, model: Model): Map<string, D
     });
   }
   return out;
+}
+
+/** A body that moves in both axes at once, rather than one coordinate along an axis. */
+export interface Movable {
+  id: string;
+  /** the body's north-west corner today, metres */
+  at: Pt;
+  writes: string;
+  edits: (to: Pt) => Array<{ path: JsonPath; literal: string }>;
+}
+
+/** The corners of a rectilinear ring. */
+function extentOf(poly: Pt[]): { x0: number; y0: number; x1: number; y1: number } {
+  const xs = poly.map((p) => p[0]);
+  const ys = poly.map((p) => p[1]);
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+}
+
+/**
+ * A fixture is authored either as a poly or as `at` + `size`, and an edit has to be
+ * written back in whichever form the source uses — rewriting one into the other would
+ * reformat a document the author is still typing in.
+ */
+function fixtureWriter(doc: Doc, index: number, poly: Pt[]) {
+  const entry = asObj((asObj(doc) && Array.isArray(doc["fixtures"]) ? (doc["fixtures"] as unknown[])[index] : undefined));
+  if (!entry) return undefined;
+  const hasPoly = Array.isArray(entry["poly"]);
+  const hasRect = Array.isArray(entry["at"]) && Array.isArray(entry["size"]);
+  if (!hasPoly && !hasRect) return undefined;
+
+  return {
+    /** shift every corner by the same amount */
+    move: (dx: number, dy: number): Array<{ path: JsonPath; literal: string }> => {
+      if (hasRect) {
+        const at = entry["at"] as number[];
+        return [
+          { path: ["fixtures", index, "at", 0], literal: metres(at[0]! + dx) },
+          { path: ["fixtures", index, "at", 1], literal: metres(at[1]! + dy) },
+        ];
+      }
+      return poly.flatMap((p, v) => [
+        { path: ["fixtures", index, "poly", v, 0] as JsonPath, literal: metres(p[0] + dx) },
+        { path: ["fixtures", index, "poly", v, 1] as JsonPath, literal: metres(p[1] + dy) },
+      ]);
+    },
+    /** move one side of the footprint, leaving the opposite side where it is */
+    edge: (axis: 0 | 1, from: number, to: number): Array<{ path: JsonPath; literal: string }> => {
+      if (hasRect) {
+        const at = entry["at"] as number[];
+        const size = entry["size"] as number[];
+        const near0 = Math.abs(at[axis]! - from) < 1e-6;
+        return near0
+          ? [
+              { path: ["fixtures", index, "at", axis], literal: metres(to) },
+              { path: ["fixtures", index, "size", axis], literal: metres(size[axis]! + (at[axis]! - to)) },
+            ]
+          : [{ path: ["fixtures", index, "size", axis], literal: metres(size[axis]! + (to - from)) }];
+      }
+      return poly
+        .map((p, v) => ({ p, v }))
+        .filter(({ p }) => Math.abs(p[axis] - from) < 1e-6)
+        .map(({ v }) => ({ path: ["fixtures", index, "poly", v, axis] as JsonPath, literal: metres(to) }));
+    },
+  };
+}
+
+/** Each side of every fixture, so a pool can be made bigger or smaller. */
+export function draggableFixtureEdges(text: string, model: Model): Map<string, Draggable> {
+  const doc = asObj(safeParse(text));
+  const out = new Map<string, Draggable>();
+  if (!doc) return out;
+
+  for (const fm of model.fixtures) {
+    const i = fm.fixture.index;
+    const w = fixtureWriter(doc, i, fm.fixture.poly);
+    if (!w) continue;
+    const e = extentOf(fm.fixture.poly);
+    const sides = [
+      { axis: 0 as const, c: e.x0, name: "west", min: -100, max: e.x1 - MIN_SIZE },
+      { axis: 0 as const, c: e.x1, name: "east", min: e.x0 + MIN_SIZE, max: 100 },
+      { axis: 1 as const, c: e.y0, name: "north", min: -100, max: e.y1 - MIN_SIZE },
+      { axis: 1 as const, c: e.y1, name: "south", min: e.y0 + MIN_SIZE, max: 100 },
+    ];
+    for (const side of sides)
+      out.set(`fixture:${i}:${side.name}`, {
+        wallId: `fixture:${i}:${side.name}`,
+        axis: side.axis === 0 ? "v" : "h",
+        c: side.c,
+        min: side.min,
+        max: side.max,
+        writes: `${fm.fixture.name}'s ${side.name} edge`,
+        edits: (next) => w.edge(side.axis, side.c, next),
+      });
+  }
+  return out;
+}
+
+/** Every fixture's body, so a pool can be picked up and put somewhere else. */
+export function movableFixtures(text: string, model: Model): Map<string, Movable> {
+  const doc = asObj(safeParse(text));
+  const out = new Map<string, Movable>();
+  if (!doc) return out;
+
+  for (const fm of model.fixtures) {
+    const i = fm.fixture.index;
+    const w = fixtureWriter(doc, i, fm.fixture.poly);
+    if (!w) continue;
+    const e = extentOf(fm.fixture.poly);
+    out.set(`fixture:${i}`, {
+      id: `fixture:${i}`,
+      at: [e.x0, e.y0],
+      writes: fm.fixture.name,
+      edits: (to) => w.move(snapMm(to[0] - e.x0), snapMm(to[1] - e.y0)),
+    });
+  }
+  return out;
+}
+
+export function applyMove(text: string, m: Movable, to: Pt, free = false): string {
+  const grid = free ? 0.001 : SNAP;
+  const at: Pt = [Math.round(to[0] / grid) * grid, Math.round(to[1] / grid) * grid];
+  if (near(at[0], m.at[0]) && near(at[1], m.at[1])) return text;
+  return spliceAll(text, m.edits(at));
 }

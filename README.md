@@ -48,9 +48,12 @@ A wall is offered for dragging only when the move has a representation in the so
 | a `layout` grid, far edge | the last track, so the building grows or shrinks | the wall is the far edge of the grid |
 | room polygons | the shared coordinate in the two spaces the wall separates | the wall spans the whole of each edge it touches |
 | an outdoor `poly` | the coordinate shared by the edge's two corners | the space is authored with a `poly` rather than placed on the grid |
+| a fixture | its body moves, its four sides resize it | always; written back as `poly`, or as `at`/`size`, whichever the source uses |
 
 An outdoor space has no walls — nothing derives from it — so its own edges are the
-handles, and dragging one resizes the deck or terrace without touching the house.
+handles, and dragging one resizes the deck or terrace without touching the house. A
+fixture can be picked up and carried, or resized by a side; moving one rewrites only
+`at`, so a pool keeps its size when you put it somewhere else.
 
 The last condition is the interesting one: if one of those two spaces has a vertex on
 that line outside the wall's run, moving it would need the edge split and vertices

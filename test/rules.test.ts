@@ -264,3 +264,33 @@ describe("findings ordering", () => {
     for (let i = 1; i < sev.length; i++) assert.ok(rank[sev[i - 1]!] <= rank[sev[i]!]);
   });
 });
+
+describe("rules: entrance.multiple says something true about the plan", () => {
+  const twoWaysOut = (entrances: boolean[]) =>
+    twoRooms({
+      openings: [
+        { type: "door", between: ["exterior", "a"], on: { room: "a", side: "west" }, width: 0.9, entrance: entrances[0] },
+        { type: "door", between: ["exterior", "b"], on: { room: "b", side: "east" }, width: 0.9, entrance: entrances[1] },
+        { type: "door", between: ["a", "b"], width: 0.8 },
+        { type: "window", between: ["exterior", "a"], on: { room: "a", side: "south" }, width: 1.2 },
+        { type: "window", between: ["exterior", "b"], on: { room: "b", side: "south" }, width: 1.2 },
+      ],
+    });
+
+  it("does not ask for a mark that is already there", () => {
+    const m = only(run(twoWaysOut([true, false])), "entrance.multiple")[0]!.message;
+    assert.match(m, /the main one is A/);
+    assert.doesNotMatch(m, /mark the main one/);
+  });
+
+  it("asks for one when none is marked", () => {
+    const m = only(run(twoWaysOut([false, false])), "entrance.multiple")[0]!.message;
+    assert.match(m, /none is marked/);
+  });
+
+  it("points out when more than one claims to be the main door", () => {
+    const m = only(run(twoWaysOut([true, true])), "entrance.multiple")[0]!.message;
+    assert.match(m, /2 of them are marked/);
+    assert.match(m, /only one can be the main door/);
+  });
+});

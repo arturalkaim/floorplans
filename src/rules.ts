@@ -46,10 +46,21 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
   if (!hasEntrance) {
     f.push({ rule: "entrance.missing", severity: "error", message: "no door leads outside; the house cannot be entered" });
   } else if (exteriorDoors.length > 1) {
+    // say something true about what the plan already declares: telling an author to mark
+    // the main entrance when they have marked it is advice they have to stop and check
+    const marked = exteriorDoors.filter((o) => o.spec.entrance);
+    const where = (o: ResolvedOpening) => nameOf(otherSide(o, "exterior"));
+    const all = exteriorDoors.map(where).join(", ");
+    const tail =
+      marked.length === 0
+        ? 'none is marked the main one with "entrance": true'
+        : marked.length === 1
+          ? `the main one is ${where(marked[0]!)}`
+          : `${marked.length} of them are marked "entrance": true (${marked.map(where).join(", ")}); only one can be the main door`;
     f.push({
       rule: "entrance.multiple",
       severity: "info",
-      message: `${exteriorDoors.length} doors lead outside (${exteriorDoors.map((o) => nameOf(otherSide(o, "exterior"))).join(", ")}); mark the main one with "entrance": true`,
+      message: `${exteriorDoors.length} doors lead outside (${all}); ${tail}`,
     });
   }
 

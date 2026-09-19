@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { analyze, applyDrag, draggableOutdoorEdges, draggableWalls, parse } from "../src/index.ts";
+import {
+  analyze,
+  applyDrag,
+  applyMove,
+  draggableFixtureEdges,
+  draggableOutdoorEdges,
+  draggableWalls,
+  movableFixtures,
+  parse,
+} from "../src/index.ts";
 
 const load = (n: string) => readFileSync(new URL(`../fixtures/${n}.json`, import.meta.url), "utf8");
 const modelOf = (text: string) => analyze(parse(JSON.parse(text))).model;
@@ -228,5 +237,85 @@ describe("edit: outdoor spaces resize by their own edges", () => {
     const edges = draggableOutdoorEdges(text, modelOf(text));
     assert.ok(![...edges.values()].some((d) => d.writes.startsWith("Jardim")));
     assert.ok([...edges.values()].some((d) => d.writes.startsWith("Terraço")));
+  });
+});
+
+describe("edit: fixtures move and resize, in whichever form they are authored", () => {
+  const PISCINA = "casa-piscina";
+
+  it("offers a body and four edges for every fixture", () => {
+    const text = load(PISCINA);
+    const model = modelOf(text);
+    assert.equal(movableFixtures(text, model).size, model.fixtures.length);
+    assert.equal(draggableFixtureEdges(text, model).size, model.fixtures.length * 4);
+  });
+
+  it("moves an at/size fixture by rewriting `at`, leaving `size` alone", () => {
+    const text = load(PISCINA);
+    const model = modelOf(text);
+    // the exterior pool is authored as at + size
+    const i = model.fixtures.findIndex((f) => f.fixture.name === "Piscina exterior");
+    const m = movableFixtures(text, model).get(`fixture:${i}`)!;
+    const after = JSON.parse(applyMove(text, m, [m.at[0] + 1, m.at[1] + 2]));
+    const before = JSON.parse(text);
+    assert.deepEqual(after.fixtures[i].size, before.fixtures[i].size, "size is unchanged by a move");
+    assert.deepEqual(after.fixtures[i].at, [before.fixtures[i].at[0] + 1, before.fixtures[i].at[1] + 2]);
+  });
+
+  it("moves a poly fixture by shifting every corner", () => {
+    const text = load(PISCINA);
+    const model = modelOf(text);
+    const i = model.fixtures.findIndex((f) => f.fixture.name === "Piscina interior");
+    const m = movableFixtures(text, model).get(`fixture:${i}`)!;
+    const before = JSON.parse(text).fixtures[i].poly as [number, number][];
+    const after = JSON.parse(applyMove(text, m, [m.at[0] + 0.5, m.at[1]])).fixtures[i].poly as [number, number][];
+    assert.deepEqual(after, before.map(([x, y]) => [x + 0.5, y]));
+  });
+
+  it("resizes an at/size fixture from either side correctly", () => {
+    const text = load(PISCINA);
+    const model = modelOf(text);
+    const i = model.fixtures.findIndex((f) => f.fixture.name === "Piscina exterior");
+    const edges = draggableFixtureEdges(text, model);
+    const before = JSON.parse(text).fixtures[i];
+
+    // the east edge only grows the width
+    const east = edges.get(`fixture:${i}:east`)!;
+    const grown = JSON.parse(applyDrag(text, east, east.c + 1)).fixtures[i];
+    assert.deepEqual(grown.at, before.at, "the far side does not move the origin");
+    assert.equal(grown.size[0], before.size[0] + 1);
+
+    // the west edge moves the origin and keeps the far side still
+    const west = edges.get(`fixture:${i}:west`)!;
+    const pulled = JSON.parse(applyDrag(text, west, west.c - 1)).fixtures[i];
+    assert.equal(pulled.at[0], before.at[0] - 1);
+    assert.equal(pulled.size[0], before.size[0] + 1);
+    assert.equal(pulled.at[0] + pulled.size[0], before.at[0] + before.size[0], "the east side stayed put");
+  });
+
+  it("never shrinks a fixture to nothing", () => {
+    const text = load(PISCINA);
+    const model = modelOf(text);
+    for (const [key, d] of draggableFixtureEdges(text, model)) {
+      const i = Number(key.split(":")[1]);
+      for (const wild of [-1000, 1000]) {
+        const f = JSON.parse(applyDrag(text, d, wild)).fixtures[i];
+        const size = f.size ?? [
+          Math.max(...(f.poly as [number, number][]).map((p) => p[0])) - Math.min(...(f.poly as [number, number][]).map((p) => p[0])),
+          Math.max(...(f.poly as [number, number][]).map((p) => p[1])) - Math.min(...(f.poly as [number, number][]).map((p) => p[1])),
+        ];
+        assert.ok(size[0] >= 0.2 - 1e-9 && size[1] >= 0.2 - 1e-9, `${key} collapsed to ${JSON.stringify(size)}`);
+      }
+    }
+  });
+
+  it("keeps the document valid through a move and a resize", () => {
+    const text = load(PISCINA);
+    const model = modelOf(text);
+    const m = [...movableFixtures(text, model).values()][0]!;
+    const moved = applyMove(text, m, [m.at[0] + 0.3, m.at[1] + 0.3]);
+    assert.doesNotThrow(() => parse(JSON.parse(moved)));
+    const d = [...draggableFixtureEdges(moved, modelOf(moved)).values()][0]!;
+    assert.doesNotThrow(() => parse(JSON.parse(applyDrag(moved, d, d.c + 0.4))));
   });
 });

@@ -1,5 +1,13 @@
-import { applyDrag, draggableOutdoorEdges, draggableWalls, projection } from "floorplan";
-import type { Draggable, Model } from "floorplan";
+import {
+  applyDrag,
+  applyMove,
+  draggableFixtureEdges,
+  draggableOutdoorEdges,
+  draggableWalls,
+  movableFixtures,
+  projection,
+} from "floorplan";
+import type { Draggable, Model, Movable } from "floorplan";
 import { useEffect, useRef, useState } from "react";
 
 interface Props {
@@ -26,7 +34,10 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
   const host = useRef<HTMLDivElement>(null);
   const [hint, setHint] = useState<string | null>(null);
   const drag = useRef<{
-    d: Draggable;
+    d?: Draggable;
+    /** set instead of `d` when a whole body is being carried rather than one edge */
+    body?: Movable;
+    grab?: [number, number];
     /** the document as it was when the gesture began: every move re-applies from here,
      *  so a drag is idempotent however many moves arrive */
     startText: string;
@@ -38,22 +49,34 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
 
   // walls come from the derived model; outdoor spaces have none, so their own edges are
   // the handles. One map, keyed by whatever the element under the pointer carries.
+  const wallHandles = draggableWalls(text, model);
   const handles = new Map<string, Draggable>([
-    ...draggableWalls(text, model),
+    ...wallHandles,
     ...draggableOutdoorEdges(text, model),
+    ...draggableFixtureEdges(text, model),
   ]);
-  const wallCount = draggableWalls(text, model).size;
-  const keyOf = (el: SVGElement | undefined) =>
-    el?.dataset?.["wall"] ?? (el?.dataset?.["outdoor"] ? `${el.dataset["outdoor"]}:${el.dataset["edge"]}` : undefined);
+  const bodies = movableFixtures(text, model);
+
+  /** which handle, if any, the element under the pointer stands for */
+  const keyOf = (el: SVGElement | undefined): string | undefined => {
+    const d = el?.dataset;
+    if (!d) return undefined;
+    if (d["wall"]) return d["wall"];
+    if (d["outdoor"]) return `${d["outdoor"]}:${d["edge"]}`;
+    if (d["fixture"] && d["side"]) return `fixture:${d["fixture"]}:${d["side"]}`;
+    return undefined;
+  };
+  const bodyOf = (el: SVGElement | undefined): Movable | undefined =>
+    el?.dataset?.["body"] ? bodies.get(`fixture:${el.dataset["fixture"]}`) : undefined;
 
   useEffect(() => {
     const root = host.current?.querySelector("svg");
     if (!root) return;
-    for (const el of root.querySelectorAll<SVGElement>("[data-wall], [data-outdoor]")) {
-      const d = handles.get(keyOf(el) ?? "");
-      el.style.cursor = d ? (d.axis === "v" ? "ew-resize" : "ns-resize") : "";
-      el.style.pointerEvents = "stroke";
-      if (d) el.dataset["draggable"] = "true";
+    for (const el of root.querySelectorAll<SVGElement>("[data-wall], [data-outdoor], [data-fixture]")) {
+      const body = bodyOf(el);
+      const d = body ? undefined : handles.get(keyOf(el) ?? "");
+      el.style.cursor = body ? "move" : d ? (d.axis === "v" ? "ew-resize" : "ns-resize") : "";
+      if (d || body) el.dataset["draggable"] = "true";
       else delete el.dataset["draggable"];
     }
   });
@@ -74,26 +97,52 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
   const along = (d: Draggable, m: [number, number]) => (d.axis === "v" ? m[0] : m[1]);
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (stale) return;
-    const d = handles.get(keyOf(e.target as SVGElement) ?? "");
-    if (!d || e.button !== 0) return;
+    if (stale || e.button !== 0) return;
+    const target = e.target as SVGElement;
     const m = toMetres(e.clientX, e.clientY);
     if (!m) return;
+    const body = bodyOf(target);
+    const d = body ? undefined : handles.get(keyOf(target) ?? "");
+    if (!body && !d) return;
     e.preventDefault();
     // capture on the container, which survives every redraw, not on the line
     host.current?.setPointerCapture(e.pointerId);
-    drag.current = { d, startText: text, offset: along(d, m) - d.c, moved: false };
+    drag.current = {
+      ...(d ? { d } : {}),
+      ...(body ? { body, grab: [m[0] - body.at[0], m[1] - body.at[1]] as [number, number] } : {}),
+      startText: text,
+      offset: d ? along(d, m) - d.c : 0,
+      moved: false,
+    };
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
     const active = drag.current;
     if (!active) {
-      const d = handles.get(keyOf(e.target as SVGElement) ?? "");
-      setHint(d ? `drag to move · writes ${d.writes}` : null);
+      const el = e.target as SVGElement;
+      const body = bodyOf(el);
+      const d = handles.get(keyOf(el) ?? "");
+      setHint(body ? `drag to move ${body.writes}` : d ? `drag to resize · ${d.writes}` : null);
       return;
     }
     const m = toMetres(e.clientX, e.clientY);
     if (!m) return;
+
+    if (active.body && active.grab) {
+      const to: [number, number] = [m[0] - active.grab[0], m[1] - active.grab[1]];
+      if (!active.moved) {
+        const travelled = Math.hypot(to[0] - active.body.at[0], to[1] - active.body.at[1]) * scale;
+        if (travelled < THRESHOLD_PX) return;
+        active.moved = true;
+        onDragStart();
+      }
+      const out = applyMove(active.startText, active.body, to, e.altKey);
+      setHint(`${active.body.writes} → ${to[0].toFixed(2)}, ${to[1].toFixed(2)} m`);
+      if (out !== text) onChange(out);
+      return;
+    }
+
+    if (!active.d) return;
     const next = along(active.d, m) - active.offset;
     if (!active.moved) {
       if (Math.abs(next - active.d.c) * scale < THRESHOLD_PX) return; // a click is not a drag
@@ -118,7 +167,7 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
       <div className="panel-head">
         <h2>Drawing</h2>
         <span className={stale ? "note stale-note" : "note"}>
-          {stale ?? hint ?? `${wallCount} of ${model.walls.length} walls draggable${handles.size > wallCount ? `, ${handles.size - wallCount} outdoor edges` : ""}`}
+          {stale ?? hint ?? `${wallHandles.size}/${model.walls.length} walls · ${bodies.size} fixtures · drag to move, edges to resize`}
         </span>
       </div>
       <div
