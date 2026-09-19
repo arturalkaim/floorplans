@@ -193,3 +193,55 @@ export function applyDrag(text: string, d: Draggable, rawNext: number, free = fa
   if (near(next, d.c)) return text;
   return spliceAll(text, d.edits(next));
 }
+
+/**
+ * Outdoor spaces have no walls — nothing derives from them — so their own edges are the
+ * handles. Dragging one moves the coordinate shared by the two vertices at its ends,
+ * which for a rectilinear ring is the whole edge.
+ */
+export function draggableOutdoorEdges(text: string, model: Model): Map<string, Draggable> {
+  const doc = asObj(safeParse(text));
+  const out = new Map<string, Draggable>();
+  if (!doc) return out;
+
+  for (const space of model.plan.outdoor) {
+    // only an outdoor space authored with a poly can be edited this way; one placed by
+    // the track grid moves when its tracks do
+    const poly = asObj(asObj(doc["outdoor"])?.[space.id])?.["poly"];
+    if (!Array.isArray(poly) || poly.length !== space.poly.length) continue;
+
+    const xs = space.poly.map((p) => p[0]);
+    const ys = space.poly.map((p) => p[1]);
+    const extent = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+
+    space.poly.forEach((p0, k) => {
+      const p1 = space.poly[(k + 1) % space.poly.length]!;
+      const axis = near(p0[0], p1[0]) ? 0 : near(p0[1], p1[1]) ? 1 : -1;
+      if (axis === -1) return;
+      const c = p0[axis];
+
+      // the edge may not pass the far side of the ring, nor be dragged onto its neighbours
+      const others = space.poly.filter((_, v) => v !== k && v !== (k + 1) % space.poly.length);
+      const lower = Math.max(...others.map((p) => p[axis]).filter((v) => v < c - 1e-6), -Infinity);
+      const upper = Math.min(...others.map((p) => p[axis]).filter((v) => v > c + 1e-6), Infinity);
+
+      out.set(`${space.id}:${k}`, {
+        wallId: `${space.id}:${k}`,
+        axis: axis === 0 ? "v" : "h",
+        c,
+        min: lower === -Infinity ? c - 100 : lower + MIN_TRACK,
+        max: upper === Infinity ? c + 100 : upper - MIN_TRACK,
+        // y grows south, so the smaller coordinate is the north or west side
+        writes: `${space.name}'s ${
+          axis === 0 ? (near(c, extent.x0) ? "west" : "east") : near(c, extent.y0) ? "north" : "south"
+        } edge`,
+        edits: (next) =>
+          [k, (k + 1) % space.poly.length].map((v) => ({
+            path: ["outdoor", space.id, "poly", v, axis] as JsonPath,
+            literal: metres(next),
+          })),
+      });
+    });
+  }
+  return out;
+}

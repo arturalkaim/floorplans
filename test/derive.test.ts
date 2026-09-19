@@ -231,3 +231,38 @@ describe("doorSwing", () => {
     assert.equal(doorSwing(model.openings.find((o) => o.spec.type === "window")!), undefined);
   });
 });
+
+describe("derive: outdoor space is open sky", () => {
+  it("reports a room built over an outdoor space", () => {
+    const { findings } = analyze({
+      rooms: { a: { kind: "living", poly: rect(0, 0, 6, 6) } },
+      outdoor: { deck: { name: "Deck", poly: rect(2, 2, 2, 2) } },
+    });
+    const f = findings.filter((x) => x.rule === "outdoor.overlap");
+    assert.equal(f.length, 1);
+    assert.equal(f[0]!.severity, "error");
+    assert.match(f[0]!.message, /Deck is open sky but .* is built over it/);
+  });
+
+  it("allows an outdoor space that merely touches a room", () => {
+    const { findings } = analyze({
+      rooms: { a: { kind: "living", poly: rect(0, 0, 6, 6) } },
+      outdoor: { deck: { name: "Deck", poly: rect(0, 6, 6, 3) } },
+    });
+    assert.ok(!has(findings, "outdoor.overlap"));
+  });
+
+  it("leaves a courtyard alone: it sits in a void, not over a room", () => {
+    const { findings } = analyze({
+      rooms: {
+        n: { poly: rect(0, 0, 3, 1) },
+        s: { poly: rect(0, 2, 3, 1) },
+        w: { poly: rect(0, 1, 1, 1) },
+        e: { poly: rect(2, 1, 1, 1) },
+      },
+      outdoor: { patio: { poly: rect(1, 1, 1, 1) } },
+    });
+    assert.ok(!has(findings, "outdoor.overlap"));
+    assert.ok(!has(findings, "tiling.gap"));
+  });
+});

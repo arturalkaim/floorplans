@@ -19,7 +19,7 @@ export { parse, PlanError, derive, checkRules, renderSvg, sortFindings };
 // the parser's own vocabularies, so documentation cannot drift from what it accepts
 export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES } from "./parse.ts";
 export { RULES, ruleById } from "./catalogue.ts";
-export { applyDrag, draggableWalls } from "./edit.ts";
+export { applyDrag, draggableOutdoorEdges, draggableWalls } from "./edit.ts";
 export type { Draggable } from "./edit.ts";
 export { projection } from "./svg.ts";
 export type { Projection } from "./svg.ts";

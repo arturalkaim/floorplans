@@ -47,6 +47,10 @@ A wall is offered for dragging only when the move has a representation in the so
 | a `layout` grid | `cols[i]` and `cols[i+1]`, one growing by what the other loses | the wall sits on a track boundary |
 | a `layout` grid, far edge | the last track, so the building grows or shrinks | the wall is the far edge of the grid |
 | room polygons | the shared coordinate in the two spaces the wall separates | the wall spans the whole of each edge it touches |
+| an outdoor `poly` | the coordinate shared by the edge's two corners | the space is authored with a `poly` rather than placed on the grid |
+
+An outdoor space has no walls — nothing derives from it — so its own edges are the
+handles, and dragging one resizes the deck or terrace without touching the house.
 
 The last condition is the interesting one: if one of those two spaces has a vertex on
 that line outside the wall's run, moving it would need the edge split and vertices
@@ -242,6 +246,7 @@ floor, between the wall faces — not on centrelines and not through a fixture. 
 room drawn on centrelines is 1.88 × 0.79 m to stand in.
 | `opening.near_corner` | warning | sliver of wall < 0.1 m beside an opening |
 | `fixture.outside_space` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |
+| `outdoor.overlap` | error | a room is built over an outdoor space, which is open sky |
 | `fixture.clearance` | warning | gap between two fixtures too narrow to walk through |
 | `door.swing_hits_fixture` | warning | a door leaf sweeps into a fixture |
 | `circulation.share` | info | halls and corridors above 10 % of the interior |

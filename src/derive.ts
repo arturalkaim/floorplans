@@ -158,6 +158,21 @@ export function derive(plan: Plan): Analysis {
     return { id: "", axis: p.axis, c: p.c, from: p.from, to: p.to, neg: p.neg, pos: p.pos, kind, thickness: thicknessOf(p) };
   }
 
+  // ---- outdoor space is open sky, so no room may stand on it ----
+  for (const o of plan.outdoor) {
+    for (const r of rooms) {
+      if (!polysOverlap(o.poly, r.poly)) continue;
+      const b = bbox(o.poly);
+      findings.push({
+        rule: "outdoor.overlap",
+        severity: "error",
+        message: `${o.name} is open sky but ${r.name} is built over it`,
+        at: [snap((b.x0 + b.x1) / 2), snap((b.y0 + b.y1) / 2)],
+        rooms: [r.id],
+      });
+    }
+  }
+
   // ---- fixtures standing inside rooms ----
   // a fixture stands in a room or in an outdoor space — a pool is a pool either way
   const hostPoly = new Map<string, Pt[]>([

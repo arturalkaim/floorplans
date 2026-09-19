@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { analyze, applyDrag, draggableWalls, parse } from "../src/index.ts";
+import { analyze, applyDrag, draggableOutdoorEdges, draggableWalls, parse } from "../src/index.ts";
 
 const load = (n: string) => readFileSync(new URL(`../fixtures/${n}.json`, import.meta.url), "utf8");
 const modelOf = (text: string) => analyze(parse(JSON.parse(text))).model;
@@ -182,5 +182,51 @@ describe("edit: moving a wall rewrites the source and nothing else", () => {
       text = applyDrag(text, d, d.c + (i % 2 ? -0.1 : 0.15));
       assert.doesNotThrow(() => parse(JSON.parse(text)), `broke on step ${i}`);
     }
+  });
+});
+
+describe("edit: outdoor spaces resize by their own edges", () => {
+  it("offers every edge of a poly-authored outdoor space", () => {
+    const text = load("casa-piscina");
+    const model = modelOf(text);
+    const edges = draggableOutdoorEdges(text, model);
+    assert.equal(edges.size, 4, "a rectangular deck has four edges");
+    for (const d of edges.values()) assert.match(d.writes, /^Deck's (north|south|east|west) edge$/);
+  });
+
+  it("grows the deck without touching anything else", () => {
+    const text = load("casa-piscina");
+    const model = modelOf(text);
+    const south = [...draggableOutdoorEdges(text, model).values()].find((d) => d.writes.includes("south"))!;
+    const before = JSON.parse(text);
+    const after = JSON.parse(applyDrag(text, south, south.c + 1.5));
+    assert.deepEqual(after.rooms, before.rooms, "rooms are untouched");
+    assert.deepEqual(after.layout, before.layout, "the grid is untouched");
+    const area = (poly: [number, number][]) =>
+      Math.abs(poly.reduce((s, p, i) => s + p[0] * poly[(i + 1) % poly.length]![1] - poly[(i + 1) % poly.length]![0] * p[1], 0) / 2);
+    assert.ok(area(after.outdoor.deck.poly) > area(before.outdoor.deck.poly), "the deck got bigger");
+  });
+
+  it("keeps the ring rectilinear however far it is dragged", () => {
+    const text = load("casa-piscina");
+    const model = modelOf(text);
+    for (const d of draggableOutdoorEdges(text, model).values())
+      for (const target of [d.c + 50, d.c - 50, d.c + 0.3]) {
+        const poly = JSON.parse(applyDrag(text, d, target)).outdoor.deck.poly as [number, number][];
+        for (let i = 0; i < poly.length; i++) {
+          const a = poly[i]!;
+          const b = poly[(i + 1) % poly.length]!;
+          assert.ok(a[0] === b[0] || a[1] === b[1], `edge ${i} went diagonal`);
+        }
+        assert.doesNotThrow(() => parse(JSON.parse(applyDrag(text, d, target))));
+      }
+  });
+
+  it("leaves a grid-placed outdoor space to its tracks", () => {
+    // quinta's jardim comes from layout.areas and has no poly to edit
+    const text = load("quinta");
+    const edges = draggableOutdoorEdges(text, modelOf(text));
+    assert.ok(![...edges.values()].some((d) => d.writes.startsWith("Jardim")));
+    assert.ok([...edges.values()].some((d) => d.writes.startsWith("Terraço")));
   });
 });

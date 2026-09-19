@@ -23,6 +23,7 @@ export const RULES: readonly RuleDoc[] = [
   { id: "opening.near_corner", severity: "warning", catches: "a sliver of wall under 0.1 m is left beside an opening" },
   { id: "fixture.outside_space", severity: "error", catches: "a fixture is not fully inside the room or outdoor space it names" },
   { id: "fixture.overlap", severity: "error", catches: "two fixtures in the same space collide" },
+  { id: "outdoor.overlap", severity: "error", catches: "a room is built over an outdoor space, which is open sky" },
 
   // semantics, produced by checkRules()
   { id: "window.not_exterior", severity: "error", catches: "a window sits on an interior wall" },

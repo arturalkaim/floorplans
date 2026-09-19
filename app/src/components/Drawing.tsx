@@ -1,4 +1,4 @@
-import { applyDrag, draggableWalls, projection } from "floorplan";
+import { applyDrag, draggableOutdoorEdges, draggableWalls, projection } from "floorplan";
 import type { Draggable, Model } from "floorplan";
 import { useEffect, useRef, useState } from "react";
 
@@ -36,13 +36,21 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
     moved: boolean;
   } | null>(null);
 
-  const walls = draggableWalls(text, model);
+  // walls come from the derived model; outdoor spaces have none, so their own edges are
+  // the handles. One map, keyed by whatever the element under the pointer carries.
+  const handles = new Map<string, Draggable>([
+    ...draggableWalls(text, model),
+    ...draggableOutdoorEdges(text, model),
+  ]);
+  const wallCount = draggableWalls(text, model).size;
+  const keyOf = (el: SVGElement | undefined) =>
+    el?.dataset?.["wall"] ?? (el?.dataset?.["outdoor"] ? `${el.dataset["outdoor"]}:${el.dataset["edge"]}` : undefined);
 
   useEffect(() => {
     const root = host.current?.querySelector("svg");
     if (!root) return;
-    for (const el of root.querySelectorAll<SVGElement>("[data-wall]")) {
-      const d = walls.get(el.dataset["wall"]!);
+    for (const el of root.querySelectorAll<SVGElement>("[data-wall], [data-outdoor]")) {
+      const d = handles.get(keyOf(el) ?? "");
       el.style.cursor = d ? (d.axis === "v" ? "ew-resize" : "ns-resize") : "";
       el.style.pointerEvents = "stroke";
       if (d) el.dataset["draggable"] = "true";
@@ -67,7 +75,7 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (stale) return;
-    const d = walls.get((e.target as SVGElement).dataset?.["wall"] ?? "");
+    const d = handles.get(keyOf(e.target as SVGElement) ?? "");
     if (!d || e.button !== 0) return;
     const m = toMetres(e.clientX, e.clientY);
     if (!m) return;
@@ -80,7 +88,7 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
   const onPointerMove = (e: React.PointerEvent) => {
     const active = drag.current;
     if (!active) {
-      const d = walls.get((e.target as SVGElement).dataset?.["wall"] ?? "");
+      const d = handles.get(keyOf(e.target as SVGElement) ?? "");
       setHint(d ? `drag to move · writes ${d.writes}` : null);
       return;
     }
@@ -110,7 +118,7 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
       <div className="panel-head">
         <h2>Drawing</h2>
         <span className={stale ? "note stale-note" : "note"}>
-          {stale ?? hint ?? `${walls.size} of ${model.walls.length} walls draggable`}
+          {stale ?? hint ?? `${wallCount} of ${model.walls.length} walls draggable${handles.size > wallCount ? `, ${handles.size - wallCount} outdoor edges` : ""}`}
         </span>
       </div>
       <div

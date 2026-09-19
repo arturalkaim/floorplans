@@ -105,6 +105,16 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   // ---- outdoor spaces ----
   for (const o of plan.outdoor) {
     body += `<polygon points="${pts(o.poly)}" fill="var(--accent)" fill-opacity=".08" stroke="var(--accent)" stroke-width="1" stroke-dasharray="5 4"/>`;
+    // an outdoor space has no walls, so each edge gets its own handle to grab; drawn
+    // transparent over the outline, wide enough to hit without hunting for it
+    o.poly.forEach((p0, k) => {
+      const p1 = o.poly[(k + 1) % o.poly.length]!;
+      const vertical = snap(p0[0]) === snap(p1[0]);
+      body +=
+        `<line data-outdoor="${esc(o.id)}" data-edge="${k}" data-axis="${vertical ? "v" : "h"}"` +
+        ` x1="${px(X(p0[0]))}" y1="${px(Y(p0[1]))}" x2="${px(X(p1[0]))}" y2="${px(Y(p1[1]))}"` +
+        ` stroke="transparent" stroke-width="9" stroke-linecap="butt" pointer-events="stroke"/>`;
+    });
     const c = centroid(o.poly);
     body += text(X(c[0]), Y(c[1]) - 2, o.name, "rn") + text(X(c[0]), Y(c[1]) + 12, `${fmt.format(Math.abs(area(o.poly)))} m²${o.covered ? " covered" : ""}`, "ra");
   }
