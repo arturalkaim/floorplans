@@ -22,7 +22,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/**/*.test.ts\"",
     "check": "npm run typecheck && npm test",
-    "examples": "for f in casa-t3 apartment-t2 cabin casa-patio quinta broken; do node src/cli.ts fixtures/$f.json --out examples/$f.svg --mark info; done; true"
+    "examples": "for f in casa-t3 apartment-t2 cabin casa-patio quinta casa-piscina broken; do node src/cli.ts fixtures/$f.json --out examples/$f.svg --mark info; done; true"
   },
   "engines": {
     "node": ">=22.18"

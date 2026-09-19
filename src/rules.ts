@@ -1,5 +1,5 @@
 import { doorSwing } from "./doors.ts";
-import { snap } from "./geometry.ts";
+import { boxGap, snap } from "./geometry.ts";
 import type { Finding, Model, ResolvedOpening, RoomKind } from "./types.ts";
 
 export interface RuleOptions {
@@ -9,6 +9,8 @@ export interface RuleOptions {
   minDimension?: Partial<Record<RoomKind, number>>;
   /** minimum door widths (metres) */
   doorMinWidth?: { interior?: number; entrance?: number };
+  /** walkable gap required between two fixtures in the same room (default 0.6 m) */
+  minClearance?: number;
 }
 
 const DEFAULT_MIN_DIM: Partial<Record<RoomKind, number>> = {
@@ -207,6 +209,55 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
           at: a.s!.hinge,
         });
       }
+    }
+  }
+
+  // ---- fixtures ----
+  const minClearance = opts.minClearance ?? 0.6;
+  for (let i = 0; i < model.fixtures.length; i++) {
+    for (let j = i + 1; j < model.fixtures.length; j++) {
+      const a = model.fixtures[i]!;
+      const b = model.fixtures[j]!;
+      if (a.fixture.in !== b.fixture.in) continue;
+      const gap = snap(boxGap(a.bbox, b.bbox));
+      // touching units are one run; only a gap too narrow to walk through is a problem
+      if (gap <= 0 || gap >= minClearance) continue;
+      f.push({
+        rule: "fixture.clearance",
+        severity: "warning",
+        message: `only ${gap} m between ${a.fixture.name} and ${b.fixture.name} in ${nameOf(a.fixture.in)}; leave ≥ ${minClearance} m to walk through`,
+        at: [snap((a.bbox.x1 + b.bbox.x0) / 2), snap((a.bbox.y0 + b.bbox.y1) / 2)],
+        rooms: [a.fixture.in],
+        fixture: a.fixture.index,
+      });
+    }
+  }
+
+  for (const o of doors) {
+    const swing = doorSwing(o);
+    if (!swing || o.swingRoom === undefined) continue;
+    const radius = o.to - o.from;
+    for (const fm of model.fixtures) {
+      if (fm.fixture.in !== o.swingRoom) continue;
+      // the swept quarter disc is exactly {within radius of the hinge} ∩ swing.box,
+      // so the nearest point of the overlap rectangle decides it
+      const x0 = Math.max(swing.box.x0, fm.bbox.x0);
+      const x1 = Math.min(swing.box.x1, fm.bbox.x1);
+      const y0 = Math.max(swing.box.y0, fm.bbox.y0);
+      const y1 = Math.min(swing.box.y1, fm.bbox.y1);
+      if (x0 >= x1 || y0 >= y1) continue;
+      const nx = Math.min(Math.max(swing.hinge[0], x0), x1);
+      const ny = Math.min(Math.max(swing.hinge[1], y0), y1);
+      if (Math.hypot(nx - swing.hinge[0], ny - swing.hinge[1]) >= radius) continue;
+      f.push({
+        rule: "door.swing_hits_fixture",
+        severity: "warning",
+        message: `door #${o.spec.index} swings into ${fm.fixture.name} in ${nameOf(fm.fixture.in)}; rehang it or move the fixture`,
+        at: swing.hinge,
+        rooms: [fm.fixture.in],
+        opening: o.spec.index,
+        fixture: fm.fixture.index,
+      });
     }
   }
 

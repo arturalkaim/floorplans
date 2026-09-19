@@ -1,8 +1,9 @@
-import { bbox, eq, largestRect, pointInPoly, shoelace, snap } from "./geometry.ts";
+import { bbox, eq, largestRect, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
 import type {
   Analysis,
   Axis,
   Finding,
+  FixtureModel,
   Model,
   Opening,
   Owner,
@@ -156,6 +157,45 @@ export function derive(plan: Plan): Analysis {
     return { id: "", axis: p.axis, c: p.c, from: p.from, to: p.to, neg: p.neg, pos: p.pos, kind, thickness: thicknessOf(p) };
   }
 
+  // ---- fixtures standing inside rooms ----
+  const roomPoly = new Map(rooms.map((r) => [r.id, r.poly]));
+  const fixtureModels: FixtureModel[] = plan.fixtures.map((fixture) => ({
+    fixture,
+    bbox: bbox(fixture.poly),
+    area: snap(Math.abs(shoelace(fixture.poly))),
+  }));
+  for (const fm of fixtureModels) {
+    const host = roomPoly.get(fm.fixture.in);
+    if (host && !polyInside(fm.fixture.poly, host)) {
+      findings.push({
+        rule: "fixture.outside_room",
+        severity: "error",
+        message: `${fm.fixture.name} (fixture #${fm.fixture.index}) is not fully inside ${fm.fixture.in}`,
+        at: [snap((fm.bbox.x0 + fm.bbox.x1) / 2), snap((fm.bbox.y0 + fm.bbox.y1) / 2)],
+        rooms: [fm.fixture.in],
+        fixture: fm.fixture.index,
+      });
+    }
+  }
+  for (let i = 0; i < fixtureModels.length; i++) {
+    for (let j = i + 1; j < fixtureModels.length; j++) {
+      const a = fixtureModels[i]!;
+      const b = fixtureModels[j]!;
+      if (a.fixture.in !== b.fixture.in) continue;
+      if (!polysOverlap(a.fixture.poly, b.fixture.poly)) continue;
+      findings.push({
+        rule: "fixture.overlap",
+        severity: "error",
+        message: `${a.fixture.name} and ${b.fixture.name} overlap in ${a.fixture.in}`,
+        at: [snap((a.bbox.x0 + a.bbox.x1) / 2), snap((a.bbox.y0 + a.bbox.y1) / 2)],
+        rooms: [a.fixture.in],
+        fixture: a.fixture.index,
+      });
+    }
+  }
+  const fixtureAreaOf = (id: string) =>
+    snap(fixtureModels.filter((m) => m.fixture.in === id).reduce((t, m) => t + m.area, 0));
+
   // ---- room metrics ----
   const roomModels: RoomModel[] = rooms.map((room) => {
     const area = Math.abs(shoelace(room.poly));
@@ -180,6 +220,8 @@ export function derive(plan: Plan): Analysis {
       labelAt: [snap((rect.x0 + rect.x1) / 2), snap((rect.y0 + rect.y1) / 2)],
       exteriorWindow: false,
       exteriorFaces: [...faces],
+      fixtureArea: fixtureAreaOf(room.id),
+      usableArea: snap(Math.max(0, snap(clearArea(room.poly, area, pieces, room.id, thicknessOf)) - fixtureAreaOf(room.id))),
     };
   });
   const byId = new Map(roomModels.map((m) => [m.room.id, m]));
@@ -254,6 +296,7 @@ export function derive(plan: Plan): Analysis {
       rooms: roomModels,
       walls,
       openings,
+      fixtures: fixtureModels,
       envelope: { ...env, area: snap(footprint) },
       access,
       interiorArea: snap(roomModels.reduce((s, m) => s + m.area, 0)),

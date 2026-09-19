@@ -1,0 +1,51 @@
+{
+  "title": "Casa com Piscina",
+  "units": "m",
+  "walls": { "exterior": 0.30, "partition": 0.12 },
+  "north": 0,
+  "layout": {
+    "cols": [4.8, 3.0, 3.2],
+    "rows": [3.0, 3.0, 4.2],
+    "areas": [
+      "spa    hall   cozinha",
+      "spa    hall   cozinha",
+      "spa    wc     sala"
+    ]
+  },
+  "rooms": {
+    "spa":     { "name": "Sala da piscina", "kind": "other", "zone": "spa",
+                 "habitable": false, "wet": true, "circulation": false },
+    "hall":    { "name": "Hall",    "kind": "hall",    "zone": "day" },
+    "cozinha": { "name": "Cozinha", "kind": "kitchen", "zone": "day" },
+    "wc":      { "name": "WC",      "kind": "wc",      "zone": "day" },
+    "sala":    { "name": "Sala",    "kind": "living",  "zone": "day" }
+  },
+  "outdoor": {
+    "deck":     { "name": "Deck",             "poly": [[0,10.2],[4.8,10.2],[4.8,13.0],[0,13.0]], "covered": false },
+    "piscina_e": { "name": "Piscina exterior", "poly": [[5.4,10.2],[10.4,10.2],[10.4,13.0],[5.4,13.0]], "covered": false }
+  },
+  "fixtures": [
+    { "type": "pool", "in": "spa", "name": "Piscina interior",
+      "poly": [[0.8,1.0],[4.0,1.0],[4.0,8.4],[0.8,8.4]], "depth": 1.4 },
+    { "type": "bath",    "in": "wc", "name": "Banheira",  "at": [4.95, 6.15], "size": [1.7, 0.75] },
+    { "type": "wc",      "in": "wc", "name": "Sanita",    "at": [7.30, 6.15], "size": [0.4, 0.7] },
+    { "type": "sink",    "in": "wc", "name": "Lavatório", "at": [4.95, 9.20], "size": [0.6, 0.5] },
+    { "type": "counter", "in": "cozinha", "name": "Bancada", "at": [8.0, 0.4], "size": [2.6, 0.65] },
+    { "type": "island",  "in": "cozinha", "name": "Ilha",    "at": [8.9, 3.8], "size": [2.0, 0.9] }
+  ],
+  "openings": [
+    { "type": "door", "between": ["exterior", "hall"], "on": { "room": "hall", "side": "north" },
+      "width": 1.0, "swingInto": "hall", "entrance": true },
+    { "type": "door", "between": ["hall", "spa"], "width": 1.0, "swingInto": "hall" },
+    { "type": "door", "between": ["hall", "cozinha"], "width": 0.9, "swingInto": "cozinha" },
+    { "type": "door", "between": ["hall", "wc"], "width": 0.8, "swingInto": "hall" },
+    { "type": "door", "between": ["cozinha", "sala"], "width": 1.2, "swingInto": "sala" },
+    { "type": "door", "between": ["exterior", "sala"], "on": { "room": "sala", "side": "south" },
+      "width": 1.2, "swingInto": "sala" },
+
+    { "type": "window", "between": ["exterior", "spa"],     "on": { "room": "spa",     "side": "west" }, "width": 3.0 },
+    { "type": "window", "between": ["exterior", "cozinha"], "on": { "room": "cozinha", "side": "east" }, "width": 1.6 },
+    { "type": "window", "between": ["exterior", "sala"],    "on": { "room": "sala",    "side": "east" }, "width": 1.8 },
+    { "type": "window", "between": ["exterior", "wc"],      "on": { "room": "wc",      "side": "south" }, "width": 0.6 }
+  ]
+}

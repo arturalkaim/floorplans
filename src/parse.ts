@@ -1,5 +1,5 @@
 import { cellsToPolygons, normalizePoly, snap } from "./geometry.ts";
-import type { Jamb, Opening, OpeningType, Outdoor, Plan, Pt, Room, RoomKind, Side } from "./types.ts";
+import type { Fixture, FixtureType, Jamb, Opening, OpeningType, Outdoor, Plan, Pt, Room, RoomKind, Side } from "./types.ts";
 import { CIRCULATION_KINDS, HABITABLE_KINDS, WET_KINDS } from "./types.ts";
 
 export interface PlanIssue {
@@ -32,6 +32,17 @@ const ROOM_KINDS: ReadonlySet<string> = new Set<RoomKind>([
 ]);
 const SIDES: ReadonlySet<string> = new Set<Side>(["north", "south", "east", "west"]);
 const OPENING_TYPES: ReadonlySet<string> = new Set<OpeningType>(["door", "window", "cased"]);
+const FIXTURE_TYPES: ReadonlySet<string> = new Set<FixtureType>([
+  "pool",
+  "bath",
+  "shower",
+  "wc",
+  "sink",
+  "counter",
+  "island",
+  "stairs",
+  "other",
+]);
 const ID_RE = /^[a-z][a-z0-9_]*$/;
 
 type J = Record<string, unknown>;
@@ -273,6 +284,60 @@ export function parse(input: unknown): Plan {
     });
   });
 
+  // ---- fixtures: things standing inside a room ----
+  const fixtures: Fixture[] = [];
+  const fixturesIn = doc["fixtures"] ?? [];
+  if (!Array.isArray(fixturesIn) && doc["fixtures"] !== undefined) bad("fixtures", "must be an array");
+  (Array.isArray(fixturesIn) ? fixturesIn : []).forEach((v: unknown, i: number) => {
+    const path = `fixtures[${i}]`;
+    if (!isObj(v)) {
+      bad(path, "must be an object");
+      return;
+    }
+    const type = v["type"];
+    if (!FIXTURE_TYPES.has(type as string))
+      bad(`${path}.type`, `must be one of ${[...FIXTURE_TYPES].join(", ")}`);
+    const inRoom = v["in"];
+    if (typeof inRoom !== "string" || !roomIds.has(inRoom))
+      bad(`${path}.in`, `must name a room; got ${JSON.stringify(inRoom)}`);
+
+    // geometry: either an explicit poly, or at + size as a convenience rectangle
+    const hasPoly = v["poly"] !== undefined;
+    const hasRect = v["at"] !== undefined || v["size"] !== undefined;
+    let poly: Pt[] | undefined;
+    if (hasPoly && hasRect) bad(path, "has both a poly and at/size; use one");
+    else if (hasPoly) poly = readPoly(`${path}.poly`, v["poly"]);
+    else if (hasRect) {
+      const at = v["at"];
+      const size = v["size"];
+      const okAt = Array.isArray(at) && at.length === 2 && at.every((n) => typeof n === "number" && isFinite(n));
+      const okSize = Array.isArray(size) && size.length === 2 && size.every((n) => typeof n === "number" && n > 0);
+      if (!okAt) bad(`${path}.at`, "must be [x, y] numbers");
+      if (!okSize) bad(`${path}.size`, "must be [width, height], both > 0");
+      if (okAt && okSize) {
+        const [x, y] = at as [number, number];
+        const [w, h] = size as [number, number];
+        poly = [
+          [snap(x), snap(y)],
+          [snap(x + w), snap(y)],
+          [snap(x + w), snap(y + h)],
+          [snap(x), snap(y + h)],
+        ];
+      }
+    } else bad(path, "has no geometry: give a poly, or at and size");
+
+    const depthRaw = v["depth"];
+    let depth: number | undefined;
+    if (depthRaw !== undefined) {
+      if (typeof depthRaw !== "number" || !(depthRaw > 0)) bad(`${path}.depth`, "must be a number > 0");
+      else depth = snap(depthRaw);
+    }
+
+    if (!poly || typeof inRoom !== "string" || !FIXTURE_TYPES.has(type as string)) return;
+    const name = typeof v["name"] === "string" ? v["name"] : (type as string).replace(/^./, (c) => c.toUpperCase());
+    fixtures.push({ index: i, type: type as FixtureType, name, in: inRoom, poly, depth });
+  });
+
   if (rooms.length === 0 && issues.length === 0) bad("rooms", "a plan needs at least one room");
   if (issues.length) throw new PlanError(issues);
 
@@ -284,6 +349,7 @@ export function parse(input: unknown): Plan {
     rooms,
     outdoor,
     openings,
+    fixtures,
   };
 }
 

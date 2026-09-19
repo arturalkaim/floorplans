@@ -134,3 +134,28 @@ describe("fixture: quinta (inner garden, pool, detached shack)", () => {
     assert.equal(r.model.plan.outdoor.find((o) => o.id === "jardim")!.poly.length, 4);
   });
 });
+
+describe("fixture: casa-piscina (fixtures layer)", () => {
+  const r = floorplan(load("casa-piscina"));
+
+  it("has no findings above info", () => {
+    assert.deepEqual(rulesOf(r.findings.filter((f) => f.severity !== "info")), []);
+  });
+  it("deducts the interior pool from usable floor and totals it as water", () => {
+    const spa = r.schedule.rooms.find((x) => x.id === "spa")!;
+    assert.equal(spa.fixtureArea, 23.68);
+    assert.equal(spa.usableArea, Math.round((spa.clearArea - spa.fixtureArea) * 1000) / 1000);
+    assert.ok(spa.usableArea < spa.clearArea / 2, "water is most of that room");
+    assert.equal(r.schedule.waterArea, 23.68);
+  });
+  it("leaves rooms without fixtures untouched", () => {
+    const hall = r.schedule.rooms.find((x) => x.id === "hall")!;
+    assert.equal(hall.fixtureArea, 0);
+    assert.equal(hall.usableArea, hall.clearArea);
+  });
+  it("renders each fixture and marks the pool as water", () => {
+    assert.equal((r.svg.match(/class="fixture"/g) ?? []).length, 6);
+    assert.ok(r.svg.includes('data-type="pool"'));
+    assert.ok(r.svg.includes("var(--water)"));
+  });
+});

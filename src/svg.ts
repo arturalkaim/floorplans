@@ -76,6 +76,23 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
     body += `<polygon points="${pts(r.room.poly)}" fill="${col}" fill-opacity="var(--fill-alpha)"/></g>`;
   }
 
+  // ---- fixtures standing in rooms ----
+  for (const fm of model.fixtures) {
+    const f = fm.fixture;
+    const water = f.type === "pool";
+    const fill = water ? "var(--water)" : "var(--muted)";
+    const alpha = water ? ".30" : ".16";
+    const b = fm.bbox;
+    const label = `${f.name}${f.depth ? ` · ${fmt.format(f.depth)} m deep` : ""} — ${fmt2.format(fm.area)} m²`;
+    body += `<g class="fixture" data-type="${esc(f.type)}"><title>${esc(label)}</title>`;
+    body += `<polygon points="${pts(f.poly)}" fill="${fill}" fill-opacity="${alpha}" stroke="${fill}" stroke-width="1"${water ? "" : ' stroke-dasharray="3 2"'}/>`;
+    // name it only where the shape can hold the text, and sit the label at the top of the
+    // footprint: a fixture that fills most of its room would otherwise land on the room name
+    if ((b.x1 - b.x0) * S > 54 && (b.y1 - b.y0) * S > 18)
+      body += text(X((b.x0 + b.x1) / 2), Y(b.y0) + 13, f.name, "fx");
+    body += `</g>`;
+  }
+
   // ---- walls, split at openings; partitions first so exterior walls cover their ends ----
   const openingsByWall = new Map<string, ResolvedOpening[]>();
   for (const o of model.openings) (openingsByWall.get(o.wall.id) ?? openingsByWall.set(o.wall.id, []).get(o.wall.id)!).push(o);
@@ -260,14 +277,15 @@ function area(poly: Pt[]): number {
 }
 
 const STYLE = `
-svg.floorplan{--bg:#ffffff;--wall:#1b1b1b;--ink:#333333;--muted:#8a8a8a;--accent:#2f9e5b;--fill-alpha:.14;font-family:${FONT}}
-svg.floorplan.theme-dark{--bg:#121212;--wall:#ededed;--ink:#d6d6d6;--muted:#8f8f8f;--fill-alpha:.28}
-@media (prefers-color-scheme:dark){svg.floorplan.theme-auto{--bg:#121212;--wall:#ededed;--ink:#d6d6d6;--muted:#8f8f8f;--fill-alpha:.28}}
+svg.floorplan{--bg:#ffffff;--wall:#1b1b1b;--ink:#333333;--muted:#8a8a8a;--accent:#2f9e5b;--water:#2f7fd0;--fill-alpha:.14;font-family:${FONT}}
+svg.floorplan.theme-dark{--bg:#121212;--wall:#ededed;--ink:#d6d6d6;--muted:#8f8f8f;--water:#4f9ae8;--fill-alpha:.28}
+@media (prefers-color-scheme:dark){svg.floorplan.theme-auto{--bg:#121212;--wall:#ededed;--ink:#d6d6d6;--muted:#8f8f8f;--water:#4f9ae8;--fill-alpha:.28}}
 .rn{font-size:12px;font-weight:600;fill:var(--ink)}
 .ra{font-size:10.5px;fill:var(--muted)}
 .rk{font-size:10px;font-weight:700;fill:var(--ink)}
 .dim{font-size:10.5px;fill:var(--muted);font-variant-numeric:tabular-nums}
 .tag{font-size:8.5px;font-weight:700;letter-spacing:.08em;fill:var(--accent)}
+.fx{font-size:9.5px;font-weight:600;fill:var(--muted)}
 .mk{font-size:10px;font-weight:700;fill:#fff}
 .title{font-size:15px;font-weight:700;fill:var(--ink)}
 `.trim();

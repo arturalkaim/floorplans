@@ -103,6 +103,60 @@ describe("parse: schema errors carry paths", () => {
   });
 });
 
+describe("parse: fixtures", () => {
+  const withFix = (fixtures: unknown[]) => twoRooms({ fixtures });
+
+  it("accepts poly and at/size geometry and defaults the name from the type", () => {
+    const plan = parse(withFix([
+      { type: "pool", in: "a", poly: rect(1, 1, 2, 1), depth: 1.4 },
+      { type: "bath", in: "b", at: [4.2, 0.3], size: [1.7, 0.75], name: "Banheira" },
+    ]));
+    assert.equal(plan.fixtures.length, 2);
+    const [pool, bath] = plan.fixtures;
+    assert.equal(pool!.name, "Pool");
+    assert.equal(pool!.depth, 1.4);
+    assert.deepEqual(pool!.poly, rect(1, 1, 2, 1));
+    assert.equal(bath!.name, "Banheira");
+    assert.deepEqual(bath!.poly, rect(4.2, 0.3, 1.7, 0.75));
+    assert.equal(bath!.depth, undefined);
+  });
+
+  it("carries the authored index for error messages", () => {
+    const plan = parse(withFix([{ type: "sink", in: "a", at: [1, 1], size: [0.6, 0.5] }]));
+    assert.equal(plan.fixtures[0]!.index, 0);
+  });
+
+  it("rejects bad type, unknown room, missing and doubled geometry, bad depth", () => {
+    const paths = issuesOf(withFix([
+      { type: "jacuzzi", in: "a", at: [1, 1], size: [1, 1] },
+      { type: "bath", in: "nope", at: [1, 1], size: [1, 1] },
+      { type: "bath", in: "a" },
+      { type: "bath", in: "a", poly: rect(1, 1, 1, 1), at: [1, 1], size: [1, 1] },
+      { type: "pool", in: "a", at: [1, 1], size: [1, 0], depth: -1 },
+    ]));
+    for (const expected of [
+      "fixtures[0].type",
+      "fixtures[1].in",
+      "fixtures[2]",
+      "fixtures[3]",
+      "fixtures[4].size",
+      "fixtures[4].depth",
+    ])
+      assert.ok(paths.includes(expected), `expected issue at ${expected}, got ${paths.join(", ")}`);
+  });
+
+  it("rejects a non-rectilinear fixture poly once", () => {
+    assert.deepEqual(
+      issuesOf(withFix([{ type: "pool", in: "a", poly: [[0, 0], [2, 0], [5, 7], [0, 7]] }])),
+      ["fixtures[0].poly"],
+    );
+  });
+
+  it("defaults to no fixtures", () => {
+    assert.deepEqual(parse(twoRooms()).fixtures, []);
+  });
+});
+
 describe("parse: layout grid compiles to polygons", () => {
   const grid = {
     walls: { exterior: 0.3, partition: 0.12 },

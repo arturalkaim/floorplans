@@ -184,6 +184,53 @@ describe("rules: circulation & swings", () => {
   });
 });
 
+describe("rules: fixtures", () => {
+  // twoRooms: a = 0..4 x 0..3, b = 4..7 x 0..3; the a|b door hinges at [4, 1.1]
+  // and sweeps a 0.8 m quarter disc into b.
+  it("door.swing_hits_fixture when a fixture stands in the leaf's path", () => {
+    const hit = run(twoRooms({ fixtures: [{ type: "bath", in: "b", at: [4.2, 1.2], size: [0.5, 0.5] }] }));
+    assert.equal(only(hit, "door.swing_hits_fixture").length, 1);
+    assert.equal(only(hit, "door.swing_hits_fixture")[0]!.severity, "warning");
+
+    const clear = run(twoRooms({ fixtures: [{ type: "bath", in: "b", at: [6.0, 2.4], size: [0.5, 0.4] }] }));
+    assert.deepEqual(only(clear, "door.swing_hits_fixture"), []);
+  });
+
+  it("fixture.clearance when you cannot walk between two fixtures", () => {
+    const tight = run(twoRooms({ fixtures: [
+      { type: "counter", in: "a", at: [0.2, 0.2], size: [1.0, 0.6] },
+      { type: "island", in: "a", at: [1.5, 0.2], size: [1.0, 0.6] },
+    ] }));
+    assert.equal(only(tight, "fixture.clearance").length, 1);
+    assert.match(only(tight, "fixture.clearance")[0]!.message, /0\.3/);
+
+    const roomy = run(twoRooms({ fixtures: [
+      { type: "counter", in: "a", at: [0.2, 0.2], size: [1.0, 0.6] },
+      { type: "island", in: "a", at: [2.1, 0.2], size: [1.0, 0.6] },
+    ] }));
+    assert.deepEqual(only(roomy, "fixture.clearance"), []);
+  });
+
+  it("fixtures that touch are one run of units, not a blocked gap", () => {
+    const abutting = run(twoRooms({ fixtures: [
+      { type: "counter", in: "a", at: [0.2, 0.2], size: [1.0, 0.6] },
+      { type: "sink", in: "a", at: [1.2, 0.2], size: [0.6, 0.6] },
+    ] }));
+    assert.deepEqual(only(abutting, "fixture.clearance"), []);
+  });
+
+  it("the threshold is an option", () => {
+    const f = run(
+      twoRooms({ fixtures: [
+        { type: "counter", in: "a", at: [0.2, 0.2], size: [1.0, 0.6] },
+        { type: "island", in: "a", at: [2.1, 0.2], size: [1.0, 0.6] },
+      ] }),
+      { minClearance: 1.2 },
+    );
+    assert.equal(only(f, "fixture.clearance").length, 1);
+  });
+});
+
 describe("findings ordering", () => {
   it("sorts error → warning → info", () => {
     const f = run(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8 }] }));

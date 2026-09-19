@@ -102,9 +102,11 @@ whole point of a patio house. Without the declaration the same void is a `tiling
 }
 ```
 
-A pool or a terrace is the same thing with a different name. A garden shack is better
-modelled as a detached **room**: give it a poly away from the house and its own exterior
-door, and it derives real walls without tripping `tiling.gap` or `reach.unreachable`.
+A pool or a terrace is the same thing with a different name — the model tracks area and
+`covered`, not what the surface is made of. A garden shack is better modelled as a
+detached **room**: give it a poly away from the house and its own exterior door, and it
+derives real walls without tripping `tiling.gap` or `reach.unreachable`. Its floor does
+count toward `interiorArea`, so deduct it if that matters to you.
 
 ### Rooms
 
@@ -128,6 +130,34 @@ door, and it derives real walls without tripping `tiling.gap` or `reach.unreacha
 | `swingInto` | doors: room the leaf opens into (default: last room in `between`) |
 | `entrance` | doors: mark the main entrance |
 
+### Fixtures
+
+Things that stand *inside* a room — sanitary ware, a kitchen run, stairs, a pool. They
+do not divide space (no walls, no openings); they take up floor.
+
+```jsonc
+"fixtures": [
+  { "type": "pool", "in": "spa", "name": "Piscina interior",
+    "poly": [[0.8,1.0],[4.0,1.0],[4.0,8.4],[0.8,8.4]], "depth": 1.4 },
+  { "type": "bath", "in": "wc", "at": [4.95, 6.15], "size": [1.7, 0.75] },
+  { "type": "island", "in": "cozinha", "at": [8.9, 3.8], "size": [2.0, 0.9] }
+]
+```
+
+| Field | Meaning |
+|---|---|
+| `type` | `pool` `bath` `shower` `wc` `sink` `counter` `island` `stairs` `other` |
+| `in` | id of the room that contains it; the footprint must lie inside that room |
+| `poly` | rectilinear polygon, absolute metres — or use `at` + `size` |
+| `at` / `size` | convenience rectangle: `[x, y]` corner (absolute) and `[width, height]` |
+| `name` | defaults to the capitalised type |
+| `depth` | pools only, metres; shown in the tooltip |
+
+Every room reports `clearArea`, `fixtureArea` and `usableArea` (clear less fixtures), so
+an interior pool stops counting as floor you can stand on. `schedule.waterArea` totals
+the pools. A pool is water; an outdoor space is open sky — a poolside deck is `outdoor`,
+the pool itself is a fixture if it sits in a room and an `outdoor` space if it does not.
+
 ### Findings
 
 Every finding is `{ rule, severity, message, at?, rooms?, opening? }`.
@@ -145,6 +175,9 @@ Every finding is `{ rule, severity, message, at?, rooms?, opening? }`.
 | `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |
 | `opening.near_corner` | warning | sliver of wall < 0.1 m beside an opening |
+| `fixture.outside_room` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |
+| `fixture.clearance` | warning | gap between two fixtures too narrow to walk through |
+| `door.swing_hits_fixture` | warning | a door leaf sweeps into a fixture |
 | `circulation.share` | info | halls and corridors above 10 % of the interior |
 | `privacy.bedroom_off_living` / `entrance.multiple` / `door.swing_collision` | info | worth a look |
 
@@ -155,7 +188,8 @@ Thresholds are options on `analyze(plan, rules)`.
 Room polygons are centrelines, so the polygon area over-reports usable space.
 The model carries both: `area` (centreline) and `clearArea` (after deducting
 half of every bounding wall, exact for rectilinear rooms). Labels show clear
-area by default; `--areas centreline` switches.
+area by default; `--areas centreline` switches. Fixtures are deducted again to give
+`usableArea` — see **Fixtures**.
 
 ## Layout
 
@@ -166,5 +200,6 @@ src/rules.ts      semantic rules over the model
 src/svg.ts        Model → SVG string
 src/cli.ts        command line
 fixtures/         casa-t3 (seed house), apartment-t2 (grid), cabin,
-                  casa-patio (courtyard), quinta (garden + pool + shack), broken
+                  casa-patio (courtyard), quinta (garden + pool + shack),
+                  casa-piscina (fixtures), broken
 ```

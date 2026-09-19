@@ -43,6 +43,29 @@ export interface Outdoor {
   covered: boolean;
 }
 
+export type FixtureType =
+  | "pool"
+  | "bath"
+  | "shower"
+  | "wc"
+  | "sink"
+  | "counter"
+  | "island"
+  | "stairs"
+  | "other";
+
+/** A thing standing inside a room: sanitary ware, a kitchen run, a pool, stairs. */
+export interface Fixture {
+  index: number; // position in the authored list, for error messages
+  type: FixtureType;
+  name: string;
+  /** id of the room that contains it */
+  in: string;
+  poly: Pt[];
+  /** pools only, metres */
+  depth: number | undefined;
+}
+
 export type OpeningType = "door" | "window" | "cased";
 export type Jamb = "start" | "end";
 
@@ -77,6 +100,7 @@ export interface Plan {
   rooms: Room[];
   outdoor: Outdoor[];
   openings: Opening[];
+  fixtures: Fixture[];
 }
 
 // ---------- derived ----------
@@ -123,6 +147,16 @@ export interface RoomModel {
   labelAt: Pt;
   exteriorWindow: boolean;
   exteriorFaces: Side[];
+  /** floor taken by fixtures standing in this room */
+  fixtureArea: number;
+  /** clearArea less fixtureArea: floor you can actually stand on */
+  usableArea: number;
+}
+
+export interface FixtureModel {
+  fixture: Fixture;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+  area: number;
 }
 
 export interface Model {
@@ -130,6 +164,7 @@ export interface Model {
   rooms: RoomModel[];
   walls: WallSegment[];
   openings: ResolvedOpening[];
+  fixtures: FixtureModel[];
   envelope: { x0: number; y0: number; x1: number; y1: number; area: number };
   /** access graph: room id -> set of neighbouring room ids (or "exterior") through doors/cased openings */
   access: Map<string, Set<string>>;
@@ -145,6 +180,7 @@ export interface Finding {
   at?: Pt;
   rooms?: string[];
   opening?: number;
+  fixture?: number;
 }
 
 export interface Analysis {
