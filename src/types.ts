@@ -140,9 +140,11 @@ export interface RoomModel {
   area: number;
   /** area after deducting half the adjacent wall thickness on every edge */
   clearArea: number;
-  /** largest axis-aligned rectangle fully inside the room */
+  /** largest axis-aligned rectangle of unoccupied floor, on centrelines */
   largestRect: { x0: number; y0: number; x1: number; y1: number };
-  /** short side of largestRect */
+  /** largestRect brought in to the wall faces: the floor you can actually stand in */
+  clearRect: { x0: number; y0: number; x1: number; y1: number; w: number; h: number };
+  /** short side of clearRect */
   minDimension: number;
   labelAt: Pt;
   exteriorWindow: boolean;

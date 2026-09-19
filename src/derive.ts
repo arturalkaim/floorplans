@@ -41,6 +41,7 @@ export function derive(plan: Plan): Analysis {
   const yset = new Set<number>();
   for (const r of rooms) for (const [x, y] of r.poly) (xset.add(x), yset.add(y));
   for (const o of plan.outdoor) for (const [x, y] of o.poly) (xset.add(x), yset.add(y));
+  for (const fx of plan.fixtures) for (const [x, y] of fx.poly) (xset.add(x), yset.add(y));
   const xs = [...xset].sort((a, b) => a - b);
   const ys = [...yset].sort((a, b) => a - b);
   const cols = xs.length - 1;
@@ -200,12 +201,55 @@ export function derive(plan: Plan): Analysis {
   const fixtureAreaOf = (id: string) =>
     snap(fixtureModels.filter((m) => m.fixture.in === id).reduce((t, m) => t + m.area, 0));
 
+  // floor standing under a fixture is not floor you can use
+  const occupied: boolean[][] = [];
+  for (let i = 0; i < cols; i++) {
+    occupied.push([]);
+    for (let j = 0; j < rowsN; j++) {
+      const c: Pt = [(xs[i]! + xs[i + 1]!) / 2, (ys[j]! + ys[j + 1]!) / 2];
+      occupied[i]!.push(fixtureModels.some((m) => pointInPoly(c, m.fixture.poly)));
+    }
+  }
+
+  /**
+   * Half the thickness of the wall running along one side of a rectangle. Rooms are
+   * authored on centrelines, so a comfort minimum has to come off both faces; a side
+   * that does not sit on a wall deducts nothing. Where a side spans walls of different
+   * thickness the thickest wins, which is the conservative reading for a comfort check.
+   */
+  const halfWallAlong = (axis: Axis, c: number, from: number, to: number, id: string): number => {
+    let t = 0;
+    for (const w of walls) {
+      if (w.axis !== axis || !eq(w.c, c)) continue;
+      if (w.neg !== id && w.pos !== id) continue;
+      if (Math.min(w.to, to) - Math.max(w.from, from) <= MM) continue;
+      t = Math.max(t, w.thickness);
+    }
+    return t / 2;
+  };
+
   // ---- room metrics ----
   const roomModels: RoomModel[] = rooms.map((room) => {
     const area = Math.abs(shoelace(room.poly));
-    const rect = largestRect((i, j) => owner(i, j) === room.id && ownersOf[i]![j]!.length === 1, xs, ys);
-    const w = rect.x1 - rect.x0;
-    const h = rect.y1 - rect.y0;
+    const rect = largestRect(
+      (i, j) => owner(i, j) === room.id && ownersOf[i]![j]!.length === 1 && !occupied[i]![j]!,
+      xs,
+      ys,
+    );
+    const west = halfWallAlong("v", rect.x0, rect.y0, rect.y1, room.id);
+    const east = halfWallAlong("v", rect.x1, rect.y0, rect.y1, room.id);
+    const north = halfWallAlong("h", rect.y0, rect.x0, rect.x1, room.id);
+    const south = halfWallAlong("h", rect.y1, rect.x0, rect.x1, room.id);
+    const clearRect = {
+      x0: snap(rect.x0 + west),
+      y0: snap(rect.y0 + north),
+      x1: snap(rect.x1 - east),
+      y1: snap(rect.y1 - south),
+      w: snap(rect.x1 - rect.x0 - west - east),
+      h: snap(rect.y1 - rect.y0 - north - south),
+    };
+    const w = clearRect.w;
+    const h = clearRect.h;
     const faces = new Set<Side>();
     for (const wall of walls) {
       if (wall.kind !== "exterior") continue;
@@ -220,6 +264,7 @@ export function derive(plan: Plan): Analysis {
       area: snap(area),
       clearArea: snap(clearArea(room.poly, area, pieces, room.id, thicknessOf)),
       largestRect: rect,
+      clearRect,
       minDimension: snap(Math.min(w, h)),
       labelAt: [snap((rect.x0 + rect.x1) / 2), snap((rect.y0 + rect.y1) / 2)],
       exteriorWindow: false,

@@ -139,10 +139,11 @@ describe("rules: adjacency semantics", () => {
 
 describe("rules: sizes", () => {
   it("room.min_dimension uses the largest clear rectangle and per-kind thresholds", () => {
-    const f = run(twoRooms({ rooms: { a: { kind: "living", poly: rect(0, 0, 4, 3) }, b: { kind: "bedroom", poly: rect(4, 0, 2, 3) } } }));
+    // a is 3.79 x 3.30 clear and passes living's 3 m; b is 1.79 m across and fails bedroom's 2.4 m
+    const f = run(twoRooms({ rooms: { a: { kind: "living", poly: rect(0, 0, 4, 3.6) }, b: { kind: "bedroom", poly: rect(4, 0, 2, 3.6) } } }));
     const m = only(f, "room.min_dimension");
     assert.deepEqual(m.map((x) => x.rooms![0]), ["b"]);
-    assert.match(m[0]!.message, /2 × 3 m; comfort minimum for a bedroom is 2.4 m/);
+    assert.match(m[0]!.message, /b \(bedroom\): 1\.79 m at its narrowest; comfort minimum is 2\.4 m/);
   });
   it("thresholds are configurable", () => {
     const f = run(twoRooms(), { minDimension: { living: 5 } });

@@ -179,6 +179,10 @@ Every finding is `{ rule, severity, message, at?, rooms?, opening? }`.
 | `wet.opens_to_kitchen` | warning | WC door straight into a kitchen |
 | `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |
+
+`room.min_dimension` measures the narrow side of the largest rectangle of *unoccupied*
+floor, between the wall faces — not on centrelines and not through a fixture. A 2 × 1 m
+room drawn on centrelines is 1.88 × 0.79 m to stand in.
 | `opening.near_corner` | warning | sliver of wall < 0.1 m beside an opening |
 | `fixture.outside_space` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |
 | `fixture.clearance` | warning | gap between two fixtures too narrow to walk through |

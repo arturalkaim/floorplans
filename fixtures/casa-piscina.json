@@ -4,7 +4,7 @@
   "walls": { "exterior": 0.30, "partition": 0.12 },
   "north": 0,
   "layout": {
-    "cols": [4.8, 3.0, 3.2],
+    "cols": [4.8, 3.0, 3.6],
     "rows": [3.0, 3.0, 4.2],
     "areas": [
       "spa    hall   cozinha",
@@ -21,7 +21,7 @@
     "sala":    { "name": "Sala",    "kind": "living",  "zone": "day" }
   },
   "outdoor": {
-    "deck": { "name": "Deck", "poly": [[0,10.2],[10.4,10.2],[10.4,13.4],[0,13.4]], "covered": false }
+    "deck": { "name": "Deck", "poly": [[0,10.2],[11.4,10.2],[11.4,13.4],[0,13.4]], "covered": false }
   },
   "fixtures": [
     { "type": "pool", "in": "spa", "name": "Piscina interior",

@@ -72,10 +72,13 @@ describe("fixture: casa-t3 (the seed house)", () => {
 });
 
 describe("fixture: apartment-t2 (grid-authored)", () => {
-  it("compiles from a track grid, is clean except the interior WC, and renders", () => {
+  it("compiles from a track grid, is clean except the interior WC and a pinched hall, and renders", () => {
     const r = floorplan(load("apartment-t2"));
     assert.equal(r.model.rooms.length, 7);
-    assert.deepEqual(rulesOf(r.findings), ["wet.no_window"]);
+    assert.deepEqual(rulesOf(r.findings), ["room.min_dimension", "wet.no_window"]);
+    // the 1.1 m hall track leaves 0.99 m between the wall faces, just under the 1 m minimum
+    const hall = r.model.rooms.find((m) => m.room.kind === "hall")!;
+    assert.equal(hall.minDimension, 0.99);
     assert.ok(r.svg.includes("Sala"));
   });
 });

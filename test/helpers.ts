@@ -7,13 +7,13 @@ export const rect = (x: number, y: number, w: number, h: number): Pt[] => [
   [x, y + h],
 ];
 
-/** Two rooms side by side: a (0..4 × 0..3) and b (4..7 × 0..3), entrance on a's west wall. */
+/** Two rooms side by side: a (0..4 × 0..3.4) and b (4..7 × 0..3.4), entrance on a's west wall. */
 export function twoRooms(extra: Record<string, unknown> = {}) {
   return {
     walls: { exterior: 0.3, partition: 0.12 },
     rooms: {
-      a: { name: "A", kind: "living", poly: rect(0, 0, 4, 3) },
-      b: { name: "B", kind: "office", poly: rect(4, 0, 3, 3) },
+      a: { name: "A", kind: "living", poly: rect(0, 0, 4, 3.4) },
+      b: { name: "B", kind: "office", poly: rect(4, 0, 3, 3.4) },
     },
     openings: [
       { type: "door", between: ["exterior", "a"], on: { room: "a", side: "west" }, width: 0.9, entrance: true },

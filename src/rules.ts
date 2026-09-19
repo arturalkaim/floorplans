@@ -153,11 +153,11 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
   for (const m of rooms) {
     const min = minDim[m.room.kind];
     if (min === undefined || m.minDimension >= min) continue;
-    const r = m.largestRect;
+    const r = m.clearRect;
     f.push({
       rule: "room.min_dimension",
       severity: "warning",
-      message: `${m.room.name}: largest clear rectangle is ${snap(r.x1 - r.x0)} × ${snap(r.y1 - r.y0)} m; comfort minimum for a ${m.room.kind} is ${min} m`,
+      message: `${m.room.name} (${m.room.kind}): ${m.minDimension} m at its narrowest; comfort minimum is ${min} m (clear floor ${r.w} × ${r.h} m)`,
       rooms: [m.room.id],
       at: m.labelAt,
     });
