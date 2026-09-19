@@ -7,27 +7,46 @@ const load = (n: string) => readFileSync(new URL(`../fixtures/${n}.json`, import
 const modelOf = (text: string) => analyze(parse(JSON.parse(text))).model;
 
 describe("edit: which walls a drawing may offer to drag", () => {
-  it("offers the interior track boundaries of a grid plan, never the outer edge", () => {
+  it("resizes tracks on a grid plan, and never the edge the grid is anchored to", () => {
     const text = load("casa-patio");
     const model = modelOf(text);
     const walls = draggableWalls(text, model);
     assert.ok(walls.size > 0);
     for (const d of walls.values()) {
-      assert.match(d.writes, /^layout\.(cols|rows)\[\d+\] and \[\d+\]$/);
+      assert.match(d.writes, /^layout\.(cols|rows)\[\d+\]( and \[\d+\])?$/);
       assert.ok(d.min < d.c && d.c < d.max, `${d.wallId} has no room to move`);
+      // the grid starts at 0: that edge cannot move without shifting every coordinate
+      assert.notEqual(d.c, 0);
     }
-    // the building's own outline is not a boundary between two tracks
-    const env = model.envelope;
-    for (const d of walls.values())
-      assert.ok(d.c !== env.x0 && d.c !== env.x1 && d.c !== env.y0 && d.c !== env.y1);
+    // the far edge is offered, and resizes a single track
+    const far = [...walls.values()].filter((d) => !d.writes.includes(" and "));
+    assert.ok(far.length > 0, "the building's far edge should be draggable");
   });
 
-  it("declines a wall whose edge would have to be split", () => {
+  it("declines exactly those walls whose edge would have to be split", () => {
     const text = load("casa-t3");
+    const doc = JSON.parse(text) as { rooms: Record<string, { poly: [number, number][] }> };
     const model = modelOf(text);
     const walls = draggableWalls(text, model);
-    // most of a hand-authored plan is not a pure coordinate change
-    assert.ok(walls.size > 0 && walls.size < model.walls.length / 2);
+    const declined = model.walls.filter((w) => !walls.has(w.id));
+    assert.ok(declined.length > 0 && walls.size > 0, "this fixture should show both");
+
+    for (const w of declined) {
+      const axis = w.axis === "v" ? 0 : 1;
+      const owners = [w.neg, w.pos].filter((o) => o !== "exterior" && o !== "gap");
+      // a wall is refused only because some space it separates has a vertex on that line
+      // beyond the wall's run, which a drag would have to split the edge to handle
+      const wouldSplit = owners.some((id) =>
+        (doc.rooms[id]?.poly ?? []).some(
+          (pt) => {
+            const on = pt[axis]!;
+            const at = pt[1 - axis]!;
+            return Math.abs(on - w.c) < 1e-6 && (at < w.from - 1e-6 || at > w.to + 1e-6);
+          },
+        ),
+      );
+      assert.ok(wouldSplit, `${w.id} was declined for no reason a reader could name`);
+    }
   });
 
   it("declines everything when the source will not parse", () => {
@@ -85,6 +104,51 @@ describe("edit: moving a wall rewrites the source and nothing else", () => {
     const model = modelOf(text);
     const d = [...draggableWalls(text, model).values()][0]!;
     assert.equal(applyDrag(text, d, d.c), text);
+  });
+
+  it("no offered wall, anywhere, can tear the plan", () => {
+    // the safety property the whole feature rests on: if a wall is draggable at all,
+    // nudging it must not introduce a gap or an overlap
+    for (const name of ["casa-t3", "casa-piscina", "casa-patio", "cabin", "quinta", "apartment-t2"]) {
+      const text = load(name);
+      const model = modelOf(text);
+      const before = analyze(parse(JSON.parse(text))).findings.filter((f) => f.rule.startsWith("tiling.")).length;
+      for (const d of draggableWalls(text, model).values())
+        for (const delta of [0.1, -0.1, 0.35]) {
+          const out = applyDrag(text, d, d.c + delta);
+          const after = analyze(parse(JSON.parse(out))).findings.filter((f) => f.rule.startsWith("tiling."));
+          assert.equal(
+            after.length,
+            before,
+            `${name}: moving ${d.wallId} by ${delta} produced ${after.map((f) => f.rule).join(", ")}`,
+          );
+        }
+    }
+  });
+
+  it("offers the building's outer walls", () => {
+    for (const name of ["casa-t3", "cabin"]) {
+      const text = load(name);
+      const model = modelOf(text);
+      const walls = draggableWalls(text, model);
+      const exterior = model.walls.filter((w) => w.kind === "exterior");
+      const offered = exterior.filter((w) => walls.has(w.id));
+      assert.equal(offered.length, exterior.length, `${name}: only ${offered.length}/${exterior.length} outer walls`);
+    }
+  });
+
+  it("moves only the spaces the wall actually separates", () => {
+    // casa-t3's north edge is shared by several rooms at y = 0; dragging one room's
+    // stretch of it must not drag the others
+    const text = load("casa-t3");
+    const model = modelOf(text);
+    const wall = model.walls.find((w) => w.kind === "exterior" && w.axis === "h" && w.c === 0)!;
+    const d = draggableWalls(text, model).get(wall.id)!;
+    const before = JSON.parse(text).rooms;
+    const after = JSON.parse(applyDrag(text, d, 0.4)).rooms;
+    const moved = Object.keys(before).filter((k) => JSON.stringify(before[k].poly) !== JSON.stringify(after[k].poly));
+    const owners = [wall.neg, wall.pos].filter((o) => o !== "exterior");
+    assert.deepEqual(moved.sort(), owners.sort());
   });
 
   it("re-applying from the gesture's start never compounds", () => {

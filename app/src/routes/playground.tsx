@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Drawing } from "../components/Drawing";
 import { EXAMPLES, byId } from "../lib/plans";
 import { useFloorplan } from "../lib/useFloorplan";
-import type { Options } from "../lib/useFloorplan";
+import type { Options, Outcome } from "../lib/useFloorplan";
 
 const DEFAULTS: Omit<Options, "theme"> = { scale: 40, areas: "clear", labels: "auto", mark: "warning" };
 /** how many steps of history to keep, each way */
@@ -42,6 +42,13 @@ export function Playground() {
   const [hist, setHist] = useState<{ past: string[]; future: string[] }>(EMPTY_HISTORY);
   const [opts, setOpts] = useState(DEFAULTS);
   const theme = useResolvedTheme();
+
+  /**
+   * The last outcome that parsed. Editing a number goes through states like `3.` that are
+   * not valid JSON, and replacing the drawing with a parse error on every keystroke makes
+   * the page jump and loses your place; the last good render is held and marked stale.
+   */
+  const lastGood = useRef<Extract<Outcome, { ok: true }> | null>(null);
 
   // switching plan replaces the document and starts a fresh history
   useEffect(() => {
@@ -123,6 +130,29 @@ export function Playground() {
   }, [undo, redo]);
 
   const outcome = useFloorplan(text, { ...opts, theme });
+
+  // cache-the-previous-value: idempotent, and it avoids the extra render an effect costs
+  if (outcome.ok) lastGood.current = outcome;
+  const shown = outcome.ok ? outcome : lastGood.current;
+  const stale = outcome.ok
+    ? undefined
+    : `${outcome.title} — showing the last valid drawing · ${outcome.issues[0]?.message ?? ""}`;
+
+  // confirm the edit landed, once, when the document becomes valid again
+  const [toast, setToast] = useState(false);
+  const wasBroken = useRef(false);
+  useEffect(() => {
+    if (!outcome.ok) {
+      wasBroken.current = true;
+      setToast(false);
+      return;
+    }
+    if (!wasBroken.current) return;
+    wasBroken.current = false;
+    setToast(true);
+    const t = window.setTimeout(() => setToast(false), 1600);
+    return () => window.clearTimeout(t);
+  }, [outcome.ok]);
   const set = useCallback(<K extends keyof typeof opts>(k: K, v: (typeof opts)[K]) => setOpts((o) => ({ ...o, [k]: v })), []);
   const format = useCallback(() => {
     mark();
@@ -153,15 +183,15 @@ export function Playground() {
           <span className="k">Scale</span>
           <span className="v">{opts.scale} px/m</span>
         </div>
-        {outcome.ok && (
+        {shown && (
           <>
             <div className="tb-field">
               <span className="k">Footprint</span>
-              <span className="v">{outcome.result.schedule.footprint.toFixed(2)} m²</span>
+              <span className="v">{shown.result.schedule.footprint.toFixed(2)} m²</span>
             </div>
             <div className="tb-field">
               <span className="k">Clear area</span>
-              <span className="v">{outcome.result.schedule.interiorClearArea.toFixed(2)} m²</span>
+              <span className="v">{shown.result.schedule.interiorClearArea.toFixed(2)} m²</span>
             </div>
           </>
         )}
@@ -252,12 +282,13 @@ export function Playground() {
         </section>
 
         <div className="drawing-col">
-          {outcome.ok ? (
+          {shown ? (
             <Drawing
-              svg={outcome.result.svg}
-              model={outcome.result.model}
+              svg={shown.result.svg}
+              model={shown.result.model}
               text={text}
               scale={opts.scale}
+              stale={stale}
               onDragStart={mark}
               onChange={setText}
             />
@@ -268,22 +299,29 @@ export function Playground() {
                 <span className="note">north up · y grows south</span>
               </div>
               <div className="schemaerr">
-                {outcome.title}:
+                {!outcome.ok && outcome.title}:
                 <ul>
-                  {outcome.issues.map((i, n) => (
-                    <li key={n}>
-                      <span className="path">{i.path || "(root)"}</span>: {i.message}
-                    </li>
-                  ))}
+                  {!outcome.ok &&
+                    outcome.issues.map((i, n) => (
+                      <li key={n}>
+                        <span className="path">{i.path || "(root)"}</span>: {i.message}
+                      </li>
+                    ))}
                 </ul>
               </div>
             </section>
           )}
 
-          {outcome.ok && <ScheduleTable schedule={outcome.result.schedule} />}
-          {outcome.ok && <FindingsList findings={outcome.result.findings} />}
+          {shown && <ScheduleTable schedule={shown.result.schedule} />}
+          {shown && <FindingsList findings={shown.result.findings} />}
         </div>
       </div>
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          <span className="dot" />
+          Updated
+        </div>
+      )}
     </>
   );
 }

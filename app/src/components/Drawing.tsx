@@ -9,6 +9,8 @@ interface Props {
   scale: number;
   /** called once per gesture, before the first change, so undo has one entry per drag */
   onDragStart: () => void;
+  /** set while the source does not parse: the drawing shown is the last one that did */
+  stale?: string | undefined;
   onChange: (next: string) => void;
 }
 
@@ -20,7 +22,7 @@ const THRESHOLD_PX = 3;
  * new coordinate, rewrites the source, and the ordinary pipeline redraws — so what you see
  * is always a pure function of the text in the editor.
  */
-export function Drawing({ svg, model, text, scale, onDragStart, onChange }: Props) {
+export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const [hint, setHint] = useState<string | null>(null);
   const drag = useRef<{
@@ -64,6 +66,7 @@ export function Drawing({ svg, model, text, scale, onDragStart, onChange }: Prop
   const along = (d: Draggable, m: [number, number]) => (d.axis === "v" ? m[0] : m[1]);
 
   const onPointerDown = (e: React.PointerEvent) => {
+    if (stale) return;
     const d = walls.get((e.target as SVGElement).dataset?.["wall"] ?? "");
     if (!d || e.button !== 0) return;
     const m = toMetres(e.clientX, e.clientY);
@@ -106,11 +109,13 @@ export function Drawing({ svg, model, text, scale, onDragStart, onChange }: Prop
     <section className="panel">
       <div className="panel-head">
         <h2>Drawing</h2>
-        <span className="note">{hint ?? `${walls.size} of ${model.walls.length} walls draggable`}</span>
+        <span className={stale ? "note stale-note" : "note"}>
+          {stale ?? hint ?? `${walls.size} of ${model.walls.length} walls draggable`}
+        </span>
       </div>
       <div
         ref={host}
-        className="sheet-body"
+        className={stale ? "sheet-body stale" : "sheet-body"}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={end}

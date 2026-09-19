@@ -44,15 +44,25 @@ A wall is offered for dragging only when the move has a representation in the so
 
 | authored as | a drag writes | offered when |
 |---|---|---|
-| a `layout` grid | `cols[i]` and `cols[i+1]`, one growing by what the other loses | the wall sits on an interior track boundary |
-| room polygons | the shared coordinate in every room on that wall | the wall spans the whole of each edge it touches |
+| a `layout` grid | `cols[i]` and `cols[i+1]`, one growing by what the other loses | the wall sits on a track boundary |
+| a `layout` grid, far edge | the last track, so the building grows or shrinks | the wall is the far edge of the grid |
+| room polygons | the shared coordinate in the two spaces the wall separates | the wall spans the whole of each edge it touches |
 
-The second condition is the interesting one: if a room has a vertex on that line outside
-the wall's run, moving it would need the edge split and vertices inserted, which is a
-different operation than a drag — so the wall is simply not draggable. Everything else is
+The last condition is the interesting one: if one of those two spaces has a vertex on
+that line outside the wall's run, moving it would need the edge split and vertices
+inserted, which is a different operation than a drag — so the wall is simply not
+draggable. Only the two spaces a wall separates ever move; a room that merely shares the
+coordinate stays where it is. The one edge that never moves is the near edge of a grid,
+because the grid is anchored at 0 and shifting it would rewrite every coordinate in the
+document. A grid boundary also carries any polygon anchored to it, so a courtyard
+declared with an absolute `poly` travels with the tracks instead of tearing open. Everything else is
 clamped rather than forbidden, and because `derive()` reports problems as findings rather
 than throwing, a drag that makes the plan invalid turns the findings red live instead of
 being blocked. Drags land on 5 cm; hold Alt for millimetres.
+
+While the source does not parse — halfway through typing a number, say — the last valid
+drawing stays on screen, dimmed, with the parse error in the panel header rather than in
+place of the drawing; a short *Updated* confirms when a new one lands.
 
 A press only becomes a drag after 3 px, so clicking a wall changes nothing, and each
 move re-applies from the document as it was when the gesture began — so however many

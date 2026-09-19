@@ -145,3 +145,20 @@ tfoot td { font-weight: 600; font-variant-numeric: tabular-nums; border-top: 1px
 .doc table td, .doc table th { text-align: left; }
 .doc td:first-child, .doc th:first-child { width: 1%; white-space: nowrap; vertical-align: top; }
 .doc td:last-child { padding-left: 24px; }
+
+/* a drawing kept on screen while the source does not parse */
+.sheet-body.stale { opacity: .45; filter: saturate(.4); transition: opacity .12s ease; }
+.sheet-body.stale svg { cursor: default !important; }
+.note.stale-note { color: var(--sev-error); }
+
+/* confirmation that an edit landed */
+.toast {
+  position: fixed; right: 20px; bottom: 20px; z-index: 20;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--sheet); border: 1px solid var(--sev-info); color: var(--sev-info);
+  font-family: var(--mono); font-size: 12.5px; padding: 8px 13px;
+  animation: toast-in .16s ease-out;
+}
+.toast .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } .sheet-body.stale { transition: none; } }

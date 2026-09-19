@@ -54,12 +54,53 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
   const tracks: unknown = layout[key];
   if (!Array.isArray(tracks) || !tracks.every((t) => typeof t === "number")) return undefined;
 
-  const bounds = boundaries(tracks as number[]);
-  const i = bounds.findIndex((b) => near(b, wall.c));
-  if (i <= 0 || i >= bounds.length - 1) return undefined; // the outer edge is the building, not a boundary
+  const list = tracks as number[];
+  const bounds = boundaries(list);
+  const axis = wall.axis === "v" ? 0 : 1;
 
-  const before = (tracks as number[])[i - 1]!;
-  const after = (tracks as number[])[i]!;
+  /**
+   * A grid boundary is a line right across the plan, but a space may still be authored
+   * with an absolute poly — casa-patio's courtyard is. Those coordinates are anchored to
+   * the boundary, so they have to travel with it or the plan tears open behind them.
+   */
+  const anchored: JsonPath[] = [];
+  for (const kind of ["rooms", "outdoor"] as const) {
+    const group = asObj(doc[kind]);
+    if (!group) continue;
+    for (const id of Object.keys(group)) {
+      const poly = asObj(group[id])?.["poly"];
+      if (!Array.isArray(poly)) continue;
+      poly.forEach((pt, v) => {
+        if (Array.isArray(pt) && typeof pt[axis] === "number" && near(pt[axis] as number, wall.c))
+          anchored.push([kind, id, "poly", v, axis]);
+      });
+    }
+  }
+  const carry = (next: number) => anchored.map((path) => ({ path, literal: metres(next) }));
+  const i = bounds.findIndex((b) => near(b, wall.c));
+  // the grid is anchored at 0, so the near edge cannot move without shifting every
+  // coordinate in the document — a different operation than resizing a track
+  if (i <= 0) return undefined;
+
+  const before = list[i - 1]!;
+  const last = i === bounds.length - 1;
+  if (last) {
+    // the far edge of the building: dragging it grows or shrinks the final track
+    return {
+      wallId: wall.id,
+      axis: wall.axis,
+      c: wall.c,
+      min: wall.c - (before - MIN_TRACK),
+      max: wall.c + 100,
+      writes: `layout.${key}[${i - 1}]`,
+      edits: (next) => [
+        { path: ["layout", key, i - 1], literal: metres(before + Math.round((next - wall.c) * 1000) / 1000) },
+        ...carry(next),
+      ],
+    };
+  }
+
+  const after = list[i]!;
   return {
     wallId: wall.id,
     axis: wall.axis,
@@ -72,6 +113,7 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
       return [
         { path: ["layout", key, i - 1], literal: metres(before + d) },
         { path: ["layout", key, i], literal: metres(after - d) },
+        ...carry(next),
       ];
     },
   };
@@ -90,10 +132,17 @@ function fromPolys(doc: Doc, wall: WallSegment): Draggable | undefined {
   let lower = -Infinity;
   let upper = Infinity;
 
+  // only the two spaces this wall separates move. Scanning every space that happens to
+  // have a vertex on the same line would drag unrelated rooms along with it — and would
+  // refuse an exterior wall outright, because some far-off room shares its coordinate.
+  const owners = new Set([wall.neg, wall.pos].filter((o) => o !== "exterior" && o !== "gap"));
+  if (owners.size === 0) return undefined;
+
   for (const kind of ["rooms", "outdoor"] as const) {
     const group = asObj(doc[kind]);
     if (!group) continue;
     for (const id of Object.keys(group)) {
+      if (!owners.has(id)) continue;
       const poly: unknown = asObj(group[id])?.["poly"];
       if (!Array.isArray(poly)) continue;
       for (let v = 0; v < poly.length; v++) {
