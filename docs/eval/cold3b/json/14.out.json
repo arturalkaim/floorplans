@@ -1,0 +1,7 @@
+{
+  "summary": {"error":0,"warning":1,"info":1},
+  "findings": [
+    {"rule":"opening.near_corner","severity":"warning","message":"opening #1 leaves a 0.05 m sliver of wall at a corner; move it to the corner or leave ≥ 0.1 m","path":"openings[1].position","at":[3,0.5],"opening":"door:corridor-reception:0"},
+    {"rule":"circulation.share","severity":"info","message":"Corridor take 17 % of the interior (6 m²); above 10 % is worth questioning","path":"rooms","rooms":["corridor"]}
+  ]
+}

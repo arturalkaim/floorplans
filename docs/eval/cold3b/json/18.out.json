@@ -1,0 +1,8 @@
+{
+  "summary": {"error":2,"warning":1,"info":0},
+  "findings": [
+    {"rule":"opening.collision","severity":"error","message":"openings #3 and #0 overlap on the wall between the exterior and shop","path":"openings[0]","at":[3,0],"opening":"frontdoor"},
+    {"rule":"opening.overflow","severity":"error","message":"opening #2 (door, 0.7 m) does not fit the 2 m wall between storeroom and staffwc at that position","path":"openings[2].width","at":[4,4.3],"opening":"door:staffwc-storeroom:0"},
+    {"rule":"wet.no_window","severity":"warning","message":"Staff WC has no exterior window; plan mechanical extraction","path":"rooms.staffwc","rooms":["staffwc"],"at":[5,5]}
+  ]
+}

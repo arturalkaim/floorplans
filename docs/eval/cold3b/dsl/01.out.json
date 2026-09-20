@@ -1,0 +1,9 @@
+{
+  "summary": {"error":0,"warning":4,"info":0},
+  "findings": [
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #0 swings into Shower in Shower room; rehang it or move the fixture","path":"openings[0].hinge","at":[5,0.6],"rooms":["shower"],"opening":"door:shower-studio:0","fixture":"shower:shower:0","line":6},
+    {"rule":"habitable.no_window","severity":"warning","message":"Studio is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"rooms.studio","rooms":["studio"],"at":[2.5,2.4],"line":3},
+    {"rule":"room.min_dimension","severity":"warning","message":"Shower room (bath): 1.35 m at its narrowest; comfort minimum is 1.5 m (clear floor 1.35 × 2.8 m)","path":"rooms.shower.rect","rooms":["shower"],"at":[5.75,2.55],"measured":1.35,"minimum":1.5,"rect":[5.05,1.1,1.35,2.8],"line":4},
+    {"rule":"wet.no_window","severity":"warning","message":"Shower room has no exterior window; plan mechanical extraction","path":"rooms.shower","rooms":["shower"],"at":[5.75,2.55],"line":4}
+  ]
+}

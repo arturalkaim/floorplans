@@ -1,0 +1,13 @@
+{
+  "error": {
+    "issues": [
+      {"path":"","message":"line 4: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":4},
+      {"path":"","message":"line 5: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":5},
+      {"path":"","message":"line 8: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":8},
+      {"path":"","message":"line 9: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":9},
+      {"path":"","message":"line 10: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":10},
+      {"path":"","message":"line 11: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":11},
+      {"path":"","message":"line 12: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":12}
+    ]
+  }
+}

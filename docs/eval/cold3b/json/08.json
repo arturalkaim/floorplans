@@ -1,0 +1,49 @@
+{
+  "title": "Townhouse",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "levels": {
+    "ground": {
+      "rooms": {
+        "hall": {"kind": "hall", "name": "Hall", "rect": [0, 0, 2, 3]},
+        "living": {"kind": "living", "name": "Living room", "rect": [2, 0, 4, 3]},
+        "kitchen": {"kind": "kitchen", "name": "Kitchen", "rect": [0, 3, 6, 2]}
+      },
+      "openings": [
+        {"type": "door", "between": ["exterior", "hall"], "on": {"room": "hall", "side": "west"}, "width": 0.9, "entrance": true},
+        {"type": "door", "between": ["hall", "living"], "position": {"from": "start", "distance": 0.5}, "width": 0.9},
+        {"type": "door", "between": ["hall", "kitchen"], "on": {"room": "kitchen", "side": "north"}, "position": 0.5, "width": 0.9},
+        {"type": "window", "between": ["exterior", "living"], "on": {"room": "living", "side": "south"}, "width": 2},
+        {"type": "window", "between": ["exterior", "kitchen"], "on": {"room": "kitchen", "side": "south"}, "width": 1.5}
+      ]
+    },
+    "first": {
+      "height": 2.6,
+      "rooms": {
+        "landing": {"kind": "hall", "name": "Landing", "rect": [2.5, 0, 1.5, 5]},
+        "bedroom1": {"kind": "bedroom", "name": "Bedroom 1", "rect": [0, 0, 2.5, 2.5]},
+        "bath": {"kind": "bath", "name": "Bathroom", "rect": [0, 2.5, 2.5, 2.5]},
+        "bedroom2": {"kind": "bedroom", "name": "Bedroom 2", "rect": [4, 0, 2, 5]}
+      },
+      "openings": [
+        {"type": "door", "between": ["landing", "bedroom1"], "position": {"from": "start", "distance": 0.5}, "width": 0.8},
+        {"type": "door", "between": ["landing", "bath"], "position": {"from": "start", "distance": 0.5}, "width": 0.7},
+        {"type": "door", "between": ["landing", "bedroom2"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+        {"type": "window", "between": ["exterior", "bedroom1"], "on": {"room": "bedroom1", "side": "north"}, "width": 1.2},
+        {"type": "window", "between": ["exterior", "bath"], "on": {"room": "bath", "side": "south"}, "width": 0.6},
+        {"type": "window", "between": ["exterior", "bedroom2"], "on": {"room": "bedroom2", "side": "east"}, "width": 1.2}
+      ]
+    }
+  },
+  "vertical": [
+    {
+      "id": "main",
+      "type": "stairs",
+      "name": "Main stair",
+      "risers": 16,
+      "at": [
+        {"level": "ground", "in": "hall", "rect": [0.2, 0.2, 1, 1.3]},
+        {"level": "first", "in": "landing", "rect": [2.6, 0.2, 1, 1.3]}
+      ]
+    }
+  ]
+}

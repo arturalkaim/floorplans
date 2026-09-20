@@ -1,0 +1,13 @@
+{
+  "title": "Garage workshop",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "garage": {"kind": "garage", "name": "Garage", "poly": [[2,0],[6,0],[6,6],[0,6],[0,2],[2,2]]},
+    "office": {"kind": "office", "name": "Office", "rect": [0, 0, 2, 2]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "garage"], "on": {"room": "garage", "side": "south"}, "width": 2.4, "entrance": true},
+    {"type": "door", "between": ["garage", "office"], "on": {"room": "office", "side": "east"}, "position": 0.5, "width": 0.9},
+    {"type": "window", "between": ["exterior", "office"], "on": {"room": "office", "side": "north"}, "width": 1}
+  ]
+}

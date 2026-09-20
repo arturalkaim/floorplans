@@ -1,0 +1,10 @@
+{
+  "summary": {"error":1,"warning":3,"info":1},
+  "findings": [
+    {"rule":"opening.collision","severity":"error","message":"openings #5 and #0 overlap on the wall between the exterior and living","path":"openings[0]","at":[3.5,0],"opening":"door:exterior-living:0"},
+    {"rule":"door.min_width","severity":"warning","message":"door #3 (0.7 m) between Courtyard and Bathroom is narrower than 0.9 m","path":"openings[3].width","at":[5,3],"opening":"door:bath-courtyard:0"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 1.8 m at its narrowest; comfort minimum is 3 m (clear floor 2.8 × 1.8 m)","path":"rooms.living.rect","rooms":["living"],"at":[3.5,1],"measured":1.8,"minimum":3,"rect":[2.1,0.1,2.8,1.8]},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom (bedroom): 1.8 m at its narrowest; comfort minimum is 2.4 m (clear floor 2.8 × 1.8 m)","path":"rooms.bedroom.rect","rooms":["bedroom"],"at":[3.5,6],"measured":1.8,"minimum":2.4,"rect":[2.1,5.1,2.8,1.8]},
+    {"rule":"door.swing_collision","severity":"info","message":"doors #0 and #1 swing into the same corner of Living room","path":"openings[0]","rooms":["living"],"at":[3.05,0]}
+  ]
+}

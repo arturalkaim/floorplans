@@ -1,0 +1,24 @@
+{
+  "title": "Flat on a grid",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "grid": {"cols": [3, 3], "rows": [3, 3]},
+  "rooms": {
+    "living": {"kind": "living", "name": "Living room"},
+    "kitchen": {"kind": "kitchen", "name": "Kitchen"},
+    "bedroom": {"kind": "bedroom", "name": "Bedroom"},
+    "bath": {"kind": "bath", "name": "Bathroom"}
+  },
+  "layout": {
+    "areas": ["living kitchen", "bedroom bath"]
+  },
+  "openings": [
+    {"type": "door", "between": ["living", "kitchen"], "position": {"from": "start", "distance": 1}, "width": 0.9},
+    {"type": "door", "between": ["living", "bedroom"], "position": {"from": "start", "distance": 1}, "width": 0.9},
+    {"type": "door", "between": ["bedroom", "bath"], "position": {"from": "start", "distance": 0.5}, "width": 0.7},
+    {"type": "door", "between": ["exterior", "living"], "on": {"room": "living", "side": "west"}, "width": 0.9, "entrance": true},
+    {"type": "window", "between": ["exterior", "living"], "on": {"room": "living", "side": "north"}, "width": 1.5},
+    {"type": "window", "between": ["exterior", "kitchen"], "on": {"room": "kitchen", "side": "north"}, "width": 1},
+    {"type": "window", "between": ["exterior", "bedroom"], "on": {"room": "bedroom", "side": "west"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bath"], "on": {"room": "bath", "side": "east"}, "width": 0.6}
+  ]
+}

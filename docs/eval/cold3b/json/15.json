@@ -1,0 +1,22 @@
+{
+  "title": "Long narrow house",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "room1": {"kind": "hall", "name": "Hall", "rect": [0, 0, 2, 3]},
+    "room2": {"kind": "living", "name": "Living room", "rect": [2, 0, 3, 3]},
+    "room3": {"kind": "kitchen", "name": "Kitchen", "rect": [5, 0, 3, 3]},
+    "room4": {"kind": "bedroom", "name": "Bedroom", "rect": [8, 0, 3, 3]},
+    "room5": {"kind": "bath", "name": "Bathroom", "rect": [11, 0, 2, 3]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "room1"], "on": {"room": "room1", "side": "west"}, "width": 0.9, "entrance": true},
+    {"type": "door", "between": ["room1", "room2"], "position": {"from": "start", "distance": 1}, "width": 0.9},
+    {"type": "door", "between": ["room2", "room3"], "position": {"from": "start", "distance": 1}, "width": 0.9},
+    {"type": "door", "between": ["room3", "room4"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["room4", "room5"], "position": {"from": "start", "distance": 1}, "width": 0.7},
+    {"type": "window", "between": ["exterior", "room2"], "on": {"room": "room2", "side": "north"}, "width": 1.5},
+    {"type": "window", "between": ["exterior", "room3"], "on": {"room": "room3", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "room4"], "on": {"room": "room4", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "room5"], "on": {"room": "room5", "side": "north"}, "width": 0.6}
+  ]
+}

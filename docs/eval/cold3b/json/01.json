@@ -1,0 +1,16 @@
+{
+  "title": "Studio",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "studio": {"kind": "living", "name": "Studio", "rect": [0, 0, 5, 4]},
+    "shower": {"kind": "bath", "name": "Shower room", "rect": [5, 0, 1.5, 4]}
+  },
+  "openings": [
+    {"type": "door", "between": ["studio", "shower"], "position": {"from": "start", "distance": 1}, "width": 0.8, "hinge": "start", "swingInto": "shower"},
+    {"type": "door", "between": ["exterior", "studio"], "on": {"room": "studio", "side": "south"}, "width": 0.9, "entrance": true}
+  ],
+  "fixtures": [
+    {"type": "counter", "in": "studio", "at": [0.2, 0.2], "size": [2, 0.6], "name": "Kitchenette"},
+    {"type": "shower", "in": "shower", "at": [5.2, 0.2], "size": [0.9, 0.9], "name": "Shower"}
+  ]
+}

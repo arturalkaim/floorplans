@@ -1,0 +1,21 @@
+{
+  "title": "House with a utility",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "living": {"kind": "living", "name": "Living room", "rect": [0, 0, 4, 4]},
+    "kitchen": {"kind": "kitchen", "name": "Kitchen", "rect": [4, 0, 3, 4]},
+    "utility": {"kind": "utility", "name": "Utility", "rect": [4, 4, 3, 1.5]}
+  },
+  "outdoor": {
+    "yard": {"name": "Yard", "rect": [0, 4, 4, 4]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "living"], "on": {"room": "living", "side": "west"}, "width": 0.9, "entrance": true},
+    {"type": "door", "between": ["living", "kitchen"], "position": {"from": "start", "distance": 1}, "width": 0.9},
+    {"type": "door", "between": ["kitchen", "utility"], "position": {"from": "start", "distance": 0.5}, "width": 0.8},
+    {"type": "door", "between": ["utility", "yard"], "position": {"from": "start", "distance": 0.5}, "width": 0.9, "hinge": "start", "swingInto": "yard"},
+    {"type": "window", "between": ["exterior", "kitchen"], "on": {"room": "kitchen", "side": "north"}, "width": 1.5},
+    {"type": "window", "between": ["exterior", "utility"], "on": {"room": "utility", "side": "east"}, "width": 0.8},
+    {"type": "window", "between": ["exterior", "living"], "on": {"room": "living", "side": "south"}, "width": 2}
+  ]
+}

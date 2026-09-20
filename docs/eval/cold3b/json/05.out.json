@@ -1,0 +1,7 @@
+{
+  "summary": {"error":0,"warning":2,"info":0},
+  "findings": [
+    {"rule":"opening.near_corner","severity":"warning","message":"opening #1 leaves a 0.05 m sliver of wall at a corner; move it to the corner or leave ≥ 0.1 m","path":"openings[1].position","at":[2,0.5],"opening":"door:garage-office:0"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Office (office): 1.85 m at its narrowest; comfort minimum is 2 m (clear floor 1.85 × 1.85 m)","path":"rooms.office.rect","rooms":["office"],"at":[1,1],"measured":1.85,"minimum":2,"rect":[0.1,0.1,1.85,1.85]}
+  ]
+}

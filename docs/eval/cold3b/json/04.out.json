@@ -1,0 +1,8 @@
+{
+  "summary": {"error":0,"warning":1,"info":2},
+  "findings": [
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 2.85 m at its narrowest; comfort minimum is 3 m (clear floor 2.85 × 3.8 m)","path":"rooms.living.rect","rooms":["living"],"at":[1.5,2],"measured":2.85,"minimum":3,"rect":[0.1,0.1,2.85,3.8]},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom opens directly off Living room","path":"openings[1]","rooms":["living","bedroom"],"at":[3,1],"opening":"door:bedroom-living:0"},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom opens directly off Kitchen","path":"openings[2]","rooms":["bedroom","kitchen"],"at":[6,1],"opening":"door:bedroom-kitchen:0"}
+  ]
+}

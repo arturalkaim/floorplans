@@ -1,0 +1,12 @@
+{
+  "summary": {"error":0,"warning":6,"info":1},
+  "findings": [
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #0 swings into Stair in Hall; rehang it or move the fixture","path":"levels.ground.openings[0]","at":[0.55,2],"rooms":["hall"],"opening":"door:exterior-hall:0","vertical":"main","level":"ground"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Hall (hall): 0.7 m at its narrowest; comfort minimum is 1 m (clear floor 0.7 × 1.8 m)","path":"levels.ground.rooms.hall.rect","rooms":["hall"],"at":[1.6,1],"measured":0.7,"minimum":1,"rect":[1.2,0.1,0.7,1.8],"level":"ground"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Shower room (bath): 1.35 m at its narrowest; comfort minimum is 1.5 m (clear floor 1.35 × 3.8 m)","path":"levels.loft.rooms.shower.rect","rooms":["shower"],"at":[6.75,2],"measured":1.35,"minimum":1.5,"rect":[6.05,0.1,1.35,3.8],"level":"loft"},
+    {"level":"loft","rule":"stair.misaligned","severity":"warning","message":"Stair does not sit over itself: its footprints on ground and loft do not overlap at all","path":"vertical[0].at[1]","at":[5.3,1],"vertical":"main"},
+    {"level":"loft","rule":"structure.over_open_sky","severity":"warning","message":"Loft room has 20 m² standing over no room on ground; a cantilever is real, but so is a room that has lost its support","path":"levels.loft.rooms.loftroom","at":[3.4,2.2],"rooms":["loftroom"]},
+    {"level":"loft","rule":"structure.over_open_sky","severity":"warning","message":"Shower room has 6 m² standing over no room on ground; a cantilever is real, but so is a room that has lost its support","path":"levels.loft.rooms.shower","at":[6.75,2],"rooms":["shower"]},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 100 % of the interior (4 m²); above 10 % is worth questioning","path":"levels.ground.rooms","rooms":["hall"],"level":"ground"}
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "title": "Semi-detached with a void",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "levels": {
+    "ground": {
+      "rooms": {
+        "hall": {"kind": "hall", "name": "Hall", "rect": [0, 0, 2, 5]},
+        "living": {"kind": "living", "name": "Living room", "rect": [2, 0, 5, 5]}
+      },
+      "openings": [
+        {"type": "door", "between": ["exterior", "hall"], "on": {"room": "hall", "side": "west"}, "width": 0.9, "entrance": true},
+        {"type": "door", "between": ["hall", "living"], "position": {"from": "start", "distance": 1}, "width": 1.2},
+        {"type": "window", "between": ["exterior", "living"], "on": {"room": "living", "side": "south"}, "width": 2.4}
+      ]
+    },
+    "first": {
+      "height": 2.6,
+      "rooms": {
+        "landing": {"kind": "hall", "name": "Landing", "rect": [0, 0, 2, 2]},
+        "bedroom1": {"kind": "bedroom", "name": "Bedroom 1", "rect": [0, 2, 2, 3]},
+        "bedroom2": {"kind": "bedroom", "name": "Bedroom 2", "rect": [2, 3, 5, 2]}
+      },
+      "voids": {
+        "overliving": {"name": "Void over living", "rect": [2, 0, 5, 3]}
+      },
+      "openings": [
+        {"type": "door", "between": ["landing", "bedroom1"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+        {"type": "door", "between": ["landing", "bedroom2"], "on": {"room": "bedroom2", "side": "west"}, "position": 0.5, "width": 0.8},
+        {"type": "window", "between": ["exterior", "bedroom1"], "on": {"room": "bedroom1", "side": "west"}, "width": 1.2},
+        {"type": "window", "between": ["exterior", "bedroom2"], "on": {"room": "bedroom2", "side": "south"}, "width": 1.5}
+      ]
+    }
+  },
+  "vertical": [
+    {
+      "id": "main",
+      "type": "stairs",
+      "name": "Main stair",
+      "risers": 15,
+      "at": [
+        {"level": "ground", "in": "hall", "rect": [0.2, 0.2, 1, 2.6]},
+        {"level": "first", "in": "landing", "rect": [0.2, 0.2, 1, 1.6]}
+      ]
+    }
+  ]
+}

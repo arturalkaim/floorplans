@@ -1,0 +1,25 @@
+{
+  "title": "Bungalow",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "bedroom1": {"kind": "bedroom", "name": "Bedroom 1", "rect": [0, 0, 3, 3]},
+    "hall": {"kind": "hall", "name": "Hall", "rect": [3, 0, 1.5, 6]},
+    "bedroom2": {"kind": "bedroom", "name": "Bedroom 2", "rect": [4.5, 0, 3, 3]},
+    "bedroom3": {"kind": "bedroom", "name": "Bedroom 3", "rect": [0, 3, 3, 3]},
+    "bath": {"kind": "bath", "name": "Bathroom", "rect": [4.5, 3, 3, 3]},
+    "living": {"kind": "living", "name": "Living room", "rect": [0, 6, 7.5, 2]}
+  },
+  "openings": [
+    {"type": "door", "between": ["hall", "bedroom1"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["hall", "bedroom2"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["hall", "bedroom3"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["hall", "bath"], "position": {"from": "start", "distance": 1}, "width": 0.7},
+    {"type": "door", "between": ["hall", "living"], "position": {"from": "start", "distance": 0.3}, "width": 0.9},
+    {"type": "door", "between": ["exterior", "living"], "on": {"room": "living", "side": "south"}, "width": 1, "entrance": true},
+    {"type": "window", "between": ["exterior", "bedroom1"], "on": {"room": "bedroom1", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bedroom2"], "on": {"room": "bedroom2", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bedroom3"], "on": {"room": "bedroom3", "side": "west"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bath"], "on": {"room": "bath", "side": "east"}, "width": 0.6},
+    {"type": "window", "between": ["exterior", "living"], "on": {"room": "living", "side": "south"}, "width": 2}
+  ]
+}
