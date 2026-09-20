@@ -7,7 +7,7 @@
 // or in one go: floorplan(json) → { plan, model, findings, svg, schedule }
 
 import { derive } from "./derive.ts";
-import { polyInside, shoelace } from "./geometry.ts";
+import { overlapArea, shapeArea } from "./derive.ts";
 import { parse, PlanError } from "./parse.ts";
 import { checkRules, sortFindings } from "./rules.ts";
 import { renderSvg } from "./svg.ts";
@@ -144,16 +144,12 @@ function levelSchedule(lm: LevelModel): LevelSchedule {
     footprint: lm.envelope.area,
     waterArea: round(lm.fixtures.filter((f) => f.fixture.type === "pool").reduce((s, f) => s + f.area, 0)),
     outdoor: lm.level.outdoor.map((o) => {
-      const area = Math.abs(polyArea(o.poly));
-      // INVARIANT: deducts only fixtures fully contained in the outdoor space's own polygon
-      // (D3, same stopgap as RoomModel.fixtureArea in derive.ts) — one straddling the
-      // boundary deducts nothing here, and fixture.outside_space already told the author
-      // why. The exact intersection waits for the geometry core (docs/gaps-design.md
-      // §1.3.2).
+      const area = round(shapeArea(o));
+      // exactly the part of each fixture that stands on this deck, the same way a room
+      // deducts its own: the arrangement of the two rings, read with an intersection
+      // predicate (docs/gaps-design.md §1.3.2). A pool half off the deck deducts half.
       const fixtureArea = round(
-        lm.fixtures
-          .filter((f) => f.fixture.in === o.id && polyInside(f.fixture.poly, o.poly))
-          .reduce((s, f) => s + f.area, 0),
+        lm.fixtures.filter((f) => f.fixture.in === o.id).reduce((s, f) => s + overlapArea(f.fixture, o), 0),
       );
       return {
         id: o.id,
@@ -236,4 +232,3 @@ export function worstSeverity(findings: Finding[]): Severity | undefined {
 }
 
 const round = (n: number): number => Math.round(n * 1000) / 1000;
-const polyArea = (poly: Array<[number, number]>): number => round(shoelace(poly));

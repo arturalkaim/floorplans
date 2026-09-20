@@ -182,6 +182,12 @@ export function shapeBox(s: Shape): { x0: number; y0: number; x1: number; y1: nu
 }
 
 /**
+ * How much of `a` stands on `b`, in m². The arrangement of the two rings, read with an
+ * intersection predicate — the boolean operation that needs no clipper (§1.3.2).
+ */
+export const overlapArea = (a: Shape, b: Shape): number => areaBoth(arrange([ringOf(a), ringOf(b)]), 0, 1) / 1e6;
+
+/**
  * Is this point on the shape's boundary, to the millimetre? Used to decide whether
  * moving a wall's end would drag a corner off a third space's edge — the T-junction that
  * a "is it one of its corners" test misses.
@@ -456,8 +462,7 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
   for (const fm of fixtureModels) {
     const host = hostShape.get(fm.fixture.in);
     if (!host) continue;
-    const both = arrange([ringOf(fm.fixture), ringOf(host)]);
-    insideHost.set(fm, areaBoth(both, 0, 1) / 1e6);
+    insideHost.set(fm, overlapArea(fm.fixture, host));
   }
   for (const fm of fixtureModels) {
     // a vertical element's footprint is checked by `stair.no_arrival`, which says the same
@@ -480,8 +485,7 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
       const a = fixtureModels[i]!;
       const b = fixtureModels[j]!;
       if (a.fixture.in !== b.fixture.in) continue;
-      const pair = arrange([ringOf(a.fixture), ringOf(b.fixture)]);
-      if (areaBoth(pair, 0, 1) <= 0) continue;
+      if (overlapArea(a.fixture, b.fixture) <= 0) continue;
       findings.push({
         rule: "fixture.overlap",
         severity: "error",
