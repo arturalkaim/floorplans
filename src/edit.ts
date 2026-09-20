@@ -487,9 +487,42 @@ function extentOf(poly: Pt[]): { x0: number; y0: number; x1: number; y1: number 
 }
 
 /**
+ * Where each corner of an authored `poly` keeps its two numbers: `poly[v]` for a plain
+ * point, `poly[v].arc` for an arc entry, which carries the corner the arc *ends* at.
+ * `undefined` when any entry is neither, so the caller declines the edit instead of
+ * writing to a path that is not there.
+ *
+ * `spaceForm` derives the same thing for a room. It is repeated here rather than shared
+ * because the two read different documents' shapes at different times and the shared
+ * version would be a parameter list longer than the body.
+ */
+function polyHolders(poly: unknown, corners: number): Array<readonly (string | number)[]> | undefined {
+  if (!Array.isArray(poly) || poly.length !== corners) return undefined;
+  const out: Array<readonly (string | number)[]> = [];
+  for (const [v, p] of (poly as unknown[]).entries()) {
+    if (Array.isArray(p) && p.length === 2 && p.every((n) => typeof n === "number")) {
+      out.push(["poly", v]);
+      continue;
+    }
+    const a = asObj(p)?.["arc"];
+    if (Array.isArray(a) && a.length === 2 && a.every((n) => typeof n === "number")) {
+      out.push(["poly", v, "arc"]);
+      continue;
+    }
+    return undefined;
+  }
+  return out;
+}
+
+/**
  * A fixture is authored either as a poly or as `at` + `size`, and an edit has to be
  * written back in whichever form the source uses — rewriting one into the other would
  * reformat a document the author is still typing in.
+ *
+ * INVARIANT: this returns `undefined` rather than a writer that cannot write. A handle a
+ * caller is offered is a handle that applies; `movableFixtures` and
+ * `draggableFixtureEdges` promise a `Map` and never an exception, so anything they
+ * cannot address has to be declined here, before it is offered (B12).
  */
 function fixtureWriter(doc: Doc, root: JsonPath, index: number, poly: Pt[]) {
   const group = at(doc, root)?.["fixtures"];
@@ -500,6 +533,14 @@ function fixtureWriter(doc: Doc, root: JsonPath, index: number, poly: Pt[]) {
   const hasPoly = Array.isArray(entry["poly"]);
   const hasRect = Array.isArray(entry["at"]) && Array.isArray(entry["size"]);
   if (!hasPoly && !hasRect) return undefined;
+  // an arc entry keeps its corner at `poly[v].arc`, so `poly[v][0]` is not a path in the
+  // document at all; `r`, `sweep` and `large` are untouched by moving either end
+  const holders = hasPoly ? polyHolders(entry["poly"], poly.length) : undefined;
+  if (hasPoly && holders === undefined) return undefined;
+  const corner = (v: number, axis: 0 | 1, to: number) => ({
+    path: [...root, "fixtures", index, ...holders![v]!, axis] as JsonPath,
+    literal: metres(to),
+  });
 
   return {
     /** shift every corner by the same amount */
@@ -511,10 +552,7 @@ function fixtureWriter(doc: Doc, root: JsonPath, index: number, poly: Pt[]) {
           { path: [...root, "fixtures", index, "at", 1], literal: metres(at[1]! + dy) },
         ];
       }
-      return poly.flatMap((p, v) => [
-        { path: [...root, "fixtures", index, "poly", v, 0] as JsonPath, literal: metres(p[0] + dx) },
-        { path: [...root, "fixtures", index, "poly", v, 1] as JsonPath, literal: metres(p[1] + dy) },
-      ]);
+      return poly.flatMap((p, v) => [corner(v, 0, p[0] + dx), corner(v, 1, p[1] + dy)]);
     },
     /** move one side of the footprint, leaving the opposite side where it is */
     edge: (axis: 0 | 1, from: number, to: number): Array<{ path: JsonPath; literal: string }> => {
@@ -532,7 +570,7 @@ function fixtureWriter(doc: Doc, root: JsonPath, index: number, poly: Pt[]) {
       return poly
         .map((p, v) => ({ p, v }))
         .filter(({ p }) => Math.abs(p[axis] - from) < 1e-6)
-        .map(({ v }) => ({ path: [...root, "fixtures", index, "poly", v, axis] as JsonPath, literal: metres(to) }));
+        .map(({ v }) => corner(v, axis, to));
     },
   };
 }
