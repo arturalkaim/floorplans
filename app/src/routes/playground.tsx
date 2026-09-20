@@ -1,6 +1,6 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { formatText } from "floorplan";
-import type { Finding, Severity } from "floorplan";
+import type { Finding, LevelSchedule, Schedule, Severity } from "floorplan";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Drawing } from "../components/Drawing";
 import { EXAMPLES, byId } from "../lib/plans";
@@ -50,6 +50,15 @@ export function Playground() {
   const [hoverFinding, setHoverFinding] = useState<number | null>(null);
   const [pinFinding, setPinFinding] = useState<number | null>(null);
   const activeFinding = pinFinding ?? hoverFinding;
+  // which level is shown, on a plan that has more than one. Kept as the id the author
+  // picked, not an index, so it survives edits that reorder `stack`; falls back to the
+  // ground level below once `shown` is known, if this id is no longer one of its levels.
+  const [level, setLevel] = useState<string | undefined>(undefined);
+  const selectLevel = useCallback((id: string) => {
+    setLevel(id);
+    setPinFinding(null);
+    setHoverFinding(null);
+  }, []);
 
   /**
    * The last outcome that parsed. Editing a number goes through states like `3.` that are
@@ -65,6 +74,7 @@ export function Playground() {
       setHist(EMPTY_HISTORY);
       setPinFinding(null);
       setHoverFinding(null);
+      setLevel(undefined);
     }
   }, [example]);
 
@@ -148,13 +158,31 @@ export function Playground() {
     ? undefined
     : `${outcome.title} — showing the last valid drawing · ${outcome.issues[0]?.message ?? ""}`;
 
+  // every level of the last valid drawing, ground-up (src/index.ts's `levels`, already in
+  // `stack` order); empty on a plan still parsing for the first time
+  const levels = shown?.result.levels ?? [];
+  const multiLevel = levels.length > 1;
+  // `shown.result.model.level` is always the ground level (types.ts's `Model` doc), levels
+  // or not — so this is the one id every plan has, and the fallback the switcher needs
+  const groundId = shown?.result.model.level.id;
+  // keep `level` across edits when it still names one of this document's levels; fall back
+  // to the ground level the moment it does not (renamed level, or `stack` shrank under it)
+  const activeLevelId = (level && levels.some((l) => l.id === level) ? level : groundId) ?? levels[0]?.id;
+  const activeLevel = levels.find((l) => l.id === activeLevelId);
+  // the selected level's findings plus the building-wide ones (no `level`), in the same
+  // order src/svg.ts numbered its markers in — see FloorplanResult.levels in src/index.ts
+  const levelFindings = activeLevel?.findings ?? shown?.result.findings ?? [];
+  // schedule.rooms/interiorArea/etc are always the ground level's (src/index.ts's
+  // `Schedule`); `schedule.levels` carries every storey's own section, keyed the same way
+  const levelSchedule = shown ? (shown.result.schedule.levels?.find((l) => l.id === activeLevelId) ?? shown.result.schedule) : undefined;
+
   // how many leading findings (in sortFindings order) floorplan() actually marked in the
   // SVG — see src/index.ts's `marked` and src/svg.ts's marker loop; a row past this count
   // has no marker to link to
   const markThreshold = opts.mark;
   const markedFindings =
     shown && markThreshold !== "none"
-      ? shown.result.findings.filter((f) => SEVERITY_RANK[f.severity] <= SEVERITY_RANK[markThreshold]).length
+      ? levelFindings.filter((f) => SEVERITY_RANK[f.severity] <= SEVERITY_RANK[markThreshold]).length
       : 0;
 
   // confirm the edit landed, once, when the document becomes valid again
@@ -202,15 +230,15 @@ export function Playground() {
           <span className="k">Scale</span>
           <span className="v">{opts.scale} px/m</span>
         </div>
-        {shown && (
+        {shown && levelSchedule && (
           <>
             <div className="tb-field">
               <span className="k">Footprint</span>
-              <span className="v">{shown.result.schedule.footprint.toFixed(2)} m²</span>
+              <span className="v">{levelSchedule.footprint.toFixed(2)} m²</span>
             </div>
             <div className="tb-field">
               <span className="k">Clear area</span>
-              <span className="v">{shown.result.schedule.interiorClearArea.toFixed(2)} m²</span>
+              <span className="v">{levelSchedule.interiorClearArea.toFixed(2)} m²</span>
             </div>
           </>
         )}
@@ -301,13 +329,17 @@ export function Playground() {
         </section>
 
         <div className="drawing-col">
-          {shown ? (
+          {shown && multiLevel && (
+            <LevelSwitcher levels={levels} activeId={activeLevelId} groundId={groundId} onSelect={selectLevel} />
+          )}
+          {shown && activeLevel ? (
             <Drawing
-              svg={shown.result.svg}
+              svg={activeLevel.svg}
               model={shown.result.model}
               text={text}
               render={shown.render}
-              highlight={activeFinding !== null ? (shown.result.findings[activeFinding] ?? null) : null}
+              level={activeLevelId}
+              highlight={activeFinding !== null ? (levelFindings[activeFinding] ?? null) : null}
               highlightNumber={activeFinding !== null && activeFinding < markedFindings ? activeFinding + 1 : null}
               stale={stale}
               onDragStart={mark}
@@ -333,10 +365,12 @@ export function Playground() {
             </section>
           )}
 
-          {shown && <ScheduleTable schedule={shown.result.schedule} />}
+          {shown && levelSchedule && (
+            <ScheduleTable schedule={levelSchedule} building={shown.result.schedule.building} levelName={multiLevel ? activeLevel?.name : undefined} />
+          )}
           {shown && (
             <FindingsList
-              findings={shown.result.findings}
+              findings={levelFindings}
               markedCount={markedFindings}
               active={activeFinding}
               onEnter={setHoverFinding}
@@ -356,14 +390,58 @@ export function Playground() {
   );
 }
 
-type Sched = Extract<ReturnType<typeof useFloorplan>, { ok: true }>["result"]["schedule"];
+type Levels = Extract<ReturnType<typeof useFloorplan>, { ok: true }>["result"]["levels"];
 
-function ScheduleTable({ schedule }: { schedule: Sched }) {
+/** Tabs for the levels of a multi-level plan, ground-up (`levels` is already in `stack`
+ *  order — src/index.ts). Rendered only when there is more than one to choose from. */
+function LevelSwitcher({
+  levels,
+  activeId,
+  groundId,
+  onSelect,
+}: {
+  levels: Levels;
+  activeId: string | undefined;
+  groundId: string | undefined;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="levels" role="tablist" aria-label="Level">
+      {levels.map((l) => (
+        <button
+          key={l.id}
+          type="button"
+          role="tab"
+          aria-selected={l.id === activeId}
+          data-active={l.id === activeId}
+          onClick={() => onSelect(l.id)}
+        >
+          {l.name}
+          {l.id === groundId && <span className="ground-badge">ground</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ScheduleTable({
+  schedule,
+  building,
+  levelName,
+}: {
+  /** the section for one level — the selected one, or the ground/only level's when the
+   *  plan has no others (`Schedule` itself satisfies this shape: src/index.ts) */
+  schedule: LevelSchedule;
+  /** present only on a plan that authored `levels` (src/index.ts's `Schedule.building`) */
+  building?: Schedule["building"] | undefined;
+  /** the selected level's name, shown in the header on a multi-level plan */
+  levelName?: string | undefined;
+}) {
   const n = (v: number) => v.toFixed(2);
   return (
     <section className="panel">
       <div className="panel-head">
-        <h2>Room schedule</h2>
+        <h2>Room schedule{levelName ? ` — ${levelName}` : ""}</h2>
         <span className="note">m²</span>
       </div>
       <div className="tablewrap">
@@ -401,6 +479,15 @@ function ScheduleTable({ schedule }: { schedule: Sched }) {
           </tfoot>
         </table>
       </div>
+      {building && (
+        <div className="building-totals">
+          <span><strong>{building.storeys}</strong> storeys</span>
+          <span>gross <strong>{n(building.grossArea)}</strong> m²</span>
+          <span>footprint <strong>{n(building.footprint)}</strong> m²</span>
+          <span>interior <strong>{n(building.interiorClearArea)}</strong> m²</span>
+          {building.waterArea > 0 && <span>water <strong>{n(building.waterArea)}</strong> m²</span>}
+        </div>
+      )}
     </section>
   );
 }

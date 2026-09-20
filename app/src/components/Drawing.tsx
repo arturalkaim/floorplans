@@ -4,6 +4,7 @@ import {
   draggableFixtureEdges,
   draggableOutdoorEdges,
   draggableWalls,
+  levelOf,
   movableFixtures,
   projection,
 } from "floorplan";
@@ -18,6 +19,10 @@ interface Props {
   /** the exact options `svg` was rendered with, so `projection` here agrees with the
    *  transform the renderer used rather than one reconstructed from a subset of them */
   render: RenderSettings;
+  /** which level `svg` draws; every drag is scoped to it so a wall on `piso1` writes
+   *  `levels.piso1.…` rather than the ground level's paths. Undefined on a single-level
+   *  plan, where every entry point already defaults to the only level there is. */
+  level?: string | undefined;
   /** the finding previewed from the findings panel (hover or click), if any: its
    *  `rooms` get a highlight class via the room `<g data-id>` the SVG already emits */
   highlight?: Finding | null;
@@ -39,7 +44,7 @@ const THRESHOLD_PX = 3;
  * new coordinate, rewrites the source, and the ordinary pipeline redraws — so what you see
  * is always a pure function of the text in the editor.
  */
-export function Drawing({ svg, model, text, render, highlight, highlightNumber, stale, onDragStart, onChange }: Props) {
+export function Drawing({ svg, model, text, render, level, highlight, highlightNumber, stale, onDragStart, onChange }: Props) {
   const scale = render.scale;
   const host = useRef<HTMLDivElement>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -57,15 +62,19 @@ export function Drawing({ svg, model, text, render, highlight, highlightNumber, 
     moved: boolean;
   } | null>(null);
 
+  // the level `svg` draws, so the wall count in the hint line matches what is on screen
+  // rather than the ground level's
+  const lm = levelOf(model, level);
+
   // walls come from the derived model; outdoor spaces have none, so their own edges are
   // the handles. One map, keyed by whatever the element under the pointer carries.
-  const wallHandles = draggableWalls(text, model);
+  const wallHandles = draggableWalls(text, model, level);
   const handles = new Map<string, Draggable>([
     ...wallHandles,
-    ...draggableOutdoorEdges(text, model),
-    ...draggableFixtureEdges(text, model),
+    ...draggableOutdoorEdges(text, model, level),
+    ...draggableFixtureEdges(text, model, level),
   ]);
-  const bodies = movableFixtures(text, model);
+  const bodies = movableFixtures(text, model, level);
 
   /** which handle, if any, the element under the pointer stands for */
   const keyOf = (el: SVGElement | undefined): string | undefined => {
@@ -194,7 +203,7 @@ export function Drawing({ svg, model, text, render, highlight, highlightNumber, 
       <div className="panel-head">
         <h2>Drawing</h2>
         <span className={stale ? "note stale-note" : "note"}>
-          {stale ?? hint ?? `${wallHandles.size}/${model.walls.length} walls · ${bodies.size} fixtures · drag to move, edges to resize`}
+          {stale ?? hint ?? `${wallHandles.size}/${lm.walls.length} walls · ${bodies.size} fixtures · drag to move, edges to resize`}
         </span>
       </div>
       <div

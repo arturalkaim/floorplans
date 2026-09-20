@@ -18,7 +18,8 @@ export function Gallery() {
           render: { scale: 16, labels: "index", areas: "none", dimensions: false, title: "" },
           markFindings: "none",
         });
-        return { ...e, svg: r.svg, counts: tally(r.findings) };
+        // the gallery always shows the ground level — `r.svg` is exactly that (src/index.ts)
+        return { ...e, svg: r.svg, counts: tally(r.findings), levels: r.levels.length };
       }),
     [],
   );
@@ -26,12 +27,15 @@ export function Gallery() {
   return (
     <>
       <p style={{ color: "var(--muted)", margin: "0 0 16px" }}>
-        Seven example plans. Open one to edit it and watch the drawing, the schedule and the findings follow.
+        {cards.length} example plans. Open one to edit it and watch the drawing, the schedule and the findings follow.
       </p>
       <div className="gallery">
         {cards.map((c) => (
           <Link key={c.id} to="/plan/$id" params={{ id: c.id }} className="card">
-            <div className="thumb" dangerouslySetInnerHTML={{ __html: c.svg }} />
+            <div className="thumb">
+              {c.levels > 1 && <span className="badge">{c.levels} levels</span>}
+              <div dangerouslySetInnerHTML={{ __html: c.svg }} />
+            </div>
             <div className="meta">
               <h3>{c.name}</h3>
               <p>{c.shows}</p>
