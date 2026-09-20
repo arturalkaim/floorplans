@@ -1,8 +1,8 @@
-import { occupantRef } from "./derive.ts";
+import { occupantRef, outwardBearing, overlapArea, sectorMeetsShape, shapeArea, shapeGap, shapeWithin, uncovered } from "./derive.ts";
 import { doorSwing } from "./doors.ts";
-import { bbox, boxGap, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
-import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, RoomKind } from "./types.ts";
-import { inLevel, isOpenSky, isStreet, outdoorOwner, ownerId, ownerKey, pathTo, roomOwner } from "./types.ts";
+import { bbox, snap } from "./geometry.ts";
+import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, RoomKind, Shape } from "./types.ts";
+import { inLevel, isOpenSky, isRectilinear, isStreet, outdoorOwner, ownerId, ownerKey, pathTo, roomOwner } from "./types.ts";
 
 export interface RuleOptions {
   /** share of interior area above which circulation is flagged (default 0.10) */
@@ -247,13 +247,30 @@ function levelRules(
   }
 
   // ---- light ----
+  /**
+   * Where a room's daylight could come from. A rectilinear room's exterior walls face
+   * one of four ways and the message names them, exactly as it always has. A room with
+   * an angled or curved wall has no compass side to name, so it gets the run and the
+   * bearing instead — which is the same information and is true.
+   */
+  const daylightFrom = (m: (typeof rooms)[number]): string => {
+    if (isRectilinear(m.room))
+      return m.exteriorFaces.length
+        ? ` (it has an exterior wall on the ${m.exteriorFaces.join("/")})`
+        : " and no exterior wall to put one on";
+    const mine = lm.walls.filter((w) => w.kind === "exterior" && outwardBearing(w, m.room.id) !== undefined);
+    if (mine.length === 0) return " and no exterior wall to put one on";
+    const run = snap(mine.reduce((t, w) => t + w.length, 0));
+    const bearings = [...new Set(mine.map((w) => outwardBearing(w, m.room.id)!))].sort((a, b) => a - b);
+    return ` (it has ${run} m of exterior wall, facing ${bearings.map((b) => `${b}°`).join(", ")})`;
+  };
   for (const m of rooms) {
     if (m.exteriorWindow) continue;
     if (m.room.habitable) {
       push({
         rule: "habitable.no_window",
         severity: "warning",
-        message: `${m.room.name} is habitable but has no exterior window or glazed exterior door${m.exteriorFaces.length ? ` (it has an exterior wall on the ${m.exteriorFaces.join("/")})` : " and no exterior wall to put one on"}`,
+        message: `${m.room.name} is habitable but has no exterior window or glazed exterior door${daylightFrom(m)}`,
         path: m.room.path,
         rooms: [m.room.id],
         at: m.labelAt,
@@ -321,10 +338,16 @@ function levelRules(
     const min = minDim[m.room.kind];
     if (min === undefined || m.minDimension >= min) continue;
     const r = m.clearRect;
+    // "at its narrowest" describes the short side of the largest clear rectangle, which
+    // is the measure a rectilinear room gets. A room with an angled or curved wall is
+    // measured by the largest circle that fits instead, because an axis-aligned
+    // rectangle understates a round room by √2 — so the message says which it means.
     push({
       rule: "room.min_dimension",
       severity: "warning",
-      message: `${m.room.name} (${m.room.kind}): ${m.minDimension} m at its narrowest; comfort minimum is ${min} m (clear floor ${r.w} × ${r.h} m)`,
+      message: isRectilinear(m.room)
+        ? `${m.room.name} (${m.room.kind}): ${m.minDimension} m at its narrowest; comfort minimum is ${min} m (clear floor ${r.w} × ${r.h} m)`
+        : `${m.room.name} (${m.room.kind}): the largest circle that fits is ${m.minDimension} m across; comfort minimum is ${min} m (largest clear rectangle ${r.w} × ${r.h} m${m.bearing === 0 ? "" : ` at ${m.bearing}°`})`,
       path: pathTo(m.room, "poly", "rect"),
       rooms: [m.room.id],
       at: m.labelAt,
@@ -397,7 +420,7 @@ function levelRules(
       const a = lm.fixtures[i]!;
       const b = lm.fixtures[j]!;
       if (a.fixture.in !== b.fixture.in) continue;
-      const gap = snap(boxGap(a.bbox, b.bbox));
+      const gap = snap(shapeGap(a.fixture, b.fixture));
       // touching units are one run; only a gap too narrow to walk through is a problem
       if (gap <= 0 || gap >= minClearance) continue;
       push({
@@ -418,16 +441,13 @@ function levelRules(
     const radius = o.to - o.from;
     for (const fm of lm.fixtures) {
       if (fm.fixture.in !== o.swingRoom) continue;
-      // the swept quarter disc is exactly {within radius of the hinge} ∩ swing.box,
-      // so the nearest point of the overlap rectangle decides it
-      const x0 = Math.max(swing.box.x0, fm.bbox.x0);
-      const x1 = Math.min(swing.box.x1, fm.bbox.x1);
-      const y0 = Math.max(swing.box.y0, fm.bbox.y0);
-      const y1 = Math.min(swing.box.y1, fm.bbox.y1);
-      if (x0 >= x1 || y0 >= y1) continue;
-      const nx = Math.min(Math.max(swing.hinge[0], x0), x1);
-      const ny = Math.min(Math.max(swing.hinge[1], y0), y1);
-      if (Math.hypot(nx - swing.hinge[0], ny - swing.hinge[1]) >= radius) continue;
+      // bounding boxes as a cheap reject, then the exact predicate: does the sector the
+      // leaf sweeps meet the fixture? The rectangle test this replaces was only ever
+      // right for an axis-aligned door against an axis-aligned box.
+      if (swing.box.x1 <= fm.bbox.x0 || fm.bbox.x1 <= swing.box.x0) continue;
+      if (swing.box.y1 <= fm.bbox.y0 || fm.bbox.y1 <= swing.box.y0) continue;
+      if (!sectorMeetsShape(swing.hinge, swing.closed, swing.open, fm.fixture)) continue;
+      void radius;
       push({
         rule: "door.swing_hits_fixture",
         severity: "warning",
@@ -490,9 +510,9 @@ function verticalRules(
     for (const at of v.at) {
       const lm = byLevel.get(at.level);
       if (!lm) continue;
-      const host =
-        lm.rooms.find((m) => m.room.id === at.in)?.room.poly ?? lm.level.outdoor.find((o) => o.id === at.in)?.poly;
-      if (host && !polyInside(at.poly, host)) {
+      const host: Shape | undefined =
+        lm.rooms.find((m) => m.room.id === at.in)?.room ?? lm.level.outdoor.find((o) => o.id === at.in);
+      if (host && !shapeWithin(at, host)) {
         f.push({
           ...on(at.level),
           rule: "stair.no_arrival",
@@ -508,8 +528,8 @@ function verticalRules(
     for (let i = 1; i < v.at.length; i++) {
       const a = v.at[i - 1]!;
       const b = v.at[i]!;
-      const over = overlapArea(a.poly, b.poly);
-      const smaller = Math.min(Math.abs(shoelace(a.poly)), Math.abs(shoelace(b.poly)));
+      const over = overlapArea(a, b);
+      const smaller = Math.min(shapeArea(a), shapeArea(b));
       if (over >= smaller / 2 - 1e-9) continue;
       f.push({
         ...on(b.level),
@@ -554,7 +574,7 @@ function verticalRules(
       if (v.up === undefined) continue;
       const above = byLevel.get(upper.level);
       if (!above) continue;
-      const dOpen = slabRun(lower.poly, above.level.voids.map((x) => x.poly), axis, v.up);
+      const dOpen = slabRun(lower, above.level.voids, axis, v.up);
       const headroom = height - (rise * dOpen) / going;
       if (headroom < stair.headroom) {
         f.push({
@@ -578,7 +598,7 @@ function verticalRules(
     const upper = model.levels[k]!;
     const lower = model.levels[k - 1]!;
     for (const m of upper.rooms) {
-      const un = uncoveredArea(m.room.poly, lower.rooms.map((r) => r.room.poly));
+      const un = uncovered(m.room, lower.rooms.map((r) => r.room));
       if (un.area <= 1e-6) continue;
       f.push({
         ...on(upper.level.id),
@@ -615,8 +635,8 @@ function flightAxis(up: number | undefined, poly: Pt[]): 0 | 1 {
  * still under slab: zero when a void covers the foot of the flight, the whole flight when
  * nothing above is opened at all — which is exactly the case that needs saying.
  */
-function slabRun(footprint: Pt[], voids: Pt[][], axis: 0 | 1, up: number): number {
-  const b = bbox(footprint);
+function slabRun(footprint: Shape, voids: Shape[], axis: 0 | 1, up: number): number {
+  const b = bbox(footprint.poly);
   const lo = axis === 0 ? b.x0 : b.y0;
   const hi = axis === 0 ? b.x1 : b.y1;
   // y grows south, so travelling north (bearing 0) or west (270) means decreasing coordinate
@@ -624,46 +644,12 @@ function slabRun(footprint: Pt[], voids: Pt[][], axis: 0 | 1, up: number): numbe
   const foot = ascending ? lo : hi;
   let open = hi - lo;
   for (const v of voids) {
-    if (!polysOverlap(v, footprint)) continue;
-    const vb = bbox(v);
+    if (overlapArea(v, footprint) <= 0) continue;
+    const vb = bbox(v.poly);
     const near = ascending ? Math.max(lo, axis === 0 ? vb.x0 : vb.y0) : Math.min(hi, axis === 0 ? vb.x1 : vb.y1);
     open = Math.min(open, Math.abs(near - foot));
   }
   return snap(open);
-}
-
-/** Area of the overlap of two rectilinear polygons, by cell decomposition. */
-function overlapArea(a: Pt[], b: Pt[]): number {
-  return cellSum([...a, ...b], (c) => pointInPoly(c, a) && pointInPoly(c, b)).area;
-}
-
-/** The part of `poly` that no polygon in `under` covers: how much, and where. */
-function uncoveredArea(poly: Pt[], under: Pt[][]): { area: number; at: Pt } {
-  const pa = bbox(poly);
-  const pts = [...poly];
-  for (const u of under) for (const p of u) if (p[0] > pa.x0 && p[0] < pa.x1) pts.push([p[0], pa.y0]);
-  for (const u of under) for (const p of u) if (p[1] > pa.y0 && p[1] < pa.y1) pts.push([pa.x0, p[1]]);
-  return cellSum(pts, (c) => pointInPoly(c, poly) && !under.some((u) => pointInPoly(c, u)));
-}
-
-/** Area and area-weighted centre of every cell of the coordinate grid matching `keep`. */
-function cellSum(pts: Pt[], keep: (c: Pt) => boolean): { area: number; at: Pt } {
-  const xs = [...new Set(pts.map((p) => p[0]))].sort((m, n) => m - n);
-  const ys = [...new Set(pts.map((p) => p[1]))].sort((m, n) => m - n);
-  let area = 0;
-  let cx = 0;
-  let cy = 0;
-  for (let i = 0; i + 1 < xs.length; i++) {
-    for (let j = 0; j + 1 < ys.length; j++) {
-      const c: Pt = [(xs[i]! + xs[i + 1]!) / 2, (ys[j]! + ys[j + 1]!) / 2];
-      if (!keep(c)) continue;
-      const a = (xs[i + 1]! - xs[i]!) * (ys[j + 1]! - ys[j]!);
-      area += a;
-      cx += a * c[0];
-      cy += a * c[1];
-    }
-  }
-  return { area: snap(area), at: area > 0 ? [snap(cx / area), snap(cy / area)] : [0, 0] };
 }
 
 const SEVERITY_RANK = { error: 0, warning: 1, info: 2 } as const;

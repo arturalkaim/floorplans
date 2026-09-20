@@ -1,0 +1,20 @@
+{
+  "title": "Casa Redonda",
+  "units": "m",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "north": 0,
+  "rooms": {
+    "sala": {"name":"Sala","kind":"living","zone":"day","poly":[[0,1],[6,1],[6,1.5],{"arc":[6,4.5],"r":2.5,"sweep":"ccw"},[6,5],[0,5]]},
+    "rotunda": {"name":"Rotunda","kind":"hall","zone":"day","poly":[[6,1.5],{"arc":[10,1.5],"r":2.5,"sweep":"cw"},{"arc":[10,4.5],"r":2.5,"sweep":"cw"},{"arc":[6,4.5],"r":2.5,"sweep":"cw"},{"arc":[6,1.5],"r":2.5,"sweep":"cw"}]},
+    "cozinha": {"name":"Cozinha","kind":"kitchen","zone":"day","poly":[[10,1],[10,1.5],{"arc":[10,4.5],"r":2.5,"sweep":"cw"},[10,5],[16,5],[16,1]]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","rotunda"],"at":[8,0.5],"width":1.1,"hinge":"start","swingInto":"rotunda","entrance":true},
+    {"type":"cased","between":["sala","rotunda"],"at":[5.5,3],"width":1.2},
+    {"type":"cased","between":["rotunda","cozinha"],"at":[10.5,3],"width":1.2},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"position":2,"width":2},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"west"},"width":1.6},
+    {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"east"},"width":1.8},
+    {"type":"window","between":["exterior","rotunda"],"at":[8,5.5],"width":1.4}
+  ]
+}

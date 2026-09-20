@@ -28,8 +28,8 @@ export function Reference() {
       <p>
         A plan is one document, written either as JSON or in the <a href="#dsl">line DSL</a>. Coordinates are{" "}
         <strong>metres on wall centrelines</strong>, y grows downwards, and rooms must tile the footprint
-        exactly — walls are derived from the edges they share, never authored. Plans are rectilinear, and have
-        one storey or many.
+        exactly — walls are derived from the edges they share, never authored. A room is any simple polygon —
+        straight edges at any angle, or true circular arcs — and a plan has one storey or many.
       </p>
       <p>
         Write it in canonical form: <strong>one entity per line</strong> — a room, an outdoor space, an
@@ -53,8 +53,19 @@ export function Reference() {
       <h2>Rooms</h2>
       <p>
         Give a room a <code>poly</code> or a <code>rect</code>, or place it in a <code>layout</code> grid and
-        omit the geometry. The polygon is rectilinear, any winding, and may have any number of corners — L, T
-        and U shapes are all legal, so long as every edge is axis aligned.
+        omit the geometry. The polygon may have any winding and three corners or more, and its edges may run
+        at any angle — L, T and U shapes, a wing at 45°, a canted bay. What is refused, with the reason:
+        fewer than three distinct corners, zero area, and a boundary that crosses or touches itself.
+      </p>
+      <p>
+        Any entry of a <code>poly</code> may be an <strong>arc</strong> instead of a corner:{" "}
+        <code>{'{ "arc": [x, y], "r": 3.5, "sweep": "cw" | "ccw", "large": true }'}</code> — an arc from the
+        previous corner to that point, of that radius, turning that way seen on the page. The centre is
+        derived and never stored, so the radius can be edited on its own. An arc is exact where it matters: a
+        round room measures πr², its clear floor is the same arc with a smaller radius, and it is drawn as an
+        SVG <code>A</code> command. Two rooms share a curved wall by writing the same arc, each in its own
+        direction; the flattening used for the topology takes nothing but the arc, so their chords always
+        agree and no sliver is left between them.
       </p>
       <p>
         <code>{'"rect": [x, y, width, height]'}</code> is the same rectangle written as one row instead of
@@ -73,7 +84,8 @@ export function Reference() {
       <h2>Authoring on a grid</h2>
       <p>
         Most plans sit on a small track grid. Write it like CSS <code>grid-template-areas</code>: the same
-        token in several cells makes one rectilinear room, and <code>.</code> is a void.
+        token in several cells makes one room, and <code>.</code> is a void. The grid stays rectilinear on
+        purpose: it is what an apartment wants, and anything else is a <code>poly</code>.
       </p>
       <pre><code>{`"layout": {
   "cols": [3.6, 4.0, 3.6],
@@ -155,7 +167,7 @@ export function Reference() {
         it owns the wall beside it, but it has the building over it, so that wall is an ordinary partition and
         a window onto it is still <code>window.not_exterior</code>. Its area stays out of the interior and
         inside the envelope, and nothing opens into one. A void must reach an edge of the room around it: a
-        room enclosing one completely would be a ring, which a single rectilinear ring cannot express.
+        room enclosing one completely would be a ring, which a single ring cannot express.
       </p>
 
       <h2>Fixtures</h2>
@@ -181,6 +193,13 @@ export function Reference() {
       </table>
       <h3>side</h3>
       <ul className="tokens">{[...SIDES].map((k) => <li key={k}><code>{k}</code></li>)}</ul>
+      <p>
+        <code>side</code> names a compass side, which says nothing about a wall at 20°. On a wall that is not
+        axis-aligned, use <code>{'"at": [x, y]'}</code> instead: it names a point, and the library finds the
+        nearest wall between the two spaces and projects onto it — along the arc, if the wall is curved.
+        Asking for a <code>side</code> on such a wall is <code>wall.ambiguous</code>, with a message that says
+        so.
+      </p>
 
       <h2 id="dsl">The line DSL</h2>
       <p>

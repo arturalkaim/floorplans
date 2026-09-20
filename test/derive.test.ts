@@ -379,18 +379,28 @@ describe("derive: opening `at` — absolute placement (B5)", () => {
   });
 });
 
-describe("derive: usable area deducts only contained fixtures (D3)", () => {
-  it("deducts a fixture fully inside the room, not one that straddles its boundary", () => {
+describe("derive: usable area deducts the part of a fixture that is in the room (D3)", () => {
+  it("deducts a straddling fixture's overlap exactly, not nothing and not all of it", () => {
+    // the stopgap this replaces deducted only fully-contained fixtures, because the
+    // exact intersection needed face classification; `overlay` now supplies it
     const { model, findings } = analyze({
       rooms: { a: { kind: "living", poly: rect(0, 0, 4, 4) } },
       fixtures: [
         { type: "counter", in: "a", at: [0.2, 0.2], size: [1, 1] }, // fully inside: 1 m²
-        { type: "island", in: "a", at: [3, 3], size: [3, 3] }, // straddles the east and south walls
+        { type: "island", in: "a", at: [3, 3], size: [3, 3] }, // straddles: 1 m² of its 9 is in
       ],
     });
-    assert.ok(has(findings, "fixture.outside_space"));
+    assert.ok(has(findings, "fixture.outside_space"), "it is still an error to put one half outside");
     const room = model.rooms.find((m) => m.room.id === "a")!;
-    assert.equal(room.fixtureArea, 1, "only the fully-contained counter is deducted");
-    assert.equal(room.usableArea, Math.round((room.clearArea - 1) * 1000) / 1000);
+    assert.equal(room.fixtureArea, 2, "1 m² of counter plus the 1 m² corner of the island");
+    assert.equal(room.usableArea, Math.round((room.clearArea - 2) * 1000) / 1000);
+  });
+
+  it("deducts nothing for a fixture entirely outside its host", () => {
+    const { model } = analyze({
+      rooms: { a: { kind: "living", poly: rect(0, 0, 4, 4) }, b: { poly: rect(4, 0, 4, 4) } },
+      fixtures: [{ type: "counter", in: "a", at: [5, 1], size: [1, 1] }],
+    });
+    assert.equal(model.rooms.find((m) => m.room.id === "a")!.fixtureArea, 0);
   });
 });

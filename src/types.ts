@@ -5,6 +5,21 @@ export type Pt = [number, number];
 export type Side = "north" | "south" | "east" | "west";
 export type Axis = "h" | "v";
 
+/**
+ * A curved edge of a ring, as the document authors it:
+ * `{ "arc": [x, y], "r": 3.5, "sweep": "ccw" }` is *an arc from the previous corner to
+ * [x, y], of radius r, turning that way*. The centre is derived and never stored, so
+ * `r` can be edited on its own and the record cannot become inconsistent.
+ */
+export interface ArcSpec {
+  /** radius, metres; at least half the chord */
+  r: number;
+  /** which way it turns, seen on the page (y grows south) */
+  sweep: "cw" | "ccw";
+  /** the arc subtends more than 180°; without it the minor arc is meant */
+  large: boolean;
+}
+
 export type RoomKind =
   | "bedroom"
   | "living"
@@ -25,7 +40,29 @@ export const CIRCULATION_KINDS: ReadonlySet<RoomKind> = new Set(["hall", "corrid
 
 // ---------- authored (after parse) ----------
 
-export interface Room {
+/**
+ * A closed boundary as the document authors it: corners, plus an optional arc on any
+ * edge. `arcs[i]` curves the edge from `poly[i]` to `poly[i+1]`. A ring with no arcs is
+ * exactly the polygon the library had before arcs existed, which is why `poly` keeps its
+ * name and its indices — every cached document path into it still means what it meant.
+ */
+export interface Shape {
+  poly: Pt[];
+  arcs: Array<ArcSpec | undefined>;
+}
+
+/** Is any edge of this shape curved or off-axis? Decides which measures a room gets. */
+export const isRectilinear = (s: Shape): boolean => {
+  if (s.arcs.some((a) => a !== undefined)) return false;
+  for (let i = 0; i < s.poly.length; i++) {
+    const a = s.poly[i]!;
+    const b = s.poly[(i + 1) % s.poly.length]!;
+    if (a[0] !== b[0] && a[1] !== b[1]) return false;
+  }
+  return true;
+};
+
+export interface Room extends Shape {
   id: string;
   /** where in the document this room was authored: `rooms.sala`, `levels.piso1.rooms.sala` */
   path: string;
@@ -34,18 +71,16 @@ export interface Room {
   name: string;
   kind: RoomKind;
   zone: string | undefined;
-  poly: Pt[];
   habitable: boolean;
   wet: boolean;
   circulation: boolean;
 }
 
-export interface Outdoor {
+export interface Outdoor extends Shape {
   id: string;
   path: string;
   authored: readonly string[];
   name: string;
-  poly: Pt[];
   covered: boolean;
 }
 
@@ -61,7 +96,7 @@ export type FixtureType =
   | "other";
 
 /** A thing standing inside a room: sanitary ware, a kitchen run, a pool, stairs. */
-export interface Fixture {
+export interface Fixture extends Shape {
   index: number; // position in the authored list, for error messages
   /**
    * Stable handle, and what a finding names. Authored `id`, or synthesised as
@@ -79,7 +114,6 @@ export interface Fixture {
   name: string;
   /** id of the room that contains it */
   in: string;
-  poly: Pt[];
   /** pools only, metres */
   depth: number | undefined;
   /**
@@ -140,12 +174,11 @@ export interface Opening {
  * of roof — same mechanism, same owner union, so a cell inside the footprint that a void
  * covers is not a `tiling.gap`.
  */
-export interface Void {
+export interface Void extends Shape {
   id: string;
   path: string;
   authored: readonly string[];
   name: string;
-  poly: Pt[];
 }
 
 /** One storey. Everything that is drawn lives on exactly one of these. */
@@ -173,7 +206,7 @@ export interface Level {
 export type VerticalType = "stairs" | "lift" | "ramp";
 
 /** One footprint of a vertical element, on one of the levels it serves. */
-export interface VerticalAt {
+export interface VerticalAt extends Shape {
   /**
    * `vertical[i].at[j]` with the **authored** j. The parser sorts `at` into stack order,
    * so the position in this array is not the position in the document; the path is
@@ -183,7 +216,6 @@ export interface VerticalAt {
   level: string;
   /** the room or outdoor space you step off it into, on that level */
   in: string;
-  poly: Pt[];
 }
 
 /**
@@ -306,23 +338,72 @@ export const isVoid = (o: Owner): boolean => isOpenSky(o) || o.kind === "gap";
 export const isStreet = (o: Owner, streetOutdoor: ReadonlySet<string>): boolean =>
   o.kind === "exterior" || (o.kind === "outdoor" && streetOutdoor.has(o.id));
 
-export interface WallSegment {
+/** The exact shape of a wall, between its two ends. */
+export type WallGeometry =
+  | { kind: "segment"; a: Pt; b: Pt }
+  | {
+      kind: "arc";
+      a: Pt;
+      b: Pt;
+      /** metres */
+      r: number;
+      sweep: "cw" | "ccw";
+      large: boolean;
+      centre: Pt;
+    }
+  /** straight and curved pieces that run smoothly into one another: one wall, several arcs */
+  | { kind: "chain"; parts: WallGeometry[] };
+
+/**
+ * A run of built wall between two spaces.
+ *
+ * INVARIANT: `neg` is the space on the **left** of the wall's canonical direction, `pos`
+ * the one on its right. The canonical direction is the one pointing east, or north when
+ * the wall is vertical — `dx > 0, or dx = 0 and dy < 0`. For an axis-aligned wall that
+ * reproduces the old convention exactly, `neg` = north for a horizontal wall and west for
+ * a vertical one, which is what `sideOf`, the door swing, the window glazing and the
+ * entrance tag all read.
+ *
+ * The design doc's migration note says lexicographic order on the endpoints reproduces
+ * that convention (docs/gaps-design.md §1.3.1). It does not: under one handedness,
+ * lexicographic order gives `neg` = north for a horizontal wall and **east** for a
+ * vertical one. The old convention is "the side with the smaller coordinate", which is
+ * not a fixed handedness at all, so the generalisation has to pick the direction rather
+ * than the endpoint order — hence the rule above.
+ *
+ * `from`/`to` are the wall's own 1-D parameter, and are **not** tied to that direction:
+ * for an axis-aligned wall they stay the coordinate along its axis, ascending, because
+ * every opening's `position` and every message quoting a wall already means that.
+ * Elsewhere they run 0 … `length` from `start`.
+ */
+export interface Wall {
   id: string;
-  axis: Axis;
-  /** fixed coordinate: y for horizontal, x for vertical */
-  c: number;
-  from: number;
-  to: number;
-  /** owner on the negative side (north for h, west for v) and positive side (south / east) */
-  neg: Owner;
-  pos: Owner;
   kind: "exterior" | "partition";
   thickness: number;
+  geometry: WallGeometry;
+  /** the ends, in the canonical direction */
+  start: Pt;
+  end: Pt;
+  /** arc length, metres */
+  length: number;
+  from: number;
+  to: number;
+  /** owner on the left of the canonical direction (north for h, west for v) */
+  neg: Owner;
+  /** owner on its right (south for h, east for v) */
+  pos: Owner;
+  /** set only when the wall is a straight axis-parallel segment */
+  axis?: Axis;
+  /** fixed coordinate of an axis-aligned wall: y for horizontal, x for vertical */
+  c?: number;
 }
+
+/** The name the library used while every wall was an axis-parallel segment. */
+export type WallSegment = Wall;
 
 export interface ResolvedOpening {
   spec: Opening;
-  wall: WallSegment;
+  wall: Wall;
   /** interval along the wall axis, metres */
   from: number;
   to: number;
@@ -338,14 +419,41 @@ export interface RoomModel {
   bbox: { x0: number; y0: number; x1: number; y1: number };
   /** shoelace area of the centreline polygon */
   area: number;
-  /** area after deducting half the adjacent wall thickness on every edge */
+  /** the ring brought in to the faces of the walls along it: the floor you can stand on */
+  clearRing: Shape;
+  /** area of clearRing */
   clearArea: number;
-  /** largest axis-aligned rectangle of unoccupied floor, on centrelines */
+  /** largest rectangle of unoccupied floor, on centrelines, in the room's own frame */
   largestRect: { x0: number; y0: number; x1: number; y1: number };
   /** largestRect brought in to the wall faces: the floor you can actually stand in */
   clearRect: { x0: number; y0: number; x1: number; y1: number; w: number; h: number };
-  /** short side of clearRect */
+  /** bearing of the room's own frame, degrees clockwise from east; 0 for a rectilinear room */
+  bearing: number;
+  /**
+   * The largest circle that fits in the clear floor. Rotation-invariant and defined for
+   * a curved room, which is what makes it the narrowness measure a rectangle cannot be.
+   */
+  inscribed: { at: Pt; r: number };
+  /**
+   * How narrow the room is. For a rectilinear room this is the short side of
+   * `clearRect` — the measure the library has always printed, unchanged to the
+   * millimetre. For a room with an angled or curved wall it is `2 × inscribed.r`,
+   * because an axis-aligned rectangle understates a round room by a factor of √2
+   * (docs/gaps-design.md §1.3.5, finding 6) and no rectangle describes the fit.
+   */
   minDimension: number;
+  /**
+   * Where the room's name is drawn, and where a finding about the room as a whole
+   * points.
+   *
+   * §1.3.5 says `labelAt := inscribed.at`, the pole of inaccessibility. It stays the
+   * centre of `clearRect` instead, because five rules in `rules.ts` publish it as a
+   * finding's `at` — `room.min_dimension`, `room.no_window`, `circulation.share` among
+   * them — and those coordinates are pinned byte-for-byte by the fixtures' baselines. The
+   * pole is not lost: it is `inscribed.at`, next to it, and it is what `minDimension`
+   * measures a non-rectilinear room by. Moving the label is a change to what findings say,
+   * not to the geometry, so it belongs to whoever decides that, not to this rewrite.
+   */
   labelAt: Pt;
   exteriorWindow: boolean;
   exteriorFaces: Side[];
@@ -365,7 +473,7 @@ export interface FixtureModel {
 export interface LevelModel {
   level: Level;
   rooms: RoomModel[];
-  walls: WallSegment[];
+  walls: Wall[];
   openings: ResolvedOpening[];
   /** authored fixtures, plus one per `Vertical` standing on this level */
   fixtures: FixtureModel[];
@@ -386,6 +494,24 @@ export interface LevelModel {
    */
   streetOutdoor: ReadonlySet<string>;
   interiorArea: number;
+  /**
+   * The regions the arrangement found, each with exactly one owner. A consumer that
+   * wants the truth about an overlap — which faces are claimed twice, and by whom —
+   * reads these; the walls do not (see `wallOwner` in derive.ts).
+   */
+  faces: FaceModel[];
+}
+
+/** One region of the plan, with its owner. */
+export interface FaceModel {
+  owner: Owner;
+  /** m² */
+  area: number;
+  /** a point inside it, as far from its boundary as the face allows */
+  at: Pt;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+  /** boundary rings, outer first */
+  rings: Pt[][];
 }
 
 /**

@@ -1,3 +1,4 @@
+import { normalOn, tangentOn } from "./derive.ts";
 import { snap } from "./geometry.ts";
 import type { BBox } from "./geometry.ts";
 import type { Pt, ResolvedOpening } from "./types.ts";
@@ -21,10 +22,16 @@ export function doorSwing(o: ResolvedOpening): DoorSwing | undefined {
   const w = o.wall;
   const width = o.to - o.from;
   const hingeAtStart = o.spec.hinge === "start";
-  // unit vector along the wall toward the other jamb, and normal into the swing room
-  const along: Pt = w.axis === "h" ? [hingeAtStart ? 1 : -1, 0] : [0, hingeAtStart ? 1 : -1];
+  // Unit vector along the wall toward the other jamb, and normal into the swing room —
+  // taken from the wall's own tangent at the hinge rather than from a table indexed by
+  // axis, so a door on a curved wall swings off its tangent. Its closed leaf is then the
+  // chord, which is what a leaf is: straight, while the wall it sits in is not.
+  const at = o.spec.hinge === "start" ? o.from : o.to;
+  const t = tangentOn(w, at);
+  const along: Pt = hingeAtStart ? t : [-t[0], -t[1]];
   const intoPos = o.swingRoom === ownerId(w.pos);
-  const normal: Pt = w.axis === "h" ? [0, intoPos ? 1 : -1] : [intoPos ? 1 : -1, 0];
+  const n = normalOn(w, at);
+  const normal: Pt = intoPos ? n : [-n[0], -n[1]];
   const [hx, hy] = o.hinge;
   const closed: Pt = [snap(hx + along[0] * width), snap(hy + along[1] * width)];
   const open: Pt = [snap(hx + normal[0] * width), snap(hy + normal[1] * width)];

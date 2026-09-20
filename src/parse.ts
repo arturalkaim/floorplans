@@ -1,5 +1,6 @@
-import { cellsToPolygons, normalizePoly, snap } from "./geometry.ts";
+import { cellsToPolygons, normalizeRing, snap } from "./geometry.ts";
 import type {
+  ArcSpec,
   Fixture,
   FixtureType,
   Jamb,
@@ -11,6 +12,7 @@ import type {
   Pt,
   Room,
   RoomKind,
+  Shape,
   Side,
   Vertical,
   VerticalAt,
@@ -89,6 +91,8 @@ export const FIXTURE_TYPES: ReadonlySet<string> = new Set<FixtureType>([
   "other",
 ]);
 export const VERTICAL_TYPES: ReadonlySet<string> = new Set<VerticalType>(["stairs", "lift", "ramp"]);
+/** Which way an arc turns, seen on the page: y grows south, so "cw" is clockwise there. */
+export const SWEEPS: ReadonlySet<string> = new Set<ArcSpec["sweep"]>(["cw", "ccw"]);
 // Exported so `floorplan --schema`'s terse legend can print the *actual* regex the parser
 // enforces rather than a hand-typed copy that could drift from it (docs/eval/cold/cold-run.md:
 // the cold-agent eval never saw this constraint at all, because nothing printed it).
@@ -148,6 +152,7 @@ export interface ObjectDoc {
     | "room"
     | "outdoor"
     | "void"
+    | "arc"
     | "opening"
     | "opening.on"
     | "opening.position"
@@ -212,7 +217,7 @@ export const SCHEMA: readonly ObjectDoc[] = [
   {
     object: "room",
     fields: [
-      { name: "poly", type: "point[]", required: false, doc: "rectilinear polygon, any winding, ≥4 corners" },
+      { name: "poly", type: "point[]", required: false, doc: "any simple polygon, any winding, ≥3 corners; an entry may be an arc, see arc" },
       { name: "rect", type: "[x,y,w,h]", required: false, doc: "metres; expands to poly" },
       { name: "kind", type: "enum", required: false, enum: ROOM_KINDS, doc: 'drives habitable/wet/circulation defaults + colour; default "other"' },
       { name: "name", type: "string", required: false, doc: "display name; default the room id" },
@@ -226,7 +231,7 @@ export const SCHEMA: readonly ObjectDoc[] = [
   {
     object: "outdoor",
     fields: [
-      { name: "poly", type: "point[]", required: false, doc: "rectilinear polygon, any winding, ≥4 corners" },
+      { name: "poly", type: "point[]", required: false, doc: "any simple polygon, any winding, ≥3 corners; an entry may be an arc, see arc" },
       { name: "rect", type: "[x,y,w,h]", required: false, doc: "metres; expands to poly" },
       { name: "name", type: "string", required: false, doc: "display name; default the id" },
       { name: "covered", type: "boolean", required: false, doc: "true = covered terrace/porch; default false" },
@@ -236,11 +241,20 @@ export const SCHEMA: readonly ObjectDoc[] = [
   {
     object: "void",
     fields: [
-      { name: "poly", type: "point[]", required: false, doc: "rectilinear polygon, any winding, ≥4 corners" },
+      { name: "poly", type: "point[]", required: false, doc: "any simple polygon, any winding, ≥3 corners; an entry may be an arc, see arc" },
       { name: "rect", type: "[x,y,w,h]", required: false, doc: "metres; expands to poly" },
       { name: "name", type: "string", required: false, doc: "display name; default the id" },
     ],
     oneOf: ['"poly" xor "rect" — neither: place it in layout.areas instead'],
+  },
+  {
+    object: "arc",
+    fields: [
+      { name: "arc", type: "[x,y]", required: true, doc: "an entry in a poly: where this arc ends; it starts at the previous corner" },
+      { name: "r", type: "number", required: true, doc: "radius, metres; at least half the chord" },
+      { name: "sweep", type: "enum", required: true, enum: SWEEPS, doc: "which way it turns on the page (y grows south)" },
+      { name: "large", type: "boolean", required: false, doc: "true for an arc of more than 180°; default false, the minor arc" },
+    ],
   },
   {
     object: "opening",
@@ -280,7 +294,7 @@ export const SCHEMA: readonly ObjectDoc[] = [
       { name: "id", type: "string", required: false, doc: "^[a-z][a-z0-9_]*$, unique on its level; default <type>:<in>:<n>" },
       { name: "type", type: "enum", required: true, enum: FIXTURE_TYPES, doc: "also sets the default name" },
       { name: "in", type: "string", required: true, doc: "room/outdoor id it stands in" },
-      { name: "poly", type: "point[]", required: false, doc: "explicit polygon" },
+      { name: "poly", type: "point[]", required: false, doc: "explicit polygon; an entry may be an arc, see arc" },
       { name: "at", type: "[x,y]", required: false, doc: "top-left corner; used with size" },
       { name: "size", type: "[x,y]", required: false, doc: "[width, height], metres; used with at" },
       { name: "depth", type: "number", required: false, doc: "metres; shown on the drawing label only" },
@@ -304,7 +318,7 @@ export const SCHEMA: readonly ObjectDoc[] = [
     fields: [
       { name: "level", type: "string", required: true, doc: "a level id declared in this document's levels" },
       { name: "in", type: "string", required: true, doc: "room/outdoor id to step off into" },
-      { name: "poly", type: "point[]", required: false, doc: "explicit footprint polygon" },
+      { name: "poly", type: "point[]", required: false, doc: "explicit footprint polygon; an entry may be an arc, see arc" },
       { name: "rect", type: "[x,y,w,h]", required: false, doc: "[x, y, width, height], metres" },
     ],
     oneOf: ['"poly" xor "rect"'],
@@ -339,6 +353,7 @@ const OPENING_POSITION_FIELDS = fieldNames("opening.position");
 const FIXTURE_FIELDS = fieldNames("fixture");
 const VERTICAL_FIELDS = fieldNames("vertical");
 const VERTICAL_FOOTPRINT_FIELDS = fieldNames("vertical.footprint");
+const ARC_FIELDS = fieldNames("arc");
 
 type J = Record<string, unknown>;
 const isObj = (v: unknown): v is J => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -581,9 +596,9 @@ export function parse(input: unknown): Plan {
         bad(ap, "has no footprint: give a poly or a rect", "missing");
         return;
       }
-      const poly = hasPoly ? readPolyAt(`${ap}.poly`, a["poly"], bad) : readRectAt(`${ap}.rect`, a["rect"], bad);
-      if (!poly) return;
-      at.push({ path: ap, level: lv, in: host, poly });
+      const shape = hasPoly ? readPolyAt(`${ap}.poly`, a["poly"], bad) : readRectAt(`${ap}.rect`, a["rect"], bad);
+      if (!shape) return;
+      at.push({ path: ap, level: lv, in: host, ...shape });
     });
     if (!VERTICAL_TYPES.has(type as string)) return;
     // stack order, whatever order they were written in, so "consecutive" means what the
@@ -645,32 +660,90 @@ function readTracks(path: string, v: unknown, bad: Bad): number[] | undefined {
   return v as number[];
 }
 
-function readPolyAt(path: string, v: unknown, bad: Bad): Pt[] | undefined {
-  if (!Array.isArray(v) || !v.every((p) => Array.isArray(p) && p.length === 2 && isNum(p[0]) && isNum(p[1]))) {
-    bad(path, "must be an array of [x, y] number pairs");
+/**
+ * A ring: an array whose entries are `[x, y]` corners, or
+ * `{ "arc": [x, y], "r": 3.5, "sweep": "cw" | "ccw", "large"?: true }` for an arc from
+ * the previous corner to that point (docs/gaps-design.md §1.2). Three arguments an agent
+ * can compute or copy, against SVG's seven-argument `A` command; and because the arc is
+ * an object with named fields, `spliceAt` can edit its radius on its own.
+ */
+function readPolyAt(path: string, v: unknown, bad: Bad): Shape | undefined {
+  if (!Array.isArray(v) || v.length === 0) {
+    bad(path, "must be an array of [x, y] corners, optionally with { arc, r, sweep } edges", "type");
     return undefined;
   }
-  const res = normalizePoly(v as Pt[]);
+  const pts: Pt[] = [];
+  const arcs: Array<ArcSpec | undefined> = [];
+  let ok = true;
+  v.forEach((entry: unknown, i: number) => {
+    if (Array.isArray(entry) && entry.length === 2 && isNum(entry[0]) && isNum(entry[1])) {
+      pts.push([entry[0], entry[1]]);
+      arcs.push(undefined);
+      return;
+    }
+    if (isObj(entry) && entry["arc"] !== undefined) {
+      checkKeys(`${path}[${i}]`, entry, ARC_FIELDS, bad);
+      const at = entry["arc"];
+      if (!Array.isArray(at) || at.length !== 2 || !isNum(at[0]) || !isNum(at[1])) {
+        bad(`${path}[${i}].arc`, "must be [x, y] numbers: where the arc ends");
+        ok = false;
+        return;
+      }
+      const r = entry["r"];
+      if (!isNum(r) || r <= 0) {
+        bad(`${path}[${i}].r`, "must be a positive radius in metres, at least half the chord");
+        ok = false;
+        return;
+      }
+      const sweep = entry["sweep"];
+      if (sweep !== "cw" && sweep !== "ccw") {
+        bad(`${path}[${i}].sweep`, 'must be "cw" or "ccw": which way the arc turns on the page');
+        ok = false;
+        return;
+      }
+      if (entry["large"] !== undefined && typeof entry["large"] !== "boolean") {
+        bad(`${path}[${i}].large`, "must be boolean: true for an arc of more than 180°");
+        ok = false;
+        return;
+      }
+      // the arc belongs to the edge that *arrives* here, i.e. the previous corner's
+      const prev = pts.length - 1;
+      if (prev < 0) {
+        // an arc written first curves the closing edge, which is the last corner's
+        bad(`${path}[${i}]`, "a ring cannot start with an arc: the first entry has to be the corner it starts from");
+        ok = false;
+        return;
+      }
+      pts.push([at[0], at[1]]);
+      arcs.push(undefined);
+      arcs[prev] = { r: snap(r), sweep, large: entry["large"] === true };
+      return;
+    }
+    bad(`${path}[${i}]`, 'must be [x, y], or { "arc": [x, y], "r": …, "sweep": "cw" | "ccw" }');
+    ok = false;
+  });
+  if (!ok) return undefined;
+  const res = normalizeRing(pts, arcs);
   if ("problem" in res) {
-    const p = res.problem;
+    const pr = res.problem;
     bad(
       path,
-      p.kind === "too_few_points"
-        ? `needs at least 4 distinct corners, has ${p.count}`
-        : p.kind === "not_rectilinear"
-          ? `edge ${JSON.stringify(p.edge[0])}→${JSON.stringify(p.edge[1])} is not axis-aligned`
-          : p.kind === "zero_area"
-            ? "has zero area"
-            : `edges ${p.edges[0]} and ${p.edges[1]} cross or overlap`,
+      pr.kind === "too_few_points"
+        ? `needs at least 3 distinct corners, has ${pr.count}`
+        : pr.kind === "zero_area"
+          ? "has zero area"
+          : pr.kind === "arc_radius"
+            ? `edge ${pr.edge}: radius ${pr.got} m cannot span its chord, which needs at least ${pr.needed} m`
+            : `edges ${pr.edges[0]} and ${pr.edges[1]} cross or overlap`,
       "geometry",
     );
     return undefined;
   }
-  return res.poly;
+  return { poly: res.poly, arcs: res.arcs };
 }
 
 /** `rect: [x, y, w, h]` — the same convenience a fixture spells `at` + `size`. */
-function readRectAt(path: string, v: unknown, bad: Bad): Pt[] | undefined {
+function readRectAt(path: string, v: unknown, bad: Bad): Shape | undefined {
   if (!Array.isArray(v) || v.length !== 4 || !v.every(isNum)) {
     bad(path, "must be [x, y, width, height] numbers");
     return undefined;
@@ -680,13 +753,18 @@ function readRectAt(path: string, v: unknown, bad: Bad): Pt[] | undefined {
     bad(path, "width and height must both be > 0", "geometry");
     return undefined;
   }
-  return [
-    [snap(x), snap(y)],
-    [snap(x + w), snap(y)],
-    [snap(x + w), snap(y + h)],
-    [snap(x), snap(y + h)],
-  ];
+  return {
+    poly: [
+      [snap(x), snap(y)],
+      [snap(x + w), snap(y)],
+      [snap(x + w), snap(y + h)],
+      [snap(x), snap(y + h)],
+    ],
+    arcs: [undefined, undefined, undefined, undefined],
+  };
 }
+
+const straight = (poly: Pt[]): Shape => ({ poly, arcs: poly.map(() => undefined) });
 
 /**
  * Everything that lives on one storey: rooms, outdoor spaces, voids, the optional track
@@ -716,10 +794,10 @@ function parseLevelContent(
   const voidsIn = isObj(src["voids"]) ? src["voids"] : {};
   if (src["voids"] !== undefined && !isObj(src["voids"])) bad(P("voids"), "must be an object keyed by id");
 
-  const polys = new Map<string, Pt[]>();
+  const polys = new Map<string, Shape>();
   /** which form a space's geometry was authored in, so later messages name what was written */
   const geometry = new Map<string, "poly" | "rect">();
-  const readPoly = (path: string, v: unknown): Pt[] | undefined => readPolyAt(path, v, bad);
+  const readPoly = (path: string, v: unknown): Shape | undefined => readPolyAt(path, v, bad);
 
   /**
    * A space's geometry: an explicit `poly`, or a `rect` as a convenience rectangle —
@@ -808,7 +886,7 @@ function parseLevelContent(
       name: roomName,
       kind,
       zone,
-      poly,
+      ...poly,
       habitable: flag("habitable", HABITABLE_KINDS.has(kind)),
       wet: flag("wet", WET_KINDS.has(kind)),
       circulation: flag("circulation", CIRCULATION_KINDS.has(kind)),
@@ -828,7 +906,7 @@ function parseLevelContent(
       path: P(`outdoor.${oid}`),
       authored: Object.keys(v),
       name: typeof v["name"] === "string" ? v["name"] : oid,
-      poly,
+      ...poly,
       covered: v["covered"] === true,
     });
   }
@@ -841,7 +919,7 @@ function parseLevelContent(
       if (!badPoly.has(vid)) bad(P(`voids.${vid}`), "has no geometry: give a poly or a rect, or place it in layout.areas", "missing");
       continue;
     }
-    voids.push({ id: vid, path: P(`voids.${vid}`), authored: Object.keys(v), name: typeof v["name"] === "string" ? v["name"] : vid, poly });
+    voids.push({ id: vid, path: P(`voids.${vid}`), authored: Object.keys(v), name: typeof v["name"] === "string" ? v["name"] : vid, ...poly });
   }
 
   // ---- openings ----
@@ -1025,7 +1103,7 @@ function parseLevelContent(
     // geometry: either an explicit poly, or at + size as a convenience rectangle
     const hasPoly = v["poly"] !== undefined;
     const hasRect = v["at"] !== undefined || v["size"] !== undefined;
-    let poly: Pt[] | undefined;
+    let poly: Shape | undefined;
     if (hasPoly && hasRect) bad(path, "has both a poly and at/size; use one", "conflict");
     else if (hasPoly) poly = readPoly(`${path}.poly`, v["poly"]);
     else if (hasRect) {
@@ -1038,12 +1116,12 @@ function parseLevelContent(
       if (okAt && okSize) {
         const [x, y] = at as [number, number];
         const [w, h] = size as [number, number];
-        poly = [
+        poly = straight([
           [snap(x), snap(y)],
           [snap(x + w), snap(y)],
           [snap(x + w), snap(y + h)],
           [snap(x), snap(y + h)],
-        ];
+        ]);
       }
     } else bad(path, "has no geometry: give a poly, or at and size", "missing");
 
@@ -1067,7 +1145,7 @@ function parseLevelContent(
       type: type as FixtureType,
       name: fName,
       in: host,
-      poly,
+      ...poly,
       depth,
       vertical: undefined,
     });
@@ -1093,7 +1171,7 @@ function compileLayout(
   roomsIn: J,
   outdoorIn: J,
   voidsIn: J,
-  polys: Map<string, Pt[]>,
+  polys: Map<string, Shape>,
   geometry: Map<string, "poly" | "rect">,
   bad: Bad,
 ): void {
@@ -1167,6 +1245,6 @@ function compileLayout(
       bad(path, `cells in layout.areas form ${loops.length} pieces; a space must be one connected shape without holes`, "geometry");
       continue;
     }
-    polys.set(id, loops[0]!);
+    polys.set(id, straight(loops[0]!));
   }
 }

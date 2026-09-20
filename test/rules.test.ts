@@ -306,12 +306,15 @@ describe("rules: a pool is a pool wherever it stands", () => {
     assert.equal(only(f, "fixture.outside_space").length, 1);
   });
 
-  it("the escaping fixture is not deducted from the deck's usable area (D3)", () => {
+  it("the escaping fixture is deducted only where it is actually on the deck (D3)", () => {
+    // 3 x 9 m of pool from y = 4.5, on a deck that ends at y = 7: 3 x 2.5 = 7.5 m² of it
+    // stands on the deck and the rest hangs off. The stopgap this replaces deducted
+    // nothing at all, rather than reducing the deck by the pool's whole 27 m².
     const escaping = { ...plan, fixtures: [{ type: "pool", in: "deck", at: [1, 4.5], size: [3, 9] }] };
     const { model } = analyze(parse(escaping));
     const deck = schedule(model).outdoor.find((o) => o.id === "deck")!;
-    assert.equal(deck.fixtureArea, 0);
-    assert.equal(deck.usableArea, deck.area);
+    assert.equal(deck.fixtureArea, 7.5);
+    assert.equal(deck.usableArea, Math.round((deck.area - 7.5) * 1000) / 1000);
   });
 
   it("does not report the deck itself as a gap or a room", () => {

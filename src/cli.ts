@@ -21,7 +21,6 @@
 // tokens instead of ~780 of schedule (docs/gaps-design.md §2.4). The schedule and the
 // derived walls are behind `--json=all`, or selected on their own.
 //
-// `--schema` exists so an agent can load the field list instead of the README's prose
 // (docs/agent-review.md B10). The default is a terse typed-signature line per object, a
 // legend and a worked example, all generated from SCHEMA — see schemaTerse below;
 // `--schema=full` is the same table as compact JSON with one-sentence docs, and
@@ -53,6 +52,7 @@ import {
   schedule,
   SIDES,
   summarize,
+  SWEEPS,
   VERTICAL_TYPES,
   walls,
   worstSeverity,
@@ -795,6 +795,7 @@ const VOCABULARIES: readonly { name: string; values: ReadonlySet<string> }[] = [
   { name: "OPENING_TYPES", values: OPENING_TYPES },
   { name: "FIXTURE_TYPES", values: FIXTURE_TYPES },
   { name: "VERTICAL_TYPES", values: VERTICAL_TYPES },
+  { name: "SWEEPS", values: SWEEPS },
 ];
 
 /**

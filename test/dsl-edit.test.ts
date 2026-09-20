@@ -274,7 +274,7 @@ describe("--schema=dsl", () => {
     assert.equal(run(["--schema=dsl"], t.io), 0);
     assert.match(t.out(), /^## statements$/m);
     assert.match(t.out(), /^ +arc <x>,<y> r<radius> \[cw\|ccw\] \[large\]$/m);
-    assert.ok(!t.out().includes("opening.swingInto"), "--schema=dsl should no longer carry the 73-row field index by default");
+    assert.ok(!t.out().includes("opening.swingInto"), "--schema=dsl should no longer carry the 77-row field index by default");
   });
 });
 

@@ -1,0 +1,2414 @@
+{
+ "broken-geometria": [
+  {
+   "id": "ground",
+   "rooms": [
+    {
+     "id": "hall",
+     "corners": 4,
+     "area": 18,
+     "clearArea": 16.154,
+     "minDimension": 2.79,
+     "largestRect": {
+      "x0": 0,
+      "y0": 0,
+      "x1": 3,
+      "y1": 6
+     },
+     "clearRect": {
+      "x0": 0.15,
+      "y0": 0.15,
+      "x1": 2.94,
+      "y1": 5.94,
+      "w": 2.79,
+      "h": 5.79
+     },
+     "labelAt": [
+      1.5,
+      3
+     ],
+     "fixtureArea": 0,
+     "usableArea": 16.154,
+     "exteriorFaces": [
+      "north",
+      "west"
+     ],
+     "exteriorWindow": false
+    },
+    {
+     "id": "sala",
+     "corners": 4,
+     "area": 36,
+     "clearArea": 34.045,
+     "minDimension": 4.94,
+     "largestRect": {
+      "x0": 3,
+      "y0": 0,
+      "x1": 8,
+      "y1": 6
+     },
+     "clearRect": {
+      "x0": 3.06,
+      "y0": 0.15,
+      "x1": 8,
+      "y1": 5.94,
+      "w": 4.94,
+      "h": 5.79
+     },
+     "labelAt": [
+      5.5,
+      3
+     ],
+     "fixtureArea": 0,
+     "usableArea": 34.045,
+     "exteriorFaces": [
+      "north"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "estufa",
+     "corners": 4,
+     "area": 16,
+     "clearArea": 14.802,
+     "minDimension": 2.79,
+     "largestRect": {
+      "x0": 9,
+      "y0": 0,
+      "x1": 12,
+      "y1": 4
+     },
+     "clearRect": {
+      "x0": 9.06,
+      "y0": 0.15,
+      "x1": 11.85,
+      "y1": 3.94,
+      "w": 2.79,
+      "h": 3.79
+     },
+     "labelAt": [
+      10.5,
+      2
+     ],
+     "fixtureArea": 0,
+     "usableArea": 14.802,
+     "exteriorFaces": [
+      "east",
+      "north"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "nicho",
+     "corners": 4,
+     "area": 5.985,
+     "clearArea": 4.98,
+     "minDimension": 1.785,
+     "largestRect": {
+      "x0": 4.04,
+      "y0": -11.98,
+      "x1": 6.03,
+      "y1": -8.98
+     },
+     "clearRect": {
+      "x0": 4.04,
+      "y0": -11.98,
+      "x1": 6.03,
+      "y1": -8.98,
+      "w": 1.99,
+      "h": 3
+     },
+     "labelAt": [
+      10.497,
+      5
+     ],
+     "fixtureArea": 0,
+     "usableArea": 4.98,
+     "exteriorFaces": [
+      "east",
+      "south"
+     ],
+     "exteriorWindow": false
+    },
+    {
+     "id": "cunha",
+     "corners": 4,
+     "area": 4.8,
+     "clearArea": 3.355,
+     "minDimension": 0.904,
+     "largestRect": {
+      "x0": 7.137,
+      "y0": -8.128,
+      "x1": 7.533,
+      "y1": -2.022
+     },
+     "clearRect": {
+      "x0": 7.137,
+      "y0": -8.128,
+      "x1": 7.533,
+      "y1": -2.022,
+      "w": 0.396,
+      "h": 6.106
+     },
+     "labelAt": [
+      6,
+      6.6
+     ],
+     "fixtureArea": 0,
+     "usableArea": 3.355,
+     "exteriorFaces": [
+      "east",
+      "north",
+      "west"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "bico",
+     "corners": 3,
+     "area": 0.6,
+     "clearArea": 0.107,
+     "minDimension": 0.157,
+     "largestRect": {
+      "x0": 5.947,
+      "y0": 0,
+      "x1": 6.344,
+      "y1": 0.793
+     },
+     "clearRect": {
+      "x0": 5.947,
+      "y0": 0,
+      "x1": 6.344,
+      "y1": 0.793,
+      "w": 0.397,
+      "h": 0.793
+     },
+     "labelAt": [
+      0.419,
+      6.145
+     ],
+     "fixtureArea": 0,
+     "usableArea": 0.107,
+     "exteriorFaces": [
+      "north",
+      "west"
+     ],
+     "exteriorWindow": false
+    }
+   ],
+   "walls": [
+    {
+     "id": "w1",
+     "axis": "h",
+     "c": 0,
+     "from": 0,
+     "to": 3,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "hall"
+     }
+    },
+    {
+     "id": "w2",
+     "axis": "h",
+     "c": 0,
+     "from": 3,
+     "to": 9,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w3",
+     "axis": "h",
+     "c": 0,
+     "from": 9,
+     "to": 12,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "estufa"
+     }
+    },
+    {
+     "id": "w4",
+     "axis": "h",
+     "c": 4,
+     "from": 9,
+     "to": 12,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "estufa"
+     },
+     "pos": {
+      "kind": "gap"
+     }
+    },
+    {
+     "id": "w5",
+     "axis": "h",
+     "c": 6,
+     "from": 0,
+     "to": 3,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "hall"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "bico"
+     }
+    },
+    {
+     "id": "w6",
+     "axis": "h",
+     "c": 6,
+     "from": 3,
+     "to": 9,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cunha"
+     }
+    },
+    {
+     "id": "w7",
+     "axis": "h",
+     "c": 6,
+     "from": 9,
+     "to": 12,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "nicho"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w8",
+     "axis": "v",
+     "c": 0,
+     "from": 0,
+     "to": 6,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "hall"
+     }
+    },
+    {
+     "id": "w9",
+     "axis": "v",
+     "c": 0,
+     "from": 6,
+     "to": 6.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "bico"
+     }
+    },
+    {
+     "id": "w10",
+     "axis": "v",
+     "c": 3,
+     "from": 0,
+     "to": 6,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "hall"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w11",
+     "axis": "v",
+     "c": 3,
+     "from": 6,
+     "to": 7.2,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cunha"
+     }
+    },
+    {
+     "id": "w12",
+     "axis": "v",
+     "c": 9,
+     "from": 0,
+     "to": 4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "estufa"
+     }
+    },
+    {
+     "id": "w13",
+     "axis": "v",
+     "c": 9,
+     "from": 4,
+     "to": 4.01,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "gap"
+     }
+    },
+    {
+     "id": "w14",
+     "axis": "v",
+     "c": 9,
+     "from": 4.01,
+     "to": 6,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "nicho"
+     }
+    },
+    {
+     "id": "w15",
+     "axis": "v",
+     "c": 9,
+     "from": 6,
+     "to": 6.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "cunha"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w16",
+     "axis": "v",
+     "c": 12,
+     "from": 0,
+     "to": 4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "estufa"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w17",
+     "axis": "v",
+     "c": 12,
+     "from": 4,
+     "to": 6,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "nicho"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w18",
+     "from": 0,
+     "to": 3.027,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "bico"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w19",
+     "from": 0,
+     "to": 6.053,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "cunha"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w20",
+     "from": 0,
+     "to": 3,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "gap"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "nicho"
+     }
+    }
+   ],
+   "openings": [
+    {
+     "index": 0,
+     "wall": "w8",
+     "from": 2.5,
+     "to": 3.5,
+     "center": [
+      0,
+      3
+     ],
+     "hinge": [
+      0,
+      2.5
+     ],
+     "swingRoom": "hall"
+    },
+    {
+     "index": 1,
+     "wall": "w10",
+     "from": 1.3,
+     "to": 2.7,
+     "center": [
+      3,
+      2
+     ]
+    },
+    {
+     "index": 2,
+     "wall": "w12",
+     "from": 1.4,
+     "to": 2.6,
+     "center": [
+      9,
+      2
+     ]
+    },
+    {
+     "index": 3,
+     "wall": "w14",
+     "from": 4.6,
+     "to": 5.4,
+     "center": [
+      9,
+      5
+     ],
+     "hinge": [
+      9,
+      4.6
+     ],
+     "swingRoom": "nicho"
+    },
+    {
+     "index": 4,
+     "wall": "w6",
+     "from": 5.55,
+     "to": 6.45,
+     "center": [
+      6,
+      6
+     ],
+     "hinge": [
+      5.55,
+      6
+     ],
+     "swingRoom": "cunha"
+    },
+    {
+     "index": 5,
+     "wall": "w5",
+     "from": 1.1,
+     "to": 1.9,
+     "center": [
+      1.5,
+      6
+     ],
+     "hinge": [
+      1.1,
+      6
+     ],
+     "swingRoom": "bico"
+    },
+    {
+     "index": 6,
+     "wall": "w2",
+     "from": 4.2,
+     "to": 5.8,
+     "center": [
+      5,
+      0
+     ]
+    },
+    {
+     "index": 7,
+     "wall": "w16",
+     "from": 1.2,
+     "to": 2.8,
+     "center": [
+      12,
+      2
+     ]
+    },
+    {
+     "index": 8,
+     "wall": "w19",
+     "from": 2.313,
+     "to": 3.713,
+     "center": [
+      5.987,
+      6.802
+     ]
+    }
+   ],
+   "envelope": {
+    "x0": 0,
+    "y0": 0,
+    "x1": 12,
+    "y1": 7.2,
+    "area": 77.4,
+    "outline": [
+     [
+      [
+       0,
+       0
+      ],
+      [
+       12,
+       0
+      ],
+      [
+       12,
+       6
+      ],
+      [
+       9,
+       6
+      ],
+      [
+       9,
+       6.4
+      ],
+      [
+       3,
+       7.2
+      ],
+      [
+       3,
+       6
+      ],
+      [
+       0,
+       6.4
+      ]
+     ]
+    ]
+   },
+   "interiorArea": 81.385,
+   "streetOutdoor": [],
+   "access": [
+    [
+     "exterior",
+     [
+      "room:hall"
+     ]
+    ],
+    [
+     "room:bico",
+     [
+      "room:hall"
+     ]
+    ],
+    [
+     "room:cunha",
+     [
+      "room:sala"
+     ]
+    ],
+    [
+     "room:estufa",
+     [
+      "room:sala"
+     ]
+    ],
+    [
+     "room:hall",
+     [
+      "exterior",
+      "room:bico",
+      "room:sala"
+     ]
+    ],
+    [
+     "room:nicho",
+     [
+      "room:sala"
+     ]
+    ],
+    [
+     "room:sala",
+     [
+      "room:cunha",
+      "room:estufa",
+      "room:hall",
+      "room:nicho"
+     ]
+    ]
+   ]
+  }
+ ],
+ "casa-angulo": [
+  {
+   "id": "ground",
+   "rooms": [
+    {
+     "id": "sala",
+     "corners": 8,
+     "area": 26.4,
+     "clearArea": 24.174,
+     "minDimension": 4.318,
+     "largestRect": {
+      "x0": 0,
+      "y0": 0,
+      "x1": 6,
+      "y1": 4
+     },
+     "clearRect": {
+      "x0": 0.15,
+      "y0": 0.15,
+      "x1": 5.94,
+      "y1": 3.94,
+      "w": 5.79,
+      "h": 3.79
+     },
+     "labelAt": [
+      3,
+      2
+     ],
+     "fixtureArea": 0,
+     "usableArea": 24.174,
+     "exteriorFaces": [
+      "east",
+      "north",
+      "west"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "cozinha",
+     "corners": 4,
+     "area": 16,
+     "clearArea": 14.364,
+     "minDimension": 3.79,
+     "largestRect": {
+      "x0": 6,
+      "y0": 0,
+      "x1": 10,
+      "y1": 4
+     },
+     "clearRect": {
+      "x0": 6.06,
+      "y0": 0.15,
+      "x1": 9.85,
+      "y1": 3.94,
+      "w": 3.79,
+      "h": 3.79
+     },
+     "labelAt": [
+      8,
+      2
+     ],
+     "fixtureArea": 0,
+     "usableArea": 14.364,
+     "exteriorFaces": [
+      "east",
+      "north"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "hall",
+     "corners": 4,
+     "area": 8.8,
+     "clearArea": 7.542,
+     "minDimension": 1.99,
+     "largestRect": {
+      "x0": 0,
+      "y0": 4,
+      "x1": 2.2,
+      "y1": 8
+     },
+     "clearRect": {
+      "x0": 0.15,
+      "y0": 4.06,
+      "x1": 2.14,
+      "y1": 7.85,
+      "w": 1.99,
+      "h": 3.79
+     },
+     "labelAt": [
+      1.1,
+      6
+     ],
+     "fixtureArea": 0,
+     "usableArea": 7.542,
+     "exteriorFaces": [
+      "south",
+      "west"
+     ],
+     "exteriorWindow": false
+    },
+    {
+     "id": "quarto",
+     "corners": 4,
+     "area": 19.2,
+     "clearArea": 18.002,
+     "minDimension": 3.79,
+     "largestRect": {
+      "x0": 2.2,
+      "y0": 4,
+      "x1": 7,
+      "y1": 8
+     },
+     "clearRect": {
+      "x0": 2.26,
+      "y0": 4.06,
+      "x1": 6.94,
+      "y1": 7.85,
+      "w": 4.68,
+      "h": 3.79
+     },
+     "labelAt": [
+      4.6,
+      6
+     ],
+     "fixtureArea": 0,
+     "usableArea": 18.002,
+     "exteriorFaces": [
+      "south"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "wc",
+     "corners": 4,
+     "area": 6,
+     "clearArea": 5.245,
+     "minDimension": 1.88,
+     "largestRect": {
+      "x0": 7,
+      "y0": 4,
+      "x1": 10,
+      "y1": 6
+     },
+     "clearRect": {
+      "x0": 7.06,
+      "y0": 4.06,
+      "x1": 9.85,
+      "y1": 5.94,
+      "w": 2.79,
+      "h": 1.88
+     },
+     "labelAt": [
+      8.5,
+      5
+     ],
+     "fixtureArea": 0,
+     "usableArea": 5.245,
+     "exteriorFaces": [
+      "east"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "arrumos",
+     "corners": 4,
+     "area": 6,
+     "clearArea": 5.245,
+     "minDimension": 1.88,
+     "largestRect": {
+      "x0": 7,
+      "y0": 6,
+      "x1": 10,
+      "y1": 8
+     },
+     "clearRect": {
+      "x0": 7.06,
+      "y0": 6.06,
+      "x1": 9.85,
+      "y1": 7.94,
+      "w": 2.79,
+      "h": 1.88
+     },
+     "labelAt": [
+      8.5,
+      7
+     ],
+     "fixtureArea": 0,
+     "usableArea": 5.245,
+     "exteriorFaces": [
+      "east"
+     ],
+     "exteriorWindow": false
+    },
+    {
+     "id": "estudio",
+     "corners": 4,
+     "area": 18,
+     "clearArea": 15.556,
+     "minDimension": 2.79,
+     "largestRect": {
+      "x0": 5,
+      "y0": 8,
+      "x1": 10,
+      "y1": 11
+     },
+     "clearRect": {
+      "x0": 5,
+      "y0": 8.06,
+      "x1": 10,
+      "y1": 10.85,
+      "w": 5,
+      "h": 2.79
+     },
+     "labelAt": [
+      7.5,
+      9.5
+     ],
+     "fixtureArea": 0,
+     "usableArea": 15.556,
+     "exteriorFaces": [
+      "east",
+      "south",
+      "west"
+     ],
+     "exteriorWindow": true
+    }
+   ],
+   "walls": [
+    {
+     "id": "w1",
+     "axis": "h",
+     "c": -1,
+     "from": 2.6,
+     "to": 4.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w2",
+     "axis": "h",
+     "c": 0,
+     "from": 0,
+     "to": 2,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w3",
+     "axis": "h",
+     "c": 0,
+     "from": 5,
+     "to": 6,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w4",
+     "axis": "h",
+     "c": 0,
+     "from": 6,
+     "to": 10,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    },
+    {
+     "id": "w5",
+     "axis": "h",
+     "c": 4,
+     "from": 0,
+     "to": 2.2,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "hall"
+     }
+    },
+    {
+     "id": "w6",
+     "axis": "h",
+     "c": 4,
+     "from": 2.2,
+     "to": 6,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "quarto"
+     }
+    },
+    {
+     "id": "w7",
+     "axis": "h",
+     "c": 4,
+     "from": 6,
+     "to": 7,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "cozinha"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "quarto"
+     }
+    },
+    {
+     "id": "w8",
+     "axis": "h",
+     "c": 4,
+     "from": 7,
+     "to": 10,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "cozinha"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "wc"
+     }
+    },
+    {
+     "id": "w9",
+     "axis": "h",
+     "c": 6,
+     "from": 7,
+     "to": 10,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "wc"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "arrumos"
+     }
+    },
+    {
+     "id": "w10",
+     "axis": "h",
+     "c": 8,
+     "from": 0,
+     "to": 2.2,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "hall"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w11",
+     "axis": "h",
+     "c": 8,
+     "from": 2.2,
+     "to": 4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "quarto"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w12",
+     "axis": "h",
+     "c": 8,
+     "from": 4,
+     "to": 7,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "quarto"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "estudio"
+     }
+    },
+    {
+     "id": "w13",
+     "axis": "h",
+     "c": 8,
+     "from": 7,
+     "to": 10,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "arrumos"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "estudio"
+     }
+    },
+    {
+     "id": "w14",
+     "axis": "h",
+     "c": 11,
+     "from": 7,
+     "to": 13,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "estudio"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w15",
+     "axis": "v",
+     "c": 0,
+     "from": 0,
+     "to": 4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w16",
+     "axis": "v",
+     "c": 0,
+     "from": 4,
+     "to": 8,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "hall"
+     }
+    },
+    {
+     "id": "w17",
+     "axis": "v",
+     "c": 2.2,
+     "from": 4,
+     "to": 8,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "hall"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "quarto"
+     }
+    },
+    {
+     "id": "w18",
+     "axis": "v",
+     "c": 6,
+     "from": 0,
+     "to": 4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    },
+    {
+     "id": "w19",
+     "axis": "v",
+     "c": 7,
+     "from": 4,
+     "to": 6,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "quarto"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "wc"
+     }
+    },
+    {
+     "id": "w20",
+     "axis": "v",
+     "c": 7,
+     "from": 6,
+     "to": 8,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "quarto"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "arrumos"
+     }
+    },
+    {
+     "id": "w21",
+     "axis": "v",
+     "c": 10,
+     "from": 0,
+     "to": 4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "cozinha"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w22",
+     "axis": "v",
+     "c": 10,
+     "from": 4,
+     "to": 6,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "wc"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w23",
+     "axis": "v",
+     "c": 10,
+     "from": 6,
+     "to": 8,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "arrumos"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w24",
+     "from": 0,
+     "to": 1.166,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w25",
+     "from": 0,
+     "to": 4.243,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "estudio"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w26",
+     "from": 0,
+     "to": 1.166,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w27",
+     "from": 0,
+     "to": 4.243,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "estudio"
+     }
+    }
+   ],
+   "openings": [
+    {
+     "index": 0,
+     "wall": "w16",
+     "from": 5.5,
+     "to": 6.5,
+     "center": [
+      0,
+      6
+     ],
+     "hinge": [
+      0,
+      5.5
+     ],
+     "swingRoom": "hall"
+    },
+    {
+     "index": 1,
+     "wall": "w5",
+     "from": 0.4,
+     "to": 1.8,
+     "center": [
+      1.1,
+      4
+     ]
+    },
+    {
+     "index": 2,
+     "wall": "w17",
+     "from": 4.75,
+     "to": 5.65,
+     "center": [
+      2.2,
+      5.2
+     ],
+     "hinge": [
+      2.2,
+      5.65
+     ],
+     "swingRoom": "quarto"
+    },
+    {
+     "index": 3,
+     "wall": "w19",
+     "from": 4.6,
+     "to": 5.4,
+     "center": [
+      7,
+      5
+     ],
+     "hinge": [
+      7,
+      4.6
+     ],
+     "swingRoom": "wc"
+    },
+    {
+     "index": 4,
+     "wall": "w20",
+     "from": 6.6,
+     "to": 7.4,
+     "center": [
+      7,
+      7
+     ],
+     "hinge": [
+      7,
+      6.6
+     ],
+     "swingRoom": "arrumos"
+    },
+    {
+     "index": 5,
+     "wall": "w12",
+     "from": 5.05,
+     "to": 5.95,
+     "center": [
+      5.5,
+      8
+     ],
+     "hinge": [
+      5.05,
+      8
+     ],
+     "swingRoom": "estudio"
+    },
+    {
+     "index": 6,
+     "wall": "w18",
+     "from": 1.2,
+     "to": 2.8,
+     "center": [
+      6,
+      2
+     ]
+    },
+    {
+     "index": 7,
+     "wall": "w1",
+     "from": 2.9,
+     "to": 4.1,
+     "center": [
+      3.5,
+      -1
+     ]
+    },
+    {
+     "index": 8,
+     "wall": "w15",
+     "from": 1.3,
+     "to": 2.7,
+     "center": [
+      0,
+      2
+     ]
+    },
+    {
+     "index": 9,
+     "wall": "w21",
+     "from": 1.1,
+     "to": 2.9,
+     "center": [
+      10,
+      2
+     ]
+    },
+    {
+     "index": 10,
+     "wall": "w11",
+     "from": 2.5,
+     "to": 3.7,
+     "center": [
+      3.1,
+      8
+     ]
+    },
+    {
+     "index": 11,
+     "wall": "w22",
+     "from": 4.6,
+     "to": 5.4,
+     "center": [
+      10,
+      5
+     ]
+    },
+    {
+     "index": 12,
+     "wall": "w27",
+     "from": 1.321,
+     "to": 2.921,
+     "center": [
+      11.5,
+      9.5
+     ]
+    }
+   ],
+   "envelope": {
+    "x0": 0,
+    "y0": -1,
+    "x1": 13,
+    "y1": 11,
+    "area": 100.4,
+    "outline": [
+     [
+      [
+       0,
+       0
+      ],
+      [
+       2,
+       0
+      ],
+      [
+       2.6,
+       -1
+      ],
+      [
+       4.4,
+       -1
+      ],
+      [
+       5,
+       0
+      ],
+      [
+       10,
+       0
+      ],
+      [
+       10,
+       8
+      ],
+      [
+       13,
+       11
+      ],
+      [
+       7,
+       11
+      ],
+      [
+       4,
+       8
+      ],
+      [
+       0,
+       8
+      ]
+     ]
+    ]
+   },
+   "interiorArea": 100.4,
+   "streetOutdoor": [],
+   "access": [
+    [
+     "exterior",
+     [
+      "room:hall"
+     ]
+    ],
+    [
+     "room:arrumos",
+     [
+      "room:quarto"
+     ]
+    ],
+    [
+     "room:cozinha",
+     [
+      "room:sala"
+     ]
+    ],
+    [
+     "room:estudio",
+     [
+      "room:quarto"
+     ]
+    ],
+    [
+     "room:hall",
+     [
+      "exterior",
+      "room:quarto",
+      "room:sala"
+     ]
+    ],
+    [
+     "room:quarto",
+     [
+      "room:arrumos",
+      "room:estudio",
+      "room:hall",
+      "room:wc"
+     ]
+    ],
+    [
+     "room:sala",
+     [
+      "room:cozinha",
+      "room:hall"
+     ]
+    ],
+    [
+     "room:wc",
+     [
+      "room:quarto"
+     ]
+    ]
+   ]
+  }
+ ],
+ "casa-redonda": [
+  {
+   "id": "ground",
+   "rooms": [
+    {
+     "id": "sala",
+     "corners": 6,
+     "area": 22.978,
+     "clearArea": 20.317,
+     "minDimension": 3.7,
+     "largestRect": {
+      "x0": 0,
+      "y0": 1,
+      "x1": 5.501,
+      "y1": 5
+     },
+     "clearRect": {
+      "x0": 0.15,
+      "y0": 1.15,
+      "x1": 5.501,
+      "y1": 4.85,
+      "w": 5.351,
+      "h": 3.7
+     },
+     "labelAt": [
+      2.751,
+      3
+     ],
+     "fixtureArea": 0,
+     "usableArea": 20.317,
+     "exteriorFaces": [
+      "east",
+      "north",
+      "south",
+      "west"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "rotunda",
+     "corners": 4,
+     "area": 19.635,
+     "clearArea": 17.904,
+     "minDimension": 4.697,
+     "largestRect": {
+      "x0": 6.181,
+      "y0": 1.186,
+      "x1": 9.72,
+      "y1": 4.814
+     },
+     "clearRect": {
+      "x0": 6.181,
+      "y0": 1.186,
+      "x1": 9.72,
+      "y1": 4.814,
+      "w": 3.539,
+      "h": 3.628
+     },
+     "labelAt": [
+      7.951,
+      3
+     ],
+     "fixtureArea": 0,
+     "usableArea": 17.904,
+     "exteriorFaces": [
+      "north",
+      "south"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "cozinha",
+     "corners": 6,
+     "area": 22.978,
+     "clearArea": 20.317,
+     "minDimension": 3.7,
+     "largestRect": {
+      "x0": 10.499,
+      "y0": 1,
+      "x1": 16,
+      "y1": 5
+     },
+     "clearRect": {
+      "x0": 10.499,
+      "y0": 1.15,
+      "x1": 15.85,
+      "y1": 4.85,
+      "w": 5.351,
+      "h": 3.7
+     },
+     "labelAt": [
+      13.25,
+      3
+     ],
+     "fixtureArea": 0,
+     "usableArea": 20.317,
+     "exteriorFaces": [
+      "east",
+      "north",
+      "south",
+      "west"
+     ],
+     "exteriorWindow": true
+    }
+   ],
+   "walls": [
+    {
+     "id": "w1",
+     "axis": "h",
+     "c": 1,
+     "from": 0,
+     "to": 6,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w2",
+     "axis": "h",
+     "c": 1,
+     "from": 10,
+     "to": 16,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    },
+    {
+     "id": "w3",
+     "axis": "h",
+     "c": 5,
+     "from": 0,
+     "to": 6,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w4",
+     "axis": "h",
+     "c": 5,
+     "from": 10,
+     "to": 16,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "cozinha"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w5",
+     "axis": "v",
+     "c": 0,
+     "from": 1,
+     "to": 5,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w6",
+     "axis": "v",
+     "c": 6,
+     "from": 1,
+     "to": 1.5,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w7",
+     "axis": "v",
+     "c": 6,
+     "from": 4.5,
+     "to": 5,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w8",
+     "axis": "v",
+     "c": 10,
+     "from": 1,
+     "to": 1.5,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    },
+    {
+     "id": "w9",
+     "axis": "v",
+     "c": 10,
+     "from": 4.5,
+     "to": 5,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    },
+    {
+     "id": "w10",
+     "axis": "v",
+     "c": 16,
+     "from": 1,
+     "to": 5,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "cozinha"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w11",
+     "from": 0,
+     "to": 4.636,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "rotunda"
+     }
+    },
+    {
+     "id": "w12",
+     "from": 0,
+     "to": 3.218,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "rotunda"
+     }
+    },
+    {
+     "id": "w13",
+     "from": 0,
+     "to": 4.636,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "rotunda"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w14",
+     "from": 0,
+     "to": 3.218,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "rotunda"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    }
+   ],
+   "openings": [
+    {
+     "index": 0,
+     "wall": "w11",
+     "from": 1.768,
+     "to": 2.868,
+     "center": [
+      8,
+      0.5
+     ],
+     "hinge": [
+      7.454,
+      0.56
+     ],
+     "swingRoom": "rotunda"
+    },
+    {
+     "index": 1,
+     "wall": "w12",
+     "from": 1.009,
+     "to": 2.209,
+     "center": [
+      5.5,
+      3
+     ]
+    },
+    {
+     "index": 2,
+     "wall": "w14",
+     "from": 1.009,
+     "to": 2.209,
+     "center": [
+      10.5,
+      3
+     ]
+    },
+    {
+     "index": 3,
+     "wall": "w1",
+     "from": 1,
+     "to": 3,
+     "center": [
+      2,
+      1
+     ]
+    },
+    {
+     "index": 4,
+     "wall": "w5",
+     "from": 2.2,
+     "to": 3.8,
+     "center": [
+      0,
+      3
+     ]
+    },
+    {
+     "index": 5,
+     "wall": "w10",
+     "from": 2.1,
+     "to": 3.9,
+     "center": [
+      16,
+      3
+     ]
+    },
+    {
+     "index": 6,
+     "wall": "w13",
+     "from": 1.618,
+     "to": 3.018,
+     "center": [
+      8,
+      5.5
+     ]
+    }
+   ],
+   "envelope": {
+    "x0": 0,
+    "y0": 0.501,
+    "x1": 16,
+    "y1": 5.499,
+    "area": 65.591,
+    "outline": [
+     [
+      [
+       0,
+       1
+      ],
+      [
+       6,
+       1
+      ],
+      [
+       6,
+       1.5
+      ],
+      [
+       6.087,
+       1.39
+      ],
+      [
+       6.181,
+       1.285
+      ],
+      [
+       6.28,
+       1.186
+      ],
+      [
+       6.385,
+       1.092
+      ],
+      [
+       6.494,
+       1.004
+      ],
+      [
+       6.609,
+       0.923
+      ],
+      [
+       6.728,
+       0.848
+      ],
+      [
+       6.851,
+       0.78
+      ],
+      [
+       6.977,
+       0.719
+      ],
+      [
+       7.107,
+       0.665
+      ],
+      [
+       7.24,
+       0.618
+      ],
+      [
+       7.374,
+       0.58
+      ],
+      [
+       7.511,
+       0.548
+      ],
+      [
+       7.65,
+       0.525
+      ],
+      [
+       7.79,
+       0.509
+      ],
+      [
+       7.93,
+       0.501
+      ],
+      [
+       8.07,
+       0.501
+      ],
+      [
+       8.21,
+       0.509
+      ],
+      [
+       8.35,
+       0.525
+      ],
+      [
+       8.489,
+       0.548
+      ],
+      [
+       8.626,
+       0.58
+      ],
+      [
+       8.76,
+       0.618
+      ],
+      [
+       8.893,
+       0.665
+      ],
+      [
+       9.023,
+       0.719
+      ],
+      [
+       9.149,
+       0.78
+      ],
+      [
+       9.272,
+       0.848
+      ],
+      [
+       9.391,
+       0.923
+      ],
+      [
+       9.506,
+       1.004
+      ],
+      [
+       9.615,
+       1.092
+      ],
+      [
+       9.72,
+       1.186
+      ],
+      [
+       9.819,
+       1.285
+      ],
+      [
+       9.913,
+       1.39
+      ],
+      [
+       10,
+       1.5
+      ],
+      [
+       10,
+       1
+      ],
+      [
+       16,
+       1
+      ],
+      [
+       16,
+       5
+      ],
+      [
+       10,
+       5
+      ],
+      [
+       10,
+       4.5
+      ],
+      [
+       9.913,
+       4.61
+      ],
+      [
+       9.819,
+       4.715
+      ],
+      [
+       9.72,
+       4.814
+      ],
+      [
+       9.615,
+       4.908
+      ],
+      [
+       9.506,
+       4.996
+      ],
+      [
+       9.391,
+       5.077
+      ],
+      [
+       9.272,
+       5.152
+      ],
+      [
+       9.149,
+       5.22
+      ],
+      [
+       9.023,
+       5.281
+      ],
+      [
+       8.893,
+       5.335
+      ],
+      [
+       8.76,
+       5.382
+      ],
+      [
+       8.626,
+       5.42
+      ],
+      [
+       8.489,
+       5.452
+      ],
+      [
+       8.35,
+       5.475
+      ],
+      [
+       8.21,
+       5.491
+      ],
+      [
+       8.07,
+       5.499
+      ],
+      [
+       7.93,
+       5.499
+      ],
+      [
+       7.79,
+       5.491
+      ],
+      [
+       7.65,
+       5.475
+      ],
+      [
+       7.511,
+       5.452
+      ],
+      [
+       7.374,
+       5.42
+      ],
+      [
+       7.24,
+       5.382
+      ],
+      [
+       7.107,
+       5.335
+      ],
+      [
+       6.977,
+       5.281
+      ],
+      [
+       6.851,
+       5.22
+      ],
+      [
+       6.728,
+       5.152
+      ],
+      [
+       6.609,
+       5.077
+      ],
+      [
+       6.494,
+       4.996
+      ],
+      [
+       6.385,
+       4.908
+      ],
+      [
+       6.28,
+       4.814
+      ],
+      [
+       6.181,
+       4.715
+      ],
+      [
+       6.087,
+       4.61
+      ],
+      [
+       6,
+       4.5
+      ],
+      [
+       6,
+       5
+      ],
+      [
+       0,
+       5
+      ]
+     ]
+    ]
+   },
+   "interiorArea": 65.591,
+   "streetOutdoor": [],
+   "access": [
+    [
+     "exterior",
+     [
+      "room:rotunda"
+     ]
+    ],
+    [
+     "room:cozinha",
+     [
+      "room:rotunda"
+     ]
+    ],
+    [
+     "room:rotunda",
+     [
+      "exterior",
+      "room:cozinha",
+      "room:sala"
+     ]
+    ],
+    [
+     "room:sala",
+     [
+      "room:rotunda"
+     ]
+    ]
+   ]
+  }
+ ]
+}
