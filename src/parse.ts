@@ -252,7 +252,7 @@ export const SCHEMA: readonly ObjectDoc[] = [
     fields: [
       { name: "arc", type: "[x,y]", required: true, doc: "an entry in a poly: where this arc ends; it starts at the previous corner" },
       { name: "r", type: "number", required: true, doc: "radius, metres; at least half the chord" },
-      { name: "sweep", type: "enum", required: true, enum: SWEEPS, doc: "which way it turns on the page (y grows south)" },
+      { name: "sweep", type: "enum", required: false, enum: SWEEPS, doc: 'which way it turns on the page (y grows south); default "cw"' },
       { name: "large", type: "boolean", required: false, doc: "true for an arc of more than 180°; default false, the minor arc" },
     ],
   },
@@ -696,9 +696,12 @@ function readPolyAt(path: string, v: unknown, bad: Bad): Shape | undefined {
         ok = false;
         return;
       }
-      const sweep = entry["sweep"];
+      // Omitted defaults to "cw" (docs/agent-review.md B5: the grammar always documented
+      // this default; the parser used to refuse the very thing it promised). `large`
+      // already defaults the same way, one line below.
+      const sweep = entry["sweep"] ?? "cw";
       if (sweep !== "cw" && sweep !== "ccw") {
-        bad(`${path}[${i}].sweep`, 'must be "cw" or "ccw": which way the arc turns on the page');
+        bad(`${path}[${i}].sweep`, 'must be "cw" or "ccw": which way the arc turns on the page; default "cw" if omitted');
         ok = false;
         return;
       }

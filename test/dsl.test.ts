@@ -207,6 +207,25 @@ describe("the grammar: one entity per line", () => {
     });
     assert.equal(toDsl(doc("room r poly 5,2 5,5 arc 11,5 r3.5 ccw 11,2")), "room r poly 5,2 5,5 arc 11,5 r3.5 ccw 11,2\n");
   });
+
+  // docs/agent-review.md B5: the grammar always documented "default cw" for a missing
+  // sweep token (dsl.ts's DSL_SCHEMA entry), but the schema-level parser refused to accept
+  // a poly missing one. The DSL side of this was never the problem — omitting the token
+  // already produced an arc object with no `sweep` key — so this just pins that it still
+  // does, and that both spellings (omitted and explicit "cw") round-trip and lint clean.
+  it("omits sweep when the token is left out, and both spellings lint clean (B5)", () => {
+    assert.deepEqual(doc("room sala poly 0,0 4,0 arc 4,4 r2.5 0,4"), {
+      rooms: { sala: { poly: [[0, 0], [4, 0], { arc: [4, 4], r: 2.5 }, [0, 4]] } },
+    });
+    const omitted = lint("room sala poly 0,0 4,0 arc 4,4 r2.5 0,4\ndoor sala.south w0.9 entrance");
+    const explicitCw = lint("room sala poly 0,0 4,0 arc 4,4 r2.5 cw 0,4\ndoor sala.south w0.9 entrance");
+    assert.deepEqual(omitted.findings, []);
+    assert.deepEqual(explicitCw.findings, []);
+    // and the printer keeps each spelling exactly as authored — omitting the default
+    // never invents a token, and an explicit "cw" is never silently dropped
+    assert.equal(toDsl(doc("room sala poly 0,0 4,0 arc 4,4 r2.5 0,4")), "room sala poly 0,0 4,0 arc 4,4 r2.5 0,4\n");
+    assert.equal(toDsl(doc("room sala poly 0,0 4,0 arc 4,4 r2.5 cw 0,4")), "room sala poly 0,0 4,0 arc 4,4 r2.5 cw 0,4\n");
+  });
 });
 
 describe("errors carry the line, and every bad line is reported", () => {

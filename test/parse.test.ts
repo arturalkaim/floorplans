@@ -199,6 +199,39 @@ describe("parse: rect shorthand", () => {
   });
 });
 
+/**
+ * docs/agent-review.md B5: the DSL grammar (dsl.ts's DSL_SCHEMA) always documented
+ * "default cw" for an arc's `sweep`, and the DSL parser already produced an arc object
+ * with no `sweep` key when the token was omitted — but this schema-level parser refused
+ * that same document outright, rejecting the very default the reference promised.
+ */
+describe("parse: an arc's sweep defaults to \"cw\" when omitted (B5)", () => {
+  const poly = (sweep?: "cw" | "ccw") => [
+    [0, 0],
+    [4, 0],
+    sweep === undefined ? { arc: [4, 4], r: 2.5 } : { arc: [4, 4], r: 2.5, sweep },
+    [0, 4],
+  ];
+
+  // the arc belongs to the edge that *arrives* at its point, i.e. the previous corner's —
+  // for `poly(sweep)` above, that's index 1 ([4,0] -> the arc's own [4,4])
+  const ARC_INDEX = 1;
+
+  it("accepts a missing sweep and treats it as \"cw\"", () => {
+    const withDefault = parse({ rooms: { sala: { poly: poly(undefined) } } });
+    const explicitCw = parse({ rooms: { sala: { poly: poly("cw") } } });
+    assert.deepEqual(withDefault.rooms[0]!.arcs, explicitCw.rooms[0]!.arcs);
+    assert.equal(withDefault.rooms[0]!.arcs[ARC_INDEX]!.sweep, "cw");
+  });
+
+  it("still accepts an explicit \"ccw\", and still rejects anything else", () => {
+    assert.equal(parse({ rooms: { sala: { poly: poly("ccw") } } }).rooms[0]!.arcs[ARC_INDEX]!.sweep, "ccw");
+    assert.deepEqual(issuesOf({ rooms: { sala: { poly: [[0, 0], [4, 0], { arc: [4, 4], r: 2.5, sweep: "clockwise" }, [0, 4]] } } }), [
+      "rooms.sala.poly[2].sweep",
+    ]);
+  });
+});
+
 describe("parse: fixtures", () => {
   const withFix = (fixtures: unknown[]) => twoRooms({ fixtures });
 

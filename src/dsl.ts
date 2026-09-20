@@ -299,7 +299,7 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
     tokens: [
       { token: "<x>,<y>", field: "arc.arc", required: true, doc: "where the arc ends; it starts at the previous corner" },
       { token: "r<radius>", field: "arc.r", required: true, doc: "radius, metres; at least half the chord" },
-      { token: "cw|ccw", field: "arc.sweep", required: true, doc: "which way it turns on the page, y growing south; default cw" },
+      { token: "cw|ccw", field: "arc.sweep", required: false, doc: "which way it turns on the page, y growing south; default cw" },
       { token: "large", field: "arc.large", required: false, doc: "the arc longer than a half circle; default the minor one" },
     ],
   },
