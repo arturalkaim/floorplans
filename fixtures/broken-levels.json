@@ -1,0 +1,62 @@
+{
+  "title": "Broken on purpose: levels",
+  "_note": "one of every cross-level finding: level.unreachable, stair.no_arrival, stair.misaligned, stair.pitch, stair.headroom, structure.over_open_sky, entrance.not_ground",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "stack": ["piso0","piso1","piso2"],
+  "levels": {
+    "piso0": {
+      "name": "Piso 0",
+      "height": 2.4,
+      "ground": true,
+      "rooms": {
+        "hall": {"name":"Hall","kind":"hall","rect":[0,0,3,4]},
+        "sala": {"name":"Sala","kind":"living","rect":[3,0,4,4]}
+      },
+      "outdoor": {
+        "terraco": {"name":"Terraço","rect":[0,4,7,3]}
+      },
+      "openings": [
+        {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"north"},"width":1,"entrance":true},
+        {"type":"door","between":["hall","sala"],"width":0.9,"swingInto":"sala"},
+        {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"east"},"width":1.2}
+      ]
+    },
+    "piso1": {
+      "name": "Piso 1",
+      "height": 2.4,
+      "rooms": {
+        "hall1": {"name":"Hall 1","kind":"hall","rect":[0,0,3,4]},
+        "quarto": {"name":"Quarto","kind":"bedroom","rect":[3,0,4,4]},
+        "estudio": {"name":"Estúdio","kind":"office","rect":[0,4,7,3]}
+      },
+      "openings": [
+        {"type":"door","between":["hall1","quarto"],"width":0.9,"swingInto":"quarto"},
+        {"type":"door","between":["hall1","estudio"],"width":0.9,"swingInto":"estudio"},
+        {"type":"door","between":["exterior","estudio"],"on":{"room":"estudio","side":"south"},"width":0.9,"swingInto":"estudio"},
+        {"type":"window","between":["exterior","quarto"],"on":{"room":"quarto","side":"east"},"width":1.2}
+      ]
+    },
+    "piso2": {
+      "name": "Piso 2",
+      "rooms": {
+        "sotao": {"name":"Sótão","kind":"storage","rect":[0,0,7,4]}
+      },
+      "openings": [
+        {"type":"window","between":["exterior","sotao"],"on":{"room":"sotao","side":"north"},"width":1.2}
+      ]
+    }
+  },
+  "vertical": [
+    {
+      "id": "escada",
+      "type": "stairs",
+      "name": "Escada",
+      "up": 0,
+      "risers": 20,
+      "at": [
+        {"level":"piso0","in":"hall","rect":[0.5,0.5,1,2]},
+        {"level":"piso1","in":"hall1","rect":[5,0.5,1,2]}
+      ]
+    }
+  ]
+}

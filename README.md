@@ -6,7 +6,7 @@ house before you draw it. "Mermaid for floor plans."
 
 - Rooms in, walls derived, openings attached to walls, findings out.
 - Zero runtime dependencies. ESM + TypeScript. `render` returns a string; no DOM.
-- Rectilinear plans, single level. See `specs/floorplan-lib-plan.md` for scope.
+- Rectilinear plans, one or many levels. See `specs/floorplan-lib-plan.md` for scope.
 
 ```
 npm install          # dev deps only (typescript)
@@ -50,6 +50,7 @@ A wall is offered for dragging only when the move has a representation in the so
 | a room `rect` | `x`/`width` or `y`/`height`: the near side moves the origin, the far side resizes | as above |
 | an outdoor `poly` or `rect` | the coordinate shared by the edge's two corners, or the matching `rect` pair | the space authored its own geometry rather than being placed on the grid |
 | a fixture | its body moves, its four sides resize it | always; written back as `poly`, or as `at`/`size`, whichever the source uses |
+| a shared `grid` boundary | `grid.cols[i]` and `[i+1]` — **and the wall moves on every level using the grid**, which the status line says | the wall sits on a shared track boundary |
 
 A space is always written back **in the form it was authored in** — a `rect` room stays a
 `rect`, a `poly` room stays a `poly` — so a drag never reformats a document someone is
@@ -81,18 +82,27 @@ move re-applies from the document as it was when the gesture began — so howeve
 moves arrive, the wall lands where the pointer is rather than accumulating. Undo
 (⌘Z) and redo (⇧⌘Z) take one step per gesture, and Reset returns the plan to the example.
 
-`draggableWalls(text, model)` and `applyDrag(text, draggable, metres)` are library
-functions — the app only turns pointer events into coordinates.
+`draggableWalls(text, model, level?)` and `applyDrag(text, draggable, metres)` are library
+functions — the app only turns pointer events into coordinates. On a document that
+authored `levels`, every path a drag writes gains a `levels.<id>.` prefix and nothing
+else changes; on one that did not, the paths are the ones they always were.
 
 ## CLI
 
 ```
-floorplan <plan.json> [--out plan.svg] [--lint] [--json] [--scale N]
+floorplan <plan.json> [--out plan.svg] [--level id] [--lint] [--json] [--scale N]
                       [--theme auto|light|dark] [--labels auto|full|index]
                       [--areas clear|centreline|none] [--mark error|warning|info|none]
 ```
 
 Exit codes: `0` clean or info only, `1` findings at warning or above, `2` usage or schema error.
+
+`--level` picks which storey to draw; the default is the ground level, so a single-level
+plan needs it never. `--out` may contain `{level}`, and then one sheet per storey is
+written (`--out plan-{level}.svg` → `plan-piso0.svg`, `plan-piso1.svg`). `--lint` prefixes
+each finding with the level it is about once there is more than one, and a building-wide
+finding shows `—`. `--json` is unchanged in shape: findings gain `level`, and the schedule
+gains `levels[]` and `building`, both only on a document that authored `levels`.
 
 On a schema error (exit `2`), `--json` prints `{"error":{"issues":[{"path","message"}]}}`
 to stdout instead of the text form on stderr; without `--json` the text form is unchanged.
@@ -103,6 +113,7 @@ to stdout instead of the text form on stderr; without `--json` the text form is 
 import { floorplan, parse, analyze, renderSvg } from "floorplan";
 
 const { svg, findings, schedule } = floorplan(json);   // one call
+const { levels } = floorplan(json);                    // [{ id, name, svg, findings }, …]
 
 const plan = parse(json);                 // throws PlanError listing every schema problem
 const { model, findings } = analyze(plan); // never throws; geometry problems are findings
@@ -142,6 +153,84 @@ close to a real field (`"positon"` → `did you mean "position"?`). A key prefix
 }
 ```
 
+### Levels
+
+A document with no `levels` block is a single-level plan and always will be: it parses,
+lints, renders, formats and edits exactly as it did before levels existed, down to the
+byte, and its document paths stay `rooms.sala.poly[2][0]`. Everything below is additive.
+
+```jsonc
+{
+  "stack": ["cave", "piso0", "piso1"],          // ground-up; optional, key order otherwise
+  "grid": { "cols": [4.9, 1.2, 1.3, 4.4], "rows": [1.4, 1.8, 2, 2, 1, 1.8] },
+  "levels": {
+    "piso0": { "name": "Piso 0", "height": 2.7, "ground": true, "rooms": { … }, "openings": [ … ] },
+    "piso1": { "name": "Piso 1", "height": 2.6, "layout": { "areas": [ … ] }, "voids": { … } }
+  },
+  "vertical": [
+    { "id": "escada", "type": "stairs", "name": "Escada", "up": 0, "risers": 15,
+      "at": [{ "level": "piso0", "in": "hall",     "rect": [4.95, 0.2, 1.1, 3.64] },
+             { "level": "piso1", "in": "hall_sup", "rect": [4.95, 0.2, 1.1, 1.1] }] }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `stack` | level ids, ground first. Optional — the `levels` object's own key order says the same thing — but when given it must name every level exactly once |
+| `levels` | a **map**, not an array, so adding a basement never renumbers a path someone is holding |
+| `levels.<id>.ground` | the level the street meets. Default: the first in the stack. A sloping site may mark more than one |
+| `levels.<id>.height` | floor to floor, metres. Only `stair.pitch` and `stair.headroom` read it |
+| `levels.<id>` content | `rooms`, `outdoor`, `voids`, `layout`, `openings`, `fixtures` — the same keys a single-level document writes at the top |
+| `grid` | an optional shared track grid. A level that gives only `layout.areas` sits on it, which is the mechanism that makes an upper floor's walls land on the lower floor's. A level may still author its own `layout.cols`/`rows` and opt out |
+| `vertical` | stairs, lifts and ramps: the only entity that spans levels |
+
+Levels share the plan origin and axes — there is no per-level transform — so every sheet
+lines up with every other.
+
+#### Vertical circulation
+
+A stair is matched between levels by its **own id**, never by footprint overlap. That
+costs about four tokens and buys three findings that footprint matching cannot express:
+two shafts 20 cm apart are never silently joined, a switchback whose upper flight sits
+beside the lower one is still one stair, and `stair.misaligned` can exist at all.
+
+| Field | Meaning |
+|---|---|
+| `id` | required, and the only thing that joins the levels |
+| `type` | `stairs`, `lift`, `ramp` |
+| `at` | one `{ level, in, poly \| rect }` per level it serves, sorted into stack order by the parser. `in` names the room or outdoor space you step off it into on that level — not "whichever room contains the footprint", which is undefined when a stair sits on a wall |
+| `up` | bearing of travel upward, degrees clockwise from north. Needed for `stair.headroom` |
+| `risers` | risers between the levels it joins. With the lower level's `height`, gives the rise, the going and the pitch |
+
+On every level it serves a vertical element is an obstacle exactly as a `stairs` fixture
+is: it takes floor, it is excluded from the clear rectangle, and a door swinging into it
+is reported. It has no `fixtures[i]` to address, so a finding about one carries
+`vertical: "<id>"` instead of `fixture: <n>`, and the drawing tags it `data-vertical`.
+
+The `stairs` **fixture** type is unchanged and stays: on a single-level plan it is the
+right way to draw a stair that goes somewhere the model does not describe. It is a
+drawing-only obstacle and joins nothing — on a multi-level plan, use `vertical`.
+
+#### Voids
+
+A `void` is the dual of an `outdoor` space: an outdoor space is a declared absence of
+*roof*, a void is a declared absence of *floor*. Both stop a cell inside the footprint
+being a `tiling.gap`, and both are owner classes, so a wall derives beside one.
+
+```jsonc
+"voids": { "vazio_sala": { "name": "Pé-direito duplo da Sala" } }   // or a poly / rect
+```
+
+A void has the building over it, so it is *not* open sky: the wall between a room and a
+stairwell is an ordinary partition, a window onto a void is still `window.not_exterior`,
+and the envelope wall runs past a double-height space that reaches the façade. A void's
+area stays out of `interiorArea` and inside the envelope, and nothing opens into one —
+naming a void in an opening's `between` is a schema error.
+
+A void has to reach an edge of the room around it. A room enclosing one completely would
+be a ring, and a single rectilinear ring cannot express a hole.
+
 ### Canonical form — how a plan should be written
 
 `formatText(source)` puts a document into the canonical form, and every fixture in this
@@ -178,6 +267,14 @@ Measured with the `o200k_base` BPE, this repository's seven fixtures:
 | broken | 677 | 483 | 411 (−39 %) | 23 → 23 |
 | cabin | 644 | 473 | 429 (−33 %) | 41 → 21 |
 | **all seven** | **7 738** | **5 703** | **5 351 (−31 %)** | 418 → 257 |
+| moradia-2-pisos | — | — | **1 594** | 94 |
+| broken-levels | — | — | **770** | 62 |
+
+The two-storey house costs 1 594 tokens — 6 % more than casa-t3's single storey for twice
+the building, because a level is a block header rather than a second document. A
+`vertical` entry is the one place the canonical form breaks an entity across lines: its
+`at` is a collection of entities, so the shape rule makes it a block, exactly as it does
+`rooms`. That is the rule working, not an exception to it.
 
 The third column is what this repository ships: the canonical form plus `rect` for every
 room and outdoor space that is a plain rectangle (see **Rooms**). casa-piscina's deck stays
@@ -326,7 +423,10 @@ the same object is a fixture indoors and an anonymous polygon outdoors.
 
 ### Findings
 
-Every finding is `{ rule, severity, message, at?, rooms?, opening? }`.
+Every finding is `{ rule, severity, message, level?, at?, rooms?, opening?, fixture?, vertical? }`.
+`level` names the storey a finding is about; it is absent on a building-wide finding
+(`entrance.*`, `reach.*`) and absent on **every** finding of a document with no `levels`
+block.
 
 | Rule | Severity | Catches |
 |---|---|---|
@@ -353,7 +453,25 @@ room drawn on centrelines is 1.88 × 0.79 m to stand in.
 | `circulation.share` | info | halls and corridors above 10 % of the interior |
 | `privacy.bedroom_off_living` / `entrance.multiple` / `door.swing_collision` | info | worth a look |
 
-Thresholds are options on `analyze(plan, rules)`.
+Across levels:
+
+| Rule | Severity | Catches |
+|---|---|---|
+| `level.unreachable` | error | a storey no stair, lift or ramp arrives on |
+| `stair.no_arrival` | error | a vertical element's footprint is not inside the space its `in` names, or it stands on one level and joins nothing |
+| `stair.misaligned` | warning | consecutive footprints barely overlap, or do not overlap at all: not one shaft |
+| `structure.over_open_sky` | warning | a room stands over no room below — a cantilever, or a room that has lost its support |
+| `stair.pitch` | info | with `risers` and `height`: the pitch or the going is outside the comfortable range |
+| `stair.headroom` | info | with `risers`, `height` and `up`: the floor above stays closed too far up the flight |
+| `entrance.not_ground` | info | a door opens to the outside on a level the street does not meet |
+
+`entrance.*` and `reach.unreachable` are building-wide: you enter a building once and then
+walk through all of it, and the walk crosses every vertical element. An exterior door on a
+level the street does not meet is never a way in, so it cannot hide a missing stair.
+Everything else is judged per level.
+
+Thresholds are options on `analyze(plan, rules)`; `stairPitch` and `minHeadroom` are
+conventions rather than a code, which is exactly why they are options.
 
 ## Areas
 
@@ -379,5 +497,10 @@ src/bin.ts        the published executable ("bin" in package.json); wires real s
 app/              the playground (React, TanStack Router, Vite)
 fixtures/         casa-t3 (seed house), apartment-t2 (grid), cabin,
                   casa-patio (courtyard), quinta (garden + pool + shack),
-                  casa-piscina (fixtures), broken
+                  casa-piscina (fixtures), broken,
+                  moradia-2-pisos (two storeys, shared grid, void, stair),
+                  broken-levels (one of every cross-level finding)
+test/__snapshots__/before-levels/
+                  what every single-level fixture produced at the commit before
+                  levels landed; test/levels-compat.test.ts holds the library to it
 ```

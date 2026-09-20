@@ -1,4 +1,4 @@
-import { FIXTURE_TYPES, OPENING_TYPES, RULES, ROOM_KINDS, SIDES } from "floorplan";
+import { FIXTURE_TYPES, OPENING_TYPES, RULES, ROOM_KINDS, SIDES, VERTICAL_TYPES } from "floorplan";
 import type { RuleDoc } from "floorplan";
 
 /**
@@ -13,7 +13,7 @@ export function Reference() {
       <p>
         A plan is one JSON document. Coordinates are <strong>metres on wall centrelines</strong>, y grows
         downwards, and rooms must tile the footprint exactly — walls are derived from the edges they share,
-        never authored. Plans are rectilinear and single level.
+        never authored. Plans are rectilinear, and have one storey or many.
       </p>
       <p>
         Write it in canonical form: <strong>one entity per line</strong> — a room, an outdoor space, an
@@ -29,6 +29,7 @@ export function Reference() {
   "walls": { "exterior": 0.30, "partition": 0.12 },
   "rooms":    { "<id>": { "name", "kind", "zone", "poly" | "rect" } },
   "outdoor":  { "<id>": { "name", "poly" | "rect", "covered" } },
+  "voids":    { "<id>": { "name", "poly" | "rect" } },
   "fixtures": [ { "type", "in", "poly" | "at" + "size" } ],
   "openings": [ { "type", "between", "on", "position", "width" } ]
 }`}</code></pre>
@@ -83,6 +84,66 @@ export function Reference() {
         <code>entrance.missing</code>.
       </p>
 
+      <h2>Levels</h2>
+      <p>
+        A document with no <code>levels</code> block is a single-level plan and stays exactly what it was:
+        same findings, same drawing, same document paths. Everything here is additive.
+      </p>
+      <pre><code>{`{
+  "stack": ["piso0", "piso1"],                 // ground-up; optional, key order otherwise
+  "grid": { "cols": [4.9, 1.2, 1.3, 4.4], "rows": [1.4, 1.8, 2, 2, 1, 1.8] },
+  "levels": {
+    "piso0": { "name", "height", "ground": true, "rooms", "outdoor", "voids", "openings", "fixtures" },
+    "piso1": { "name", "height", "layout": { "areas": [ … ] }, "rooms", "voids", "openings" }
+  },
+  "vertical": [
+    { "id": "escada", "type": "stairs", "up": 0, "risers": 15,
+      "at": [{ "level": "piso0", "in": "hall",     "rect": [4.95, 0.2, 1.1, 3.64] },
+             { "level": "piso1", "in": "hall_sup", "rect": [4.95, 0.2, 1.1, 1.1] }] }
+  ]
+}`}</code></pre>
+      <table>
+        <tbody>
+          <tr><td><code>stack</code></td><td>level ids, ground first. Optional — the <code>levels</code> object's key order says the same thing — but when given it must name every level exactly once</td></tr>
+          <tr><td><code>levels</code></td><td>a <em>map</em>, not an array, so adding a basement never renumbers a path someone is holding</td></tr>
+          <tr><td><code>ground</code></td><td>the level the street meets. Default: the first in the stack. A sloping site may mark more than one</td></tr>
+          <tr><td><code>height</code></td><td>floor to floor, metres. Only <code>stair.pitch</code> and <code>stair.headroom</code> read it</td></tr>
+          <tr><td><code>grid</code></td><td>an optional shared track grid. A level that gives only <code>layout.areas</code> sits on it, which is what makes an upper floor's walls land on the lower floor's</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Levels share the plan origin and axes — no per-level transform — so every sheet lines up with every
+        other. <code>renderSvg(model, {"{ level }"})</code> draws one storey and ghosts the one below it;{" "}
+        <code>floorplan()</code> returns a drawing per level and keeps <code>svg</code> as the ground level's.
+      </p>
+
+      <h3>Vertical circulation</h3>
+      <p>
+        Stairs, lifts and ramps are the only entity that spans levels, and they are matched between levels by
+        their own <code>id</code> — never by footprint overlap, which would silently join two shafts that
+        happen to touch and would make <code>stair.misaligned</code> impossible to express. Each{" "}
+        <code>at</code> entry gives a footprint and the space you step off it into on that level.{" "}
+        <code>up</code> (a bearing) and <code>risers</code> are optional, and each one unlocks one check.
+      </p>
+      <ul className="tokens">{[...VERTICAL_TYPES].map((k) => <li key={k}><code>{k}</code></li>)}</ul>
+      <p>
+        On every level it serves it is an obstacle exactly as a <code>stairs</code> fixture is. It has no{" "}
+        <code>fixtures[i]</code> to address, so a finding about one carries <code>vertical</code> rather than{" "}
+        <code>fixture</code>. The <code>stairs</code> fixture type is unchanged: on a single-level plan it is
+        still the way to draw a stair that goes somewhere the model does not describe.
+      </p>
+
+      <h3>Voids</h3>
+      <p>
+        A <code>void</code> is the dual of an outdoor space: an outdoor space is a declared absence of{" "}
+        <em>roof</em>, a void is a declared absence of <em>floor</em> — a stairwell, a double-height room, the
+        underside of a cantilever. Like an outdoor space it stops the cell being a <code>tiling.gap</code> and
+        it owns the wall beside it, but it has the building over it, so that wall is an ordinary partition and
+        a window onto it is still <code>window.not_exterior</code>. Its area stays out of the interior and
+        inside the envelope, and nothing opens into one. A void must reach an edge of the room around it: a
+        room enclosing one completely would be a ring, which a single rectilinear ring cannot express.
+      </p>
+
       <h2>Fixtures</h2>
       <p>
         Things that stand inside a space: they do not divide it, they take up floor. <code>in</code> names a
@@ -113,7 +174,9 @@ export function Reference() {
 
       <h2>Findings</h2>
       <p>
-        Every finding is <code>{"{ rule, severity, message, at?, rooms?, opening?, fixture? }"}</code>. Schema
+        Every finding is <code>{"{ rule, severity, message, level?, at?, rooms?, opening?, fixture?, vertical? }"}</code>.{" "}
+        <code>level</code> names the storey it is about, and is absent both on a building-wide finding and on
+        every finding of a document with no <code>levels</code> block. Schema
         problems throw; geometry and semantic problems come back as findings so a broken plan still draws. The
         CLI exits <code>0</code> when clean or info only, <code>1</code> at warning or above, <code>2</code> on
         a schema error.

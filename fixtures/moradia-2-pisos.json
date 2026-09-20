@@ -1,0 +1,94 @@
+{
+  "title": "Moradia de 2 pisos",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "stack": ["piso0","piso1"],
+  "grid": {"cols":[4.9,1.2,1.3,4.4],"rows":[1.4,1.8,2,2,1,1.8]},
+  "levels": {
+    "piso0": {
+      "name": "Piso 0",
+      "height": 2.7,
+      "ground": true,
+      "rooms": {
+        "hall": {"name":"Hall","kind":"hall","zone":"day","rect":[4.9,0,2.5,5.2]},
+        "sala": {"name":"Sala","kind":"living","zone":"day","rect":[0,0,4.9,5.2]},
+        "cozinha": {"name":"Cozinha","kind":"kitchen","zone":"day","rect":[7.4,0,4.4,5.2]},
+        "escritorio": {"name":"Escritório","kind":"office","zone":"day","rect":[0,5.2,4.9,4.8]},
+        "wc": {"name":"WC de serviço","kind":"wc","zone":"day","rect":[4.9,5.2,2.5,2]}
+      },
+      "outdoor": {
+        "alpendre": {"name":"Alpendre","covered":true,"poly":[[4.9,7.2],[7.4,7.2],[7.4,5.2],[11.8,5.2],[11.8,10],[4.9,10]]}
+      },
+      "openings": [
+        {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"north"},"position":{"from":"end","distance":0.7},"width":1,"hinge":"end","swingInto":"hall","entrance":true},
+        {"type":"door","between":["hall","sala"],"width":0.9,"swingInto":"sala"},
+        {"type":"door","between":["hall","cozinha"],"width":0.9,"swingInto":"cozinha"},
+        {"type":"door","between":["hall","wc"],"width":0.8,"swingInto":"wc"},
+        {"type":"door","between":["sala","escritorio"],"width":0.9,"swingInto":"escritorio"},
+        {"type":"door","between":["cozinha","alpendre"],"width":0.9,"swingInto":"cozinha"},
+        {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"west"},"width":2.4},
+        {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"east"},"width":1.8},
+        {"type":"window","between":["exterior","escritorio"],"on":{"room":"escritorio","side":"west"},"width":1.6},
+        {"type":"window","between":["alpendre","wc"],"on":{"room":"wc","side":"south"},"width":0.8}
+      ],
+      "fixtures": [
+        {"type":"sink","in":"cozinha","at":[7.7,0.3],"size":[3.8,0.6]},
+        {"type":"wc","in":"wc","at":[5.2,5.5],"size":[0.4,0.7]}
+      ]
+    },
+    "piso1": {
+      "name": "Piso 1",
+      "height": 2.6,
+      "layout": {
+        "areas": [
+          "quarto1 hall_sup     hall_sup quarto2",
+          "quarto1 vazio_escada hall_sup quarto2",
+          "vazio_sala vazio_escada hall_sup wc_suite",
+          "quarto3 hall_sup     hall_sup .",
+          "quarto3 .            .        .",
+          "wc_sup  .            .        ."
+        ]
+      },
+      "rooms": {
+        "hall_sup": {"name":"Hall superior","kind":"hall","zone":"night"},
+        "quarto1": {"name":"Quarto 1","kind":"bedroom","zone":"night"},
+        "quarto2": {"name":"Quarto 2","kind":"bedroom","zone":"night"},
+        "quarto3": {"name":"Quarto 3","kind":"bedroom","zone":"night"},
+        "wc_suite": {"name":"WC da suite","kind":"bath","zone":"night"},
+        "wc_sup": {"name":"WC superior","kind":"bath","zone":"night"}
+      },
+      "voids": {
+        "vazio_sala": {"name":"Pé-direito duplo da Sala"},
+        "vazio_escada": {"name":"Caixa de escada"}
+      },
+      "openings": [
+        {"type":"door","between":["hall_sup","quarto1"],"width":0.8,"swingInto":"quarto1"},
+        {"type":"door","between":["hall_sup","quarto2"],"width":0.8,"swingInto":"quarto2"},
+        {"type":"door","between":["hall_sup","quarto3"],"width":0.8,"swingInto":"quarto3"},
+        {"type":"door","between":["hall_sup","wc_suite"],"width":0.7,"swingInto":"wc_suite"},
+        {"type":"door","between":["quarto3","wc_sup"],"width":0.7,"swingInto":"wc_sup"},
+        {"type":"window","between":["exterior","quarto1"],"on":{"room":"quarto1","side":"north"},"width":2},
+        {"type":"window","between":["exterior","quarto2"],"on":{"room":"quarto2","side":"north"},"width":1.8},
+        {"type":"window","between":["exterior","quarto3"],"on":{"room":"quarto3","side":"west"},"width":1.6},
+        {"type":"window","between":["exterior","wc_suite"],"on":{"room":"wc_suite","side":"east"},"width":0.9},
+        {"type":"window","between":["exterior","wc_sup"],"on":{"room":"wc_sup","side":"south"},"width":0.8}
+      ],
+      "fixtures": [
+        {"type":"bath","in":"wc_suite","at":[9.9,3.5],"size":[1.7,0.75]},
+        {"type":"shower","in":"wc_sup","at":[0.3,8.5],"size":[0.9,0.9]}
+      ]
+    }
+  },
+  "vertical": [
+    {
+      "id": "escada",
+      "type": "stairs",
+      "name": "Escada",
+      "up": 0,
+      "risers": 15,
+      "at": [
+        {"level":"piso0","in":"hall","rect":[4.95,0.2,1.1,3.64]},
+        {"level":"piso1","in":"hall_sup","rect":[4.95,0.2,1.1,1.1]}
+      ]
+    }
+  ]
+}

@@ -25,7 +25,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/**/*.test.ts\"",
     "check": "npm run typecheck && npm test",
-    "examples": "for f in casa-t3 apartment-t2 cabin casa-patio quinta casa-piscina broken; do node src/bin.ts fixtures/$f.json --out examples/$f.svg --mark info; done; true",
+    "examples": "for f in casa-t3 apartment-t2 cabin casa-patio quinta casa-piscina broken; do node src/bin.ts fixtures/$f.json --out examples/$f.svg --mark info; done; for f in moradia-2-pisos broken-levels; do node src/bin.ts fixtures/$f.json --out examples/$f-{level}.svg --mark info; done; true",
     "build:app": "npm run build && npm -w @floorplan/playground run build",
     "dev:app": "npm run build && npm -w @floorplan/playground run dev",
     "check:all": "npm run check && npm run build && npm -w @floorplan/playground run typecheck"
