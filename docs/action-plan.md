@@ -103,3 +103,19 @@ handles; `overlay()` + `facesWhere()` instead of a Martínez–Rueda library.
   contract (W4a), `--schema` (W4b), app level switcher (W4c).
 - Deferred by the levels agent with reasons: `stair.no_void` (design wording would fire on
   every correct stair), `stair.no_landing`, `void.unaligned`; gallery openings onto voids.
+- Wave 6 merged (geometry core): the cell grid is a planar arrangement with face owners,
+  integer millimetres and snap-rounding; rings may be any simple polygon and any edge a
+  true circular arc; `offsetRing` replaces the `±t₁t₂/4` closed form; walls carry
+  `geometry` with a canonical direction and `axis`/`c` only where they mean something;
+  the renderer draws stroked path chains with mitred junctions; offset/radius/vertex
+  handles sit beside the grid drag; `overlay`/`facesWhere` supply D3's exact intersection
+  and the envelope outline. Four new rules (`room.acute_corner`, `room.no_clear_floor`,
+  `geometry.sliver`, `arc.too_shallow`) and three new fixtures (`casa-angulo`,
+  `casa-redonda`, `broken-geometria`). 513 tests, `check:all` green. casa-t3 derives in
+  4.7 ms against 0.88 ms, 4-9x across the fixtures. The `fromGrid` quirk above is fixed:
+  a grid drag is offered only where the grid placed one of the wall's spaces.
+- Knowingly moved, each with its arithmetic in the test that allows it: seven fixture
+  rooms' `clearArea` (the closed form read the thickness at the far end of the outgoing
+  edge), quinta's `w23` drag target, and every drawing's wall elements (same ink, to the
+  square millimetre on casa-t3, casa-piscina and cabin; the rest lose only the spur a
+  0.30 m wall poked past a 0.12 m one).

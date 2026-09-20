@@ -76,7 +76,10 @@ gap/overlap detection and opening attachment exact and cheap.
 Consequence: the polygon area over-reports usable space. The model therefore
 reports both `area` (centreline) and `clearArea` — polygon area minus half of
 every bounding wall's thickness, with corner corrections (convex +t₁t₂/4,
-reflex −t₁t₂/4). Exact for rectilinear rooms. Labels show clear area. The
+reflex −t₁t₂/4). **Superseded**: the clear floor is now the room's ring offset inward to
+the wall faces and mitred at every corner (`src/offset.ts`), which is right at any angle
+and exact over arcs; the closed form was −0.6 % at a 90° apex and −28 % at 10°. Labels
+show clear area. The
 seed's "clear internal areas, before wall thickness" caption was wrong and is
 not carried over.
 
@@ -214,5 +217,8 @@ cabin (label fallback), broken (one of every error).
 ## 13. Risks
 
 - **Scope creep toward an editor.** Say no.
-- **Non-rectilinear demand.** The first 45° wall breaks derivation. Hold.
+- ~~**Non-rectilinear demand.** The first 45° wall breaks derivation. Hold.~~ **Done**:
+  the cell grid is a planar arrangement now, rooms may be any simple polygon, and any
+  edge may be a true circular arc (`docs/gaps-design.md` Part 1; `src/arrangement.ts`,
+  `src/ring.ts`, `src/offset.ts`).
 - **Niche audience.** Built for our own house first.

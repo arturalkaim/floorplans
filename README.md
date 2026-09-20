@@ -626,10 +626,6 @@ block.
 | `wet.opens_to_kitchen` | warning | WC door straight into a kitchen |
 | `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |
-
-`room.min_dimension` measures the narrow side of the largest rectangle of *unoccupied*
-floor, between the wall faces — not on centrelines and not through a fixture. A 2 × 1 m
-room drawn on centrelines is 1.88 × 0.79 m to stand in.
 | `opening.near_corner` | warning | sliver of wall < 0.1 m beside an opening |
 | `fixture.outside_space` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |
 | `outdoor.overlap` | error | a room is built over an outdoor space, which is open sky |
@@ -637,7 +633,17 @@ room drawn on centrelines is 1.88 × 0.79 m to stand in.
 | `door.swing_hits_fixture` | warning | a door leaf sweeps into a fixture |
 | `entrance.not_street` | warning | a door marked `"entrance": true` opens onto an enclosed courtyard, or onto another room |
 | `circulation.share` | info | halls and corridors above 10 % of the interior |
+| `arc.too_shallow` | warning | an arc bulging under 5 mm past its chord: a straight edge written as a curve |
+| `room.no_clear_floor` | error | a room its own walls leave no floor in: the inward offset turns inside out |
+| `geometry.sliver` | info | a face under 100 mm² that nothing covers: two edges meant to meet are a fraction apart |
+| `room.acute_corner` | info | a corner under 25°, where the mitred wall faces meet so far along each arm that the point of the room is wall |
 | `privacy.bedroom_off_living` / `entrance.multiple` / `door.swing_collision` | info | worth a look |
+
+`room.min_dimension` measures the narrow side of the largest rectangle of *unoccupied*
+floor, between the wall faces — not on centrelines and not through a fixture. A 2 × 1 m
+room drawn on centrelines is 1.88 × 0.79 m to stand in. For a room with an angled or
+curved wall it measures the largest circle that fits instead, and says so, because an
+axis-aligned rectangle understates a round room by a factor of √2 — see **Areas**.
 
 Across levels:
 
