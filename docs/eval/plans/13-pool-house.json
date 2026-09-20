@@ -1,0 +1,22 @@
+{
+  "title": "Pool house",
+  "walls": {"exterior":0.25,"partition":0.1},
+  "rooms": {
+    "vestiario": {"name":"Changing room","kind":"utility","rect":[0,0,3.5,3]},
+    "wc": {"name":"WC","kind":"wc","rect":[3.5,0,1.6,3]}
+  },
+  "outdoor": {
+    "deck": {"name":"Deck","rect":[0,3,10,7]}
+  },
+  "openings": [
+    {"type":"door","between":["deck","vestiario"],"width":0.9,"entrance":true,"swingInto":"vestiario"},
+    {"type":"door","between":["vestiario","wc"],"width":0.7,"swingInto":"wc"},
+    {"type":"window","between":["exterior","vestiario"],"on":{"room":"vestiario","side":"north"},"width":1.2},
+    {"type":"window","between":["exterior","wc"],"on":{"room":"wc","side":"east"},"width":0.5}
+  ],
+  "fixtures": [
+    {"type":"pool","in":"deck","at":[1.5,4],"size":[7,4],"depth":1.4,"name":"Pool"},
+    {"type":"wc","in":"wc","at":[3.8,0.3],"size":[0.4,0.7]},
+    {"type":"shower","in":"vestiario","at":[0.2,0.2],"size":[0.9,0.9]}
+  ]
+}

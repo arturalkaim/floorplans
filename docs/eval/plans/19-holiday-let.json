@@ -1,0 +1,30 @@
+{
+  "title": "Holiday let",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "north": 30,
+  "rooms": {
+    "sala": {"name":"Living room","kind":"living","zone":"day","rect":[0,0,6,4.5]},
+    "q1": {"name":"Bedroom 1","kind":"bedroom","zone":"night","rect":[6,0,3.5,2.6]},
+    "q2": {"name":"Bedroom 2","kind":"bedroom","zone":"night","rect":[6,2.6,3.5,2.6]},
+    "banho": {"name":"Bathroom","kind":"bath","zone":"night","rect":[0,4.5,4,1.9]},
+    "cozinha": {"name":"Kitchen","kind":"kitchen","zone":"day","rect":[4,4.5,5.5,1.9]}
+  },
+  "outdoor": {
+    "terraco": {"name":"Terrace","covered":true,"rect":[0,6.4,9.5,3]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"width":1,"entrance":true},
+    {"type":"door","between":["terraco","cozinha"],"width":1.6,"glazed":true,"swingInto":"cozinha"},
+    {"type":"door","between":["sala","q1"],"width":0.8,"swingInto":"q1"},
+    {"type":"door","between":["sala","q2"],"width":0.8,"swingInto":"q2"},
+    {"type":"door","between":["sala","banho"],"width":0.7,"swingInto":"banho"},
+    {"type":"cased","between":["sala","cozinha"],"width":1.4},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"west"},"width":2},
+    {"type":"window","between":["exterior","q1"],"on":{"room":"q1","side":"east"},"width":1.2},
+    {"type":"window","between":["exterior","q2"],"on":{"room":"q2","side":"east"},"width":1.2},
+    {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"west"},"width":0.6}
+  ],
+  "fixtures": [
+    {"type":"shower","in":"terraco","at":[8.4,6.6],"size":[0.9,0.9],"name":"Outdoor shower"}
+  ]
+}

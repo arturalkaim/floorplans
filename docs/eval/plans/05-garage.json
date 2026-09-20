@@ -1,0 +1,14 @@
+{
+  "title": "Garage workshop",
+  "walls": {"exterior":0.25,"partition":0.1},
+  "rooms": {
+    "garagem": {"name":"Garage","kind":"garage","poly":[[0,0],[7,0],[7,6],[2.5,6],[2.5,4],[0,4]]},
+    "escritorio": {"name":"Office","kind":"office","rect":[0,4,2.5,2]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","garagem"],"on":{"room":"garagem","side":"north"},"width":2.4,"entrance":true},
+    {"type":"door","between":["garagem","escritorio"],"width":0.8,"swingInto":"escritorio"},
+    {"type":"window","between":["exterior","escritorio"],"on":{"room":"escritorio","side":"west"},"width":1.2},
+    {"type":"window","between":["exterior","garagem"],"on":{"room":"garagem","side":"east"},"width":1}
+  ]
+}

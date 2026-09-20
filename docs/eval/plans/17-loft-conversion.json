@@ -1,0 +1,36 @@
+{
+  "title": "Loft conversion",
+  "walls": {"exterior":0.3,"partition":0.1},
+  "stack": ["piso1","sotao"],
+  "levels": {
+    "piso1": {
+      "name": "First floor", "height": 2.6, "ground": true,
+      "rooms": {
+        "patamar": {"name":"Landing","kind":"hall","rect":[0,0,2.5,6]},
+        "quarto": {"name":"Bedroom","kind":"bedroom","rect":[2.5,0,5,6]}
+      },
+      "openings": [
+        {"type":"door","between":["exterior","patamar"],"on":{"room":"patamar","side":"west"},"width":0.9,"entrance":true},
+        {"type":"door","between":["patamar","quarto"],"width":0.8,"swingInto":"quarto"},
+        {"type":"window","between":["exterior","quarto"],"on":{"room":"quarto","side":"east"},"width":1.6}
+      ]
+    },
+    "sotao": {
+      "name": "Loft", "height": 2.3,
+      "rooms": {
+        "estudio": {"name":"Studio","kind":"office","rect":[0,0,5.5,6]},
+        "duche": {"name":"Shower room","kind":"bath","rect":[5.5,0,2,6]}
+      },
+      "openings": [
+        {"type":"door","between":["estudio","duche"],"width":0.7,"swingInto":"duche"},
+        {"type":"window","between":["exterior","estudio"],"on":{"room":"estudio","side":"west"},"width":2},
+        {"type":"window","between":["exterior","duche"],"on":{"room":"duche","side":"east"},"width":0.6}
+      ]
+    }
+  },
+  "vertical": [
+    {"id":"escada","type":"stairs","up":90,"risers":15,
+     "at":[{"level":"piso1","in":"patamar","rect":[0.3,0.3,1.1,4.2]},
+           {"level":"sotao","in":"estudio","rect":[0.3,0.3,1.1,1.1]}]}
+  ]
+}

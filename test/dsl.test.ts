@@ -53,12 +53,28 @@ describe("the grammar: one entity per line", () => {
     });
   });
 
-  it("treats a bare word as the kind when it is one and as the zone otherwise", () => {
+  it("takes two bare words as the kind then the zone, and refuses a kind that is not one", () => {
     assert.deepEqual(doc("room a bedroom"), { rooms: { a: { kind: "bedroom" } } });
-    assert.deepEqual(doc("room a night"), { rooms: { a: { zone: "night" } } });
-    // a zone that is spelled like a kind needs the prefix, and gets it back on the way out
-    assert.deepEqual(doc("room a bedroom zone:bath"), { rooms: { a: { kind: "bedroom", zone: "bath" } } });
-    assert.equal(toDsl({ rooms: { a: { kind: "bedroom", zone: "bath" } } }), "room a bedroom zone:bath\n");
+    assert.deepEqual(doc("room a bedroom night"), { rooms: { a: { kind: "bedroom", zone: "night" } } });
+    // a zone on a room with no kind is written out, and prints back that way
+    assert.deepEqual(doc("room a zone:night"), { rooms: { a: { zone: "night" } } });
+    assert.equal(toDsl({ rooms: { a: { zone: "night" } } }), "room a zone:night\n");
+    // a zone spelled like a kind reads back correctly, because the kind slot is taken
+    assert.deepEqual(doc("room a bedroom bath"), { rooms: { a: { kind: "bedroom", zone: "bath" } } });
+    assert.equal(toDsl({ rooms: { a: { kind: "bedroom", zone: "bath" } } }), "room a bedroom bath\n");
+    // and the mistake the authoring eval found: a misspelt kind is a mistake, not a zone
+    assert.match(
+      issuesOf('room sala "Sala" livingroom rect 0,0 4x3')[0]!.message,
+      /^line 1: room sala: "livingroom" is not a room kind; one of bedroom, living, .* — a zone is written zone:<z>$/,
+    );
+  });
+
+  it("reports one unexpected token, not one for every token after it", () => {
+    // measured at three findings for one mistyped width before this
+    const issues = issuesOf("room a living rect 0,0 4x3\ndoor a>b wd0.9 swing:b");
+    assert.equal(issues.filter((i) => i.message.includes("unexpected")).length, 1);
+    assert.match(issues[0]!.message, /^line 2: door: unexpected "wd0.9"; the rest of the line was not read — door takes /);
+    assert.match(issues[0]!.message, /w<width>/);
   });
 
   it("reads a polygon, and the boolean overrides in both directions", () => {

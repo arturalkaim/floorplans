@@ -1,0 +1,25 @@
+{
+  "title": "Two-bedroom flat",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "rooms": {
+    "corredor": {"name":"Corridor","kind":"corridor","rect":[0,3.5,9,1.2]},
+    "sala": {"name":"Living room","kind":"living","rect":[0,0,4,3.5]},
+    "cozinha": {"name":"Kitchen","kind":"kitchen","rect":[4,0,5,3.5]},
+    "q1": {"name":"Bedroom 1","kind":"bedroom","rect":[0,4.7,3.5,3.3]},
+    "q2": {"name":"Bedroom 2","kind":"bedroom","rect":[3.5,4.7,3.5,3.3]},
+    "banho": {"name":"Bathroom","kind":"bath","rect":[7,4.7,2,3.3]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","corredor"],"on":{"room":"corredor","side":"west"},"width":1,"entrance":true},
+    {"type":"door","between":["corredor","sala"],"width":0.9,"swingInto":"sala"},
+    {"type":"door","between":["corredor","cozinha"],"width":0.9,"swingInto":"cozinha"},
+    {"type":"door","between":["corredor","q1"],"width":0.8,"swingInto":"q1"},
+    {"type":"door","between":["corredor","q2"],"width":0.8,"swingInto":"q2"},
+    {"type":"door","between":["corredor","banho"],"width":0.7,"swingInto":"banho"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"width":2},
+    {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"north"},"width":1.6},
+    {"type":"window","between":["exterior","q1"],"on":{"room":"q1","side":"south"},"width":1.6},
+    {"type":"window","between":["exterior","q2"],"on":{"room":"q2","side":"south"},"width":1.6},
+    {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"east"},"width":0.6}
+  ]
+}

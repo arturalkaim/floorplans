@@ -403,7 +403,12 @@ export function Playground() {
                   {!outcome.ok &&
                     outcome.issues.map((i, n) => (
                       <li key={n}>
-                        <span className="path">{i.line !== undefined ? `line ${i.line}` : i.path || "(root)"}</span>: {i.message}
+                        <span className="path">
+                          {/* a tokenizer message already opens with `line N:`, so the
+                              locator shows the path rather than saying the line twice */}
+                          {i.message.startsWith("line ") ? i.path || "—" : i.line !== undefined ? `line ${i.line}` : i.path || "(root)"}
+                        </span>
+                        : {i.message}
                       </li>
                     ))}
                 </ul>

@@ -1,0 +1,45 @@
+{
+  "title": "Townhouse",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "stack": ["piso0","piso1"],
+  "levels": {
+    "piso0": {
+      "name": "Ground floor", "height": 2.7, "ground": true,
+      "rooms": {
+        "hall": {"name":"Hall","kind":"hall","rect":[0,0,2.4,8]},
+        "sala": {"name":"Living room","kind":"living","rect":[2.4,0,5,4]},
+        "cozinha": {"name":"Kitchen","kind":"kitchen","rect":[2.4,4,5,4]}
+      },
+      "openings": [
+        {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"north"},"width":1,"entrance":true},
+        {"type":"door","between":["hall","sala"],"width":0.9,"swingInto":"sala"},
+        {"type":"door","between":["hall","cozinha"],"width":0.9,"swingInto":"cozinha"},
+        {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"east"},"width":1.8},
+        {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"east"},"width":1.6},
+        {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"south"},"width":1.2}
+      ]
+    },
+    "piso1": {
+      "name": "First floor", "height": 2.6,
+      "rooms": {
+        "patamar": {"name":"Landing","kind":"hall","rect":[0,0,2.4,8]},
+        "q1": {"name":"Bedroom 1","kind":"bedroom","rect":[2.4,0,5,4]},
+        "q2": {"name":"Bedroom 2","kind":"bedroom","rect":[2.4,4,3,4]},
+        "banho": {"name":"Bathroom","kind":"bath","rect":[5.4,4,2,4]}
+      },
+      "openings": [
+        {"type":"door","between":["patamar","q1"],"width":0.8,"swingInto":"q1"},
+        {"type":"door","between":["patamar","q2"],"width":0.8,"swingInto":"q2"},
+        {"type":"door","between":["patamar","banho"],"width":0.7,"swingInto":"banho"},
+        {"type":"window","between":["exterior","q1"],"on":{"room":"q1","side":"east"},"width":1.6},
+        {"type":"window","between":["exterior","q2"],"on":{"room":"q2","side":"south"},"width":1.4},
+        {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"east"},"width":0.6}
+      ]
+    }
+  },
+  "vertical": [
+    {"id":"escada","type":"stairs","name":"Stair","up":180,"risers":16,
+     "at":[{"level":"piso0","in":"hall","rect":[0.2,3.5,1.1,4.2]},
+           {"level":"piso1","in":"patamar","rect":[0.2,3.5,1.1,1.2]}]}
+  ]
+}

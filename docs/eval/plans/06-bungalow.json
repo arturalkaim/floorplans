@@ -1,0 +1,25 @@
+{
+  "title": "Bungalow",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "rooms": {
+    "hall": {"name":"Hall","kind":"hall","rect":[4,3,2.5,4]},
+    "sala": {"name":"Living room","kind":"living","rect":[0,0,6.5,3]},
+    "q1": {"name":"Bedroom 1","kind":"bedroom","rect":[0,3,4,2]},
+    "q2": {"name":"Bedroom 2","kind":"bedroom","rect":[0,5,4,2]},
+    "q3": {"name":"Bedroom 3","kind":"bedroom","rect":[0,7,4,2]},
+    "banho": {"name":"Bathroom","kind":"bath","rect":[4,7,2.5,2]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"east"},"width":0.9,"entrance":true},
+    {"type":"door","between":["hall","sala"],"width":0.9,"swingInto":"sala"},
+    {"type":"door","between":["hall","q1"],"width":0.8,"swingInto":"q1"},
+    {"type":"door","between":["hall","q2"],"width":0.8,"swingInto":"q2"},
+    {"type":"door","between":["hall","q3"],"width":0.8,"swingInto":"q3"},
+    {"type":"door","between":["hall","banho"],"width":0.7,"swingInto":"banho"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"width":2.2},
+    {"type":"window","between":["exterior","q1"],"on":{"room":"q1","side":"west"},"width":1.4},
+    {"type":"window","between":["exterior","q2"],"on":{"room":"q2","side":"west"},"width":1.4},
+    {"type":"window","between":["exterior","q3"],"on":{"room":"q3","side":"west"},"width":1.4},
+    {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"south"},"width":0.6}
+  ]
+}

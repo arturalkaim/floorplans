@@ -1,0 +1,40 @@
+{
+  "title": "Cabin with a sleeping loft",
+  "walls": {"exterior":0.2,"partition":0.1},
+  "stack": ["baixo", "loft"],
+  "levels": {
+    "baixo": {
+      "name": "Ground",
+      "height": 2.6,
+      "ground": true,
+      "rooms": {
+        "sala": {"name":"Living and kitchen","kind":"living","rect":[0,0,5,4]},
+        "banho": {"name":"Shower room","kind":"wc","rect":[5,0,1.6,4]}
+      },
+      "openings": [
+        {"type":"door","between":["exterior","sala"],"on":{"room":"sala","side":"south"},"width":0.9,"entrance":true},
+        {"type":"door","between":["sala","banho"],"width":0.7,"swingInto":"banho"},
+        {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"west"},"width":1.6},
+        {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"east"},"width":0.6}
+      ]
+    },
+    "loft": {
+      "name": "Loft",
+      "height": 2.2,
+      "rooms": {
+        "dormir": {"name":"Sleeping loft","kind":"bedroom","rect":[0,0,5,2.5]}
+      },
+      "voids": {
+        "vazio": {"name":"Open to below","rect":[0,2.5,5,1.5]}
+      },
+      "openings": [
+        {"type":"window","between":["exterior","dormir"],"on":{"room":"dormir","side":"north"},"width":1.2}
+      ]
+    }
+  },
+  "vertical": [
+    {"id":"escada","type":"stairs","name":"Ladder stair","up":180,"risers":13,
+     "at":[{"level":"baixo","in":"sala","rect":[4,2.8,0.9,1.2]},
+           {"level":"loft","in":"dormir","rect":[4,1.3,0.9,1.2]}]}
+  ]
+}

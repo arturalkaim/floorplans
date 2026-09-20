@@ -714,12 +714,23 @@ export function parseDsl(text: string): DslDocument {
     const cursor = { i: 1 };
     const rest = () => toks[cursor.i];
 
+    /**
+     * The statement stopped reading here. Report the token it stopped on — once — and
+     * name what this statement does take, from DSL_SCHEMA so the list cannot drift.
+     *
+     * INVARIANT: one finding, not one per leftover token. A single mistyped token used
+     * to produce a finding for itself and one for every token after it (the authoring
+     * eval measured three for one mistyped `w0.9`), which buries the one that matters.
+     */
     const unexpected = (): void => {
-      while (cursor.i < toks.length) {
-        const t = toks[cursor.i]!;
-        fail(t.start, `${verb.text}: unexpected ${JSON.stringify(t.text)}`);
-        cursor.i++;
-      }
+      const t = toks[cursor.i];
+      if (!t) return;
+      const takes = acceptedTokens(verb.text);
+      fail(
+        t.start,
+        `${verb.text}: unexpected ${JSON.stringify(t.text)}; the rest of the line was not read${takes.length ? ` — ${verb.text} takes ${takes.join(", ")}` : ""}`,
+      );
+      cursor.i = toks.length;
     };
 
     switch (true) {
@@ -899,10 +910,21 @@ export function parseDsl(text: string): DslDocument {
               cursor.i++;
               continue;
             }
-            // a bare word: the room's kind when it is one, otherwise its zone. A zone
-            // that happens to be spelled like a kind is written `zone:<z>`.
+            // Two bare words, in order: the kind, then the zone. The *first* must be a
+            // real room kind — a misspelt one is a mistake, not a new zone name.
+            //
+            // INVARIANT: this is what stops `room sala "Sala" livingroom` reading as a
+            // room of kind "other" in a zone called "livingroom". The authoring eval
+            // (docs/eval/authoring-eval.md) caught exactly that: JSON reported the bad
+            // kind and the DSL said nothing, because a zone is free text and swallowed
+            // it. A zone on a room with no kind is therefore written `zone:<z>`.
             if (ID_RE.test(t.text)) {
-              if (!sawKind && e["kind"] === undefined && e["zone"] === undefined && ROOM_KINDS.has(t.text)) {
+              if (!sawKind && e["zone"] === undefined) {
+                if (!ROOM_KINDS.has(t.text)) {
+                  fail(t.start, `room ${id}: ${JSON.stringify(t.text)} is not a room kind; one of ${[...ROOM_KINDS].join(", ")} — a zone is written zone:<z>`);
+                  cursor.i++;
+                  continue;
+                }
                 e["kind"] = readWord(t, t.text, t.start, `${base}.kind`);
                 sawKind = true;
               } else if (e["zone"] === undefined) {
@@ -1369,6 +1391,18 @@ export function parseDsl(text: string): DslDocument {
   return { doc, positions };
 }
 
+/**
+ * The tokens one statement accepts, read out of the grammar table itself so an error
+ * message can never list a token the parser no longer takes, or miss one it does.
+ */
+function acceptedTokens(verb: string): string[] {
+  const st = DSL_SCHEMA.find((s) => s.statement.split(" | ").includes(verb));
+  if (!st) return [];
+  // the first token is the statement's own subject (its id, or the statement itself);
+  // what an author needs listed is the rest, which is what may follow it
+  return [...new Set(st.tokens.slice(1).map((t) => t.token))];
+}
+
 /** Every verb a statement may start with. A function for the same reason `orderOf` is. */
 const statementVerbs = (): string[] => [
   "plan",
@@ -1404,9 +1438,10 @@ function spaceLine(verb: "room" | "outdoor" | "void", id: string, e: J): string 
   if (verb === "room") {
     if (e["kind"] !== undefined) s += ROOM_KINDS.has(String(e["kind"])) ? ` ${String(e["kind"])}` : ` kind:${String(e["kind"])}`;
     if (e["zone"] !== undefined) {
-      // a zone spelled like a kind would read back as the kind, so it keeps its prefix
+      // A bare zone is only readable as one when a kind precedes it (see the parser's
+      // INVARIANT). Otherwise, and for a zone that is not a plain word, it keeps `zone:`.
       const z = String(e["zone"]);
-      s += ROOM_KINDS.has(z) || !ID_RE.test(z) ? ` zone:${z}` : ` ${z}`;
+      s += e["kind"] === undefined || !ID_RE.test(z) ? ` zone:${z}` : ` ${z}`;
     }
   }
   if (verb === "outdoor") s += flagText(e["covered"], "covered");
