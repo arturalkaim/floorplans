@@ -1,4 +1,4 @@
-import { arcThrough, arrange, areaBoth, poleOfInaccessibility, traceBoundary } from "./arrangement.ts";
+import { arcThrough, arrange, areaBoth, distToSeg, poleOfInaccessibility, segmentsCross, traceBoundary } from "./arrangement.ts";
 import type { Arrangement, Face } from "./arrangement.ts";
 import { bbox, eq, largestRect, pointInPoly, snap } from "./geometry.ts";
 import { offsetRing } from "./offset.ts";
@@ -198,6 +198,79 @@ export function pointOnShapeBoundary(p: Pt, s: Shape, tol = 0.001): boolean {
     const l2 = dx * dx + dy * dy;
     const u = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / l2));
     if (Math.hypot(q[0] - a[0] - dx * u, q[1] - a[1] - dy * u) <= t) return true;
+  }
+  return false;
+}
+
+/**
+ * Shortest distance between two shapes, in metres; 0 when they touch or overlap.
+ *
+ * Replaces the distance between two *bounding boxes*, which was already wrong for an
+ * L-shaped kitchen run before any wall was angled (docs/gaps-design.md §1.3.6). Arcs are
+ * measured on their canonical chords, so a curved fixture is understated by at most the
+ * one-millimetre sagitta.
+ */
+export function shapeGap(a: Shape, b: Shape): number {
+  const ra = ringPoints(ringOf(a));
+  const rb = ringPoints(ringOf(b));
+  if (pointInPolyMm(ra[0]!, rb) || pointInPolyMm(rb[0]!, ra)) return 0;
+  let best = Infinity;
+  for (let i = 0; i < ra.length; i++)
+    for (let j = 0; j < rb.length; j++)
+      best = Math.min(best, segGap(ra[i]!, ra[(i + 1) % ra.length]!, rb[j]!, rb[(j + 1) % rb.length]!));
+  return toM(best);
+}
+
+function segGap(a: P, b: P, c: P, d: P): number {
+  if (segmentsCross(a, b, c, d)) return 0;
+  return Math.min(distToSeg(a, c, d), distToSeg(b, c, d), distToSeg(c, a, b), distToSeg(d, a, b));
+}
+
+/**
+ * Does the quarter-disc a door leaf sweeps meet this shape?
+ *
+ * The exact predicate, rather than "do their bounding boxes overlap and is the nearest
+ * corner of the overlap within reach": a vertex inside the sector, an edge crossing
+ * either radius, an edge crossing the arc, or the hinge inside the shape.
+ */
+export function sectorMeetsShape(hinge: Pt, closed: Pt, open: Pt, s: Shape): boolean {
+  const h = ptMm(hinge);
+  const c = ptMm(closed);
+  const o = ptMm(open);
+  const r = Math.hypot(c[0] - h[0], c[1] - h[1]);
+  if (r === 0) return false;
+  const ring = ringPoints(ringOf(s));
+  if (pointInPolyMm(h, ring)) return true;
+  const a0 = Math.atan2(c[1] - h[1], c[0] - h[0]);
+  const a1 = Math.atan2(o[1] - h[1], o[0] - h[0]);
+  const twoPi = 2 * Math.PI;
+  const span = ((a1 - a0 + Math.PI) % twoPi + twoPi) % twoPi - Math.PI; // the short way, ±π
+  const inSector = (p: [number, number]) => {
+    const d = Math.hypot(p[0] - h[0], p[1] - h[1]);
+    if (d > r + 1e-9) return false;
+    const t = ((Math.atan2(p[1] - h[1], p[0] - h[0]) - a0 + Math.PI) % twoPi + twoPi) % twoPi - Math.PI;
+    return span >= 0 ? t >= -1e-9 && t <= span + 1e-9 : t <= 1e-9 && t >= span - 1e-9;
+  };
+  for (const p of ring) if (inSector(p)) return true;
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i]!;
+    const q = ring[(i + 1) % ring.length]!;
+    if (segmentsCross(h, c, p, q) || segmentsCross(h, o, p, q)) return true;
+    // where the edge crosses the circle of the sweep
+    const dx = q[0] - p[0];
+    const dy = q[1] - p[1];
+    const fx = p[0] - h[0];
+    const fy = p[1] - h[1];
+    const A = dx * dx + dy * dy;
+    const B = 2 * (fx * dx + fy * dy);
+    const C = fx * fx + fy * fy - r * r;
+    const disc = B * B - 4 * A * C;
+    if (A === 0 || disc < 0) continue;
+    const root = Math.sqrt(disc);
+    for (const t of [(-B - root) / (2 * A), (-B + root) / (2 * A)]) {
+      if (t < 0 || t > 1) continue;
+      if (inSector([p[0] + dx * t, p[1] + dy * t])) return true;
+    }
   }
   return false;
 }

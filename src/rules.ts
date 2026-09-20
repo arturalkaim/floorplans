@@ -1,6 +1,6 @@
-import { occupantRef, outwardBearing } from "./derive.ts";
+import { occupantRef, outwardBearing, sectorMeetsShape, shapeGap } from "./derive.ts";
 import { doorSwing } from "./doors.ts";
-import { bbox, boxGap, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
+import { bbox, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
 import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, RoomKind } from "./types.ts";
 import { isOpenSky, isRectilinear, isStreet, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
 
@@ -398,7 +398,7 @@ function levelRules(
       const a = lm.fixtures[i]!;
       const b = lm.fixtures[j]!;
       if (a.fixture.in !== b.fixture.in) continue;
-      const gap = snap(boxGap(a.bbox, b.bbox));
+      const gap = snap(shapeGap(a.fixture, b.fixture));
       // touching units are one run; only a gap too narrow to walk through is a problem
       if (gap <= 0 || gap >= minClearance) continue;
       push({
@@ -418,16 +418,13 @@ function levelRules(
     const radius = o.to - o.from;
     for (const fm of lm.fixtures) {
       if (fm.fixture.in !== o.swingRoom) continue;
-      // the swept quarter disc is exactly {within radius of the hinge} ∩ swing.box,
-      // so the nearest point of the overlap rectangle decides it
-      const x0 = Math.max(swing.box.x0, fm.bbox.x0);
-      const x1 = Math.min(swing.box.x1, fm.bbox.x1);
-      const y0 = Math.max(swing.box.y0, fm.bbox.y0);
-      const y1 = Math.min(swing.box.y1, fm.bbox.y1);
-      if (x0 >= x1 || y0 >= y1) continue;
-      const nx = Math.min(Math.max(swing.hinge[0], x0), x1);
-      const ny = Math.min(Math.max(swing.hinge[1], y0), y1);
-      if (Math.hypot(nx - swing.hinge[0], ny - swing.hinge[1]) >= radius) continue;
+      // bounding boxes as a cheap reject, then the exact predicate: does the sector the
+      // leaf sweeps meet the fixture? The rectangle test this replaces was only ever
+      // right for an axis-aligned door against an axis-aligned box.
+      if (swing.box.x1 <= fm.bbox.x0 || fm.bbox.x1 <= swing.box.x0) continue;
+      if (swing.box.y1 <= fm.bbox.y0 || fm.bbox.y1 <= swing.box.y0) continue;
+      if (!sectorMeetsShape(swing.hinge, swing.closed, swing.open, fm.fixture)) continue;
+      void radius;
       push({
         rule: "door.swing_hits_fixture",
         severity: "warning",

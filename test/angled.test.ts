@@ -203,3 +203,75 @@ describe("the rules only curved and angled geometry can reach", () => {
     assert.match(f.message, /bulges [\d.]+ mm past its chord/);
   });
 });
+
+
+describe("the predicates that used to measure bounding boxes", () => {
+  const room = (fixtures: unknown[]) => ({
+    walls: { exterior: 0.3, partition: 0.12 },
+    rooms: { a: { kind: "living", rect: [0, 0, 6, 6] } },
+    openings: [{ type: "door", between: ["exterior", "a"], on: { room: "a", side: "north" }, width: 1, entrance: true }],
+    fixtures,
+  });
+
+  it("measures the gap between two L-shaped runs, not between their boxes", () => {
+    // two L counters whose bounding boxes are 0.2 m apart but whose limbs are far apart
+    const { findings } = analyze(
+      parse(
+        room([
+          { type: "counter", in: "a", name: "West", poly: [[0.5, 0.5], [2, 0.5], [2, 0.9], [0.9, 0.9], [0.9, 3], [0.5, 3]] },
+          { type: "counter", in: "a", name: "East", poly: [[2.2, 2.6], [4, 2.6], [4, 3], [2.6, 3], [2.6, 5], [2.2, 5]] },
+        ]),
+      ),
+    );
+    assert.ok(!has(findings, "fixture.clearance"), rulesOf(findings).join(", "));
+  });
+
+  it("still reports two runs that really are too close", () => {
+    const { findings } = analyze(
+      parse(
+        room([
+          { type: "counter", in: "a", name: "West", at: [1, 1], size: [1, 2] },
+          { type: "counter", in: "a", name: "East", at: [2.3, 1], size: [1, 2] },
+        ]),
+      ),
+    );
+    const f = findings.find((x) => x.rule === "fixture.clearance")!;
+    assert.ok(f, rulesOf(findings).join(", "));
+    assert.match(f.message, /only 0\.3 m between West and East/);
+  });
+
+  it("only reports a swing that actually reaches the fixture", () => {
+    const withFixture = (fixture: unknown) =>
+      analyze(
+        parse({
+          walls: { exterior: 0.3, partition: 0.12 },
+          rooms: { a: { kind: "living", rect: [0, 0, 6, 6] } },
+          openings: [
+            {
+              type: "door",
+              between: ["exterior", "a"],
+              on: { room: "a", side: "north" },
+              position: 1,
+              width: 1.4,
+              hinge: "start",
+              swingInto: "a",
+              entrance: true,
+            },
+          ],
+          fixtures: [fixture],
+        }),
+      ).findings;
+
+    // just inside the swing's bounding box, just outside the quarter disc itself
+    const missed = withFixture({
+      type: "counter",
+      in: "a",
+      name: "Bench",
+      poly: [[1.6, 1.3], [1.75, 1.3], [1.75, 1.45], [1.6, 1.45]],
+    });
+    assert.ok(!has(missed, "door.swing_hits_fixture"), rulesOf(missed).join(", "));
+
+    const hit = withFixture({ type: "counter", in: "a", name: "Bench", at: [0.5, 0.5], size: [0.6, 0.6] });
+    assert.ok(has(hit, "door.swing_hits_fixture"), rulesOf(hit).join(", "));
+  });
+});

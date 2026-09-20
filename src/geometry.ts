@@ -82,13 +82,6 @@ export function polyInside(inner: Pt[], outer: Pt[]): boolean {
   return cellCentres([inner, outer]).every((c) => !pointInPoly(c, inner) || pointInPoly(c, outer));
 }
 
-/** shortest distance between two axis-aligned boxes; 0 when they touch or overlap */
-export function boxGap(a: BBox, b: BBox): number {
-  const dx = Math.max(0, Math.max(a.x0, b.x0) - Math.min(a.x1, b.x1));
-  const dy = Math.max(0, Math.max(a.y0, b.y0) - Math.min(a.y1, b.y1));
-  return Math.hypot(dx, dy);
-}
-
 /**
  * Snap, drop repeated and collinear corners, and check the ring is a simple closed loop.
  *
