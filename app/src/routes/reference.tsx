@@ -1,10 +1,25 @@
-import { FIXTURE_TYPES, OPENING_TYPES, RULES, ROOM_KINDS, SIDES, VERTICAL_TYPES } from "floorplan";
-import type { RuleDoc } from "floorplan";
+import { FIXTURE_TYPES, OPENING_TYPES, RULES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "floorplan";
+import type { FieldDoc, RuleDoc } from "floorplan";
+
+/**
+ * One field's doc string, looked up by object + name from the library's own SCHEMA table
+ * (src/parse.ts) rather than typed out here — the field tables below cannot drift from
+ * what the parser actually accepts, which is the drift `docs/agent-review.md` B10 flagged
+ * in the hand-written tables this replaced. Throws if a field is renamed or removed, so a
+ * stale reference fails loudly instead of quietly describing a field that no longer exists.
+ */
+function field(object: string, name: string): FieldDoc {
+  const obj = SCHEMA.find((o) => o.object === object);
+  const f = obj?.fields.find((f) => f.name === name);
+  if (!f) throw new Error(`reference.tsx: SCHEMA has no ${object}.${name}`);
+  return f;
+}
 
 /**
  * The DSL reference. Every list on this page is read from the library at runtime — the
- * room kinds and fixture types come from the parser's own sets, the rule table from the
- * catalogue the library ships. Nothing here is a copy that can fall out of date.
+ * room kinds and fixture types come from the parser's own sets, the field tables and the
+ * rule table from tables the library ships. Nothing here is a copy that can fall out of
+ * date.
  */
 export function Reference() {
   const bySeverity = (s: RuleDoc["severity"]) => RULES.filter((r) => r.severity === s);
@@ -104,11 +119,9 @@ export function Reference() {
 }`}</code></pre>
       <table>
         <tbody>
-          <tr><td><code>stack</code></td><td>level ids, ground first. Optional — the <code>levels</code> object's key order says the same thing — but when given it must name every level exactly once</td></tr>
-          <tr><td><code>levels</code></td><td>a <em>map</em>, not an array, so adding a basement never renumbers a path someone is holding</td></tr>
-          <tr><td><code>ground</code></td><td>the level the street meets. Default: the first in the stack. A sloping site may mark more than one</td></tr>
-          <tr><td><code>height</code></td><td>floor to floor, metres. Only <code>stair.pitch</code> and <code>stair.headroom</code> read it</td></tr>
-          <tr><td><code>grid</code></td><td>an optional shared track grid. A level that gives only <code>layout.areas</code> sits on it, which is what makes an upper floor's walls land on the lower floor's</td></tr>
+          {[field("plan", "stack"), field("plan", "levels"), field("level", "ground"), field("level", "height"), field("plan", "grid")].map((f) => (
+            <tr key={f.name}><td><code>{f.name}</code></td><td>{f.doc}</td></tr>
+          ))}
         </tbody>
       </table>
       <p>
@@ -160,15 +173,9 @@ export function Reference() {
       <ul className="tokens">{[...OPENING_TYPES].map((k) => <li key={k}><code>{k}</code></li>)}</ul>
       <table>
         <tbody>
-          <tr><td><code>between</code></td><td>the two spaces it joins: room ids, an outdoor space id, or <code>"exterior"</code> for the street. At least one end must be a room</td></tr>
-          <tr><td><code>on</code></td><td>which wall, when the pair shares several: <code>{"{ room, side, near }"}</code></td></tr>
-          <tr><td><code>position</code></td><td><code>"center"</code>, metres from the wall's start, or <code>{'{ from, distance }'}</code></td></tr>
-          <tr><td><code>at</code></td><td><code>[x, y]</code>: place by an absolute point instead of <code>on</code> + <code>position</code> — picks the nearest wall between the two spaces and projects the point onto it. Mutually exclusive with <code>on</code> and <code>position</code></td></tr>
-          <tr><td><code>width</code></td><td>metres</td></tr>
-          <tr><td><code>hinge</code></td><td>doors: which jamb. Walls run west→east and north→south</td></tr>
-          <tr><td><code>swingInto</code></td><td>doors: the space the leaf opens into</td></tr>
-          <tr><td><code>entrance</code></td><td>doors: marks the main entrance. It has to lead to the street, or you get <code>entrance.not_street</code></td></tr>
-          <tr><td><code>glazed</code></td><td>doors: <code>true</code> for a glazed door (default <code>false</code>) — counts as daylight for <code>habitable.no_window</code>, same as a window</td></tr>
+          {SCHEMA.find((o) => o.object === "opening")!.fields.filter((f) => f.name !== "type").map((f) => (
+            <tr key={f.name}><td><code>{f.name}</code></td><td>{f.doc}</td></tr>
+          ))}
         </tbody>
       </table>
       <h3>side</h3>

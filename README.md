@@ -15,6 +15,14 @@ npm run examples     # renders fixtures/*.json → examples/*.svg
 node src/bin.ts fixtures/casa-t3.json --out casa.svg --lint
 ```
 
+**If you are an agent authoring or editing a plan**, load `floorplan --schema`
+(the field list, generated from the parser — 2 459 tokens JSON, `o200k_base`,
+covering all 14 objects and 71 fields; `--schema=md` prints the same table for
+a human) and `floorplan <plan.json> --lint` (what is wrong with a document you
+already have) instead of this README's prose. Both are generated from the
+library itself, so neither can list a field or a rule the parser and linter
+do not actually have.
+
 ## Playground app
 
 A separate React app under `app/` — a demo of the library and a place to try the plan
@@ -95,6 +103,7 @@ floorplan <plan.json> [--out plan.svg] [--level id] [--lint] [--json] [--scale N
                       [--areas clear|centreline|none] [--mark error|warning|info|none]
 floorplan set <plan.json> <path> <value> [--json] [--dry-run]
 floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
+floorplan --schema[=md]
 ```
 
 Exit codes: `0` clean or info only, `1` findings at warning or above, `2` usage or schema error.
@@ -105,6 +114,11 @@ written (`--out plan-{level}.svg` → `plan-piso0.svg`, `plan-piso1.svg`). `--li
 each finding with the level it is about once there is more than one, and a building-wide
 finding shows `—`. `--json` is unchanged in shape: findings gain `level`, and the schedule
 gains `levels[]` and `building`, both only on a document that authored `levels`.
+
+`--schema` needs no input file: it prints every object's field list — name, type,
+required, enum values, one-sentence doc, and mutual exclusions — read straight from the
+table the parser itself validates against (see "Plan format" below). Default is compact
+JSON, one field per line; `--schema=md` prints the same table as Markdown.
 
 On a schema error (exit `2`), `--json` prints `{"error":{"issues":[{"path","message"}]}}`
 to stdout instead of the text form on stderr; without `--json` the text form is unchanged.
@@ -178,6 +192,11 @@ fields; a key that isn't one of them is a schema error, with a "did you mean" wh
 close to a real field (`"positon"` → `did you mean "position"?`). A key prefixed with
 `_` or `x-` is exempt — use it for private notes or authoring-tool metadata
 (`"_note"`, `"x-generator"`) and it is silently ignored.
+
+The prose and examples below teach the shape; **`floorplan --schema` is the authoritative
+field list** — every object, field, type, default and mutual exclusion, read directly from
+the same table `checkKeys` validates against, so it cannot list a field the parser does not
+also accept (`--schema=md` prints the same table as Markdown for a human reader).
 
 ```jsonc
 {

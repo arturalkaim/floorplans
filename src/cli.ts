@@ -3,15 +3,20 @@
 //                       [--areas clear|centreline|none] [--mark error|warning|info|none]
 // floorplan set <plan.json> <path> <value> [--json] [--dry-run]
 // floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
+// floorplan --schema[=md]
 // Exit codes: 0 clean (or only info), 1 findings at warning or above, 2 usage / parse error.
 // The executable entry point is bin.ts, which wires stdio/fs onto `run` unconditionally;
 // this module stays a plain, IO-free function so tests can drive it with a fake CliIo.
 //
 // `set`/`patch` exist because re-emitting a whole plan to move one door costs ~2000
 // tokens; a splice costs ~20 regardless of plan size (docs/agent-review.md §B3).
+// `--schema` exists so an agent can load the field list (~600 tokens) instead of the
+// README's prose (~2400 tokens) — see docs/agent-review.md B10.
 
 import { appendAt, insertKey, JsonPosError, removeAt, spliceAt } from "./jsonpos.ts";
-import { floorplan, PlanError, worstSeverity } from "./index.ts";
+import { floorplan, PlanError, SCHEMA, worstSeverity } from "./index.ts";
+import { formatPlan } from "./format.ts";
+import type { FieldDoc, ObjectDoc } from "./index.ts";
 import type { JsonPath } from "./jsonpos.ts";
 import type { Finding, Severity } from "./types.ts";
 import type { RenderOptions } from "./svg.ts";
@@ -30,9 +35,12 @@ const USAGE = `usage: floorplan <plan.json> [--out plan.svg] [--level id] [--lin
                  [--areas clear|centreline|none] [--mark error|warning|info|none]
        floorplan set <plan.json> <path> <value> [--json] [--dry-run]
        floorplan patch <plan.json> <patch.json|-> [--json] [--dry-run]
+       floorplan --schema[=md]
 
 --level picks which storey to draw (default: the ground level).
---out may contain {level}, and then one file per level is written.`;
+--out may contain {level}, and then one file per level is written.
+--schema prints the document's field table as JSON (default) or, with =md,
+         as Markdown; needs no input file.`;
 
 export function run(argv: string[], io: CliIo): number {
   if (argv[0] === "set") return runSet(argv.slice(1), io);
@@ -41,6 +49,10 @@ export function run(argv: string[], io: CliIo): number {
   if (args instanceof Error) {
     io.stderr(`${args.message}\n${USAGE}\n`);
     return 2;
+  }
+  if (args.schema !== undefined) {
+    io.stdout(args.schema === "md" ? schemaMarkdown() : schemaJson());
+    return 0;
   }
   if (!args.input) {
     io.stderr(`${USAGE}\n`);
@@ -121,10 +133,12 @@ interface Args {
   labels: "auto" | "full" | "index" | undefined;
   areas: "clear" | "centreline" | "none" | undefined;
   mark: Severity | "none" | undefined;
+  /** `--schema` (JSON, default) or `--schema=md`; needs no input file. */
+  schema: "json" | "md" | undefined;
 }
 
 function parseArgs(argv: string[]): Args | Error {
-  const a: Args = { input: undefined, out: undefined, level: undefined, lint: false, json: false, scale: undefined, theme: undefined, labels: undefined, areas: undefined, mark: undefined };
+  const a: Args = { input: undefined, out: undefined, level: undefined, lint: false, json: false, scale: undefined, theme: undefined, labels: undefined, areas: undefined, mark: undefined, schema: undefined };
   const oneOf = <T extends string>(flag: string, v: string | undefined, allowed: readonly T[]): T | Error =>
     v !== undefined && (allowed as readonly string[]).includes(v) ? (v as T) : new Error(`${flag} must be one of ${allowed.join("|")}`);
   for (let i = 0; i < argv.length; i++) {
@@ -154,7 +168,9 @@ function parseArgs(argv: string[]): Args | Error {
       const v = oneOf("--mark", next(), ["error", "warning", "info", "none"] as const);
       if (v instanceof Error) return v;
       a.mark = v;
-    } else if (t.startsWith("-")) return new Error(`unknown option ${t}`);
+    } else if (t === "--schema") a.schema = "json";
+    else if (t === "--schema=md") a.schema = "md";
+    else if (t.startsWith("-")) return new Error(`unknown option ${t}`);
     else if (a.input === undefined) a.input = t;
     else return new Error(`unexpected argument ${t}`);
   }
@@ -391,4 +407,43 @@ function runPatch(argv: string[], io: CliIo): number {
     }
   }
   return finish(text, planPath, io, { json, dryRun });
+}
+
+/**
+ * `--schema`: the document's field table as compact JSON, one field per line — the same
+ * one-entity-per-line convention `formatPlan` (src/format.ts) already uses for a plan
+ * document, reused here because a field is exactly that kind of entity. `enum` prints as
+ * an array; SCHEMA holds it as a reference to the vocabulary Set itself (JSON has no set
+ * type to print it as).
+ */
+function schemaJson(): string {
+  const plain = SCHEMA.map((o) => ({
+    object: o.object,
+    fields: o.fields.map(fieldToJson),
+    ...(o.oneOf ? { oneOf: o.oneOf } : {}),
+  }));
+  return formatPlan(plain);
+}
+
+function fieldToJson(f: FieldDoc): Record<string, unknown> {
+  return {
+    name: f.name,
+    type: f.type,
+    required: f.required,
+    ...(f.enum ? { enum: [...f.enum] } : {}),
+    doc: f.doc,
+  };
+}
+
+/** `--schema=md`: the same field table as one Markdown table per object, for a human reader. */
+function schemaMarkdown(): string {
+  const section = (o: ObjectDoc): string => {
+    const rows = o.fields.map((f) => {
+      const enumCol = f.enum ? [...f.enum].join(", ") : "";
+      return `| \`${f.name}\` | ${f.type} | ${f.required ? "yes" : "no"} | ${enumCol} | ${f.doc.replace(/\|/g, "\\|")} |`;
+    });
+    const oneOf = o.oneOf && o.oneOf.length > 0 ? `\n\n${o.oneOf.map((s) => `_${s}_`).join("\n")}` : "";
+    return `## ${o.object}\n\n| field | type | required | enum | doc |\n|---|---|---|---|---|\n${rows.join("\n")}${oneOf}\n`;
+  };
+  return `${SCHEMA.map(section).join("\n")}\n`;
 }
