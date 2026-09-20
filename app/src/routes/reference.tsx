@@ -1,4 +1,4 @@
-import { FIXTURE_TYPES, OPENING_TYPES, RULES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "floorplan";
+import { ARC_SYNTAX, DSL_SCHEMA, FIXTURE_TYPES, OPENING_TYPES, RULES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "floorplan";
 import type { FieldDoc, RuleDoc } from "floorplan";
 
 /**
@@ -26,9 +26,10 @@ export function Reference() {
   return (
     <article className="doc">
       <p>
-        A plan is one JSON document. Coordinates are <strong>metres on wall centrelines</strong>, y grows
-        downwards, and rooms must tile the footprint exactly — walls are derived from the edges they share,
-        never authored. Plans are rectilinear, and have one storey or many.
+        A plan is one document, written either as JSON or in the <a href="#dsl">line DSL</a>. Coordinates are{" "}
+        <strong>metres on wall centrelines</strong>, y grows downwards, and rooms must tile the footprint
+        exactly — walls are derived from the edges they share, never authored. Plans are rectilinear, and have
+        one storey or many.
       </p>
       <p>
         Write it in canonical form: <strong>one entity per line</strong> — a room, an outdoor space, an
@@ -180,6 +181,73 @@ export function Reference() {
       </table>
       <h3>side</h3>
       <ul className="tokens">{[...SIDES].map((k) => <li key={k}><code>{k}</code></li>)}</ul>
+
+      <h2 id="dsl">The line DSL</h2>
+      <p>
+        The same document, written one entity per line. It is an <em>authoring</em> syntax: it compiles to the
+        JSON above and nothing downstream — the geometry, the rules, the drawing — sees the difference. Every
+        entry point sniffs the first non-space character, so <code>{"{"}</code> is JSON and anything else is
+        the DSL; <code>floorplan fmt &lt;file&gt; --to json|dsl</code> converts between them, and the{" "}
+        <strong>JSON | DSL</strong> toggle above the playground editor does the same thing in the browser.
+      </p>
+      <p>
+        It exists for the cost. Measured with <code>o200k_base</code>: casa-t3 is <strong>1 502</strong>{" "}
+        tokens as canonical JSON and <strong>788</strong> here; one door is 61 tokens against 14. Openings are
+        55 % of a plan's tokens, and an opening is exactly where the key names repeat.
+      </p>
+      <pre><code>{`plan "Cabana" walls 0.2/0.1
+
+room sala "Sala e cozinha" living rect 0,0 5x4
+room wc "Casa de banho" wc rect 5,0 1.2x2
+outdoor deck "Deck" rect 0,4 5x2
+
+door deck>sala at:0.9,4 w0.9 hinge:start swing:sala
+door sala>wc @-0.5 w0.7 hinge:end swing:wc
+window sala.north @2.5 w2.4
+window wc.east w0.6`}</code></pre>
+      <h3>Statements</h3>
+      <dl className="grammar">
+        {DSL_SCHEMA.map((st) => (
+          <div key={st.statement}>
+            <dt><pre><code>{st.syntax}</code></pre></dt>
+            <dd>{st.doc}</dd>
+          </div>
+        ))}
+      </dl>
+      <p>
+        A <code>poly</code> takes <code>&lt;x&gt;,&lt;y&gt;</code> corners and, for a curve,{" "}
+        <code>{ARC_SYNTAX}</code> — an arc from the previous corner to this one. <code>@&lt;d&gt;</code> is
+        metres from the wall run’s start to the opening’s centre and <code>@-&lt;d&gt;</code> from its end;{" "}
+        <code>&lt;room&gt;.&lt;side&gt;</code> on its own is the short form of{" "}
+        <code>exterior&gt;&lt;room&gt;</code> with an <code>on</code>. A boolean is its own name for true and{" "}
+        <code>name:false</code> for false. Comments start with <code>#</code>.
+      </p>
+      <h3>Every field, and the token that writes it</h3>
+      <p>
+        Generated from the same table <code>floorplan --schema=dsl</code> prints. A test walks the JSON schema
+        and fails if a field has no token here, so the two syntaxes can express exactly the same documents.
+      </p>
+      <table>
+        <tbody>
+          {SCHEMA.flatMap((o) =>
+            o.fields.map((f) => {
+              const key = `${o.object}.${f.name}`;
+              const tokens = [...new Set(DSL_SCHEMA.flatMap((st) => st.tokens.filter((t) => t.field === key).map((t) => t.token)))];
+              return (
+                <tr key={key}>
+                  <td><code>{key}</code></td>
+                  <td>{tokens.map((t) => <code key={t} style={{ marginRight: 8 }}>{t}</code>)}</td>
+                </tr>
+              );
+            }),
+          )}
+        </tbody>
+      </table>
+      <p>
+        A finding on a DSL document carries <code>line</code> beside its <code>path</code> — beside, never
+        instead: the JSON path is the contract, and the line is the address the DSL adds.{" "}
+        <code>set</code> and a drag both splice one token on one line and leave the rest of the file alone.
+      </p>
 
       <h2>Findings</h2>
       <p>

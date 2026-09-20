@@ -91,6 +91,23 @@ a { color: var(--accent); }
 .sheet-body .room.hl-room polygon { stroke: #e2451c; stroke-width: 3; fill-opacity: .4; }
 .sheet-body .finding.hl-marker circle { stroke: #e2451c; stroke-width: 2.5; r: 11; }
 
+/* the DSL grammar: each statement's syntax gets the full width, its sentence under it */
+.doc dl.grammar { margin: 14px 0; }
+.doc dl.grammar > div { margin-bottom: 12px; }
+.doc dl.grammar dt { margin: 0; }
+.doc dl.grammar dt pre { margin: 0; }
+.doc dl.grammar dd { margin: 3px 0 0 0; padding-left: 14px; color: var(--muted); font-size: 13px; }
+
+/* JSON | DSL: the source is the same document either way, so this converts the text */
+.syntax { display: flex; gap: 2px; padding: 8px 10px 0 10px; }
+.syntax button {
+  font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  color: var(--muted); background: var(--sheet); border: 1px solid var(--rule); padding: 4px 11px; cursor: pointer;
+}
+.syntax button:hover:not(:disabled) { color: var(--ink); background: var(--rule-soft); }
+.syntax button[data-active="true"] { color: var(--ink); background: var(--accent-soft); border-color: var(--accent); }
+.syntax button:disabled { opacity: .45; cursor: not-allowed; }
+
 textarea.source-text {
   display: block; width: 100%; border: 0; resize: vertical; background: transparent; color: var(--ink);
   font-family: var(--mono); font-size: 12px; line-height: 1.65; padding: 12px 14px; min-height: 420px; tab-size: 2;
