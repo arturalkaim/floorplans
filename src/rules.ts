@@ -1,7 +1,7 @@
 import { doorSwing } from "./doors.ts";
 import { boxGap, snap } from "./geometry.ts";
 import type { Finding, Model, Owner, ResolvedOpening, RoomKind } from "./types.ts";
-import { EXTERIOR, isOpenSky, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
+import { EXTERIOR, isOpenSky, isStreet, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
 
 export interface RuleOptions {
   /** share of interior area above which circulation is flagged (default 0.10) */
@@ -47,16 +47,20 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
   const doors = model.openings.filter((o) => o.spec.type === "door");
 
   // ---- entrance ----
-  const exteriorDoors = doors.filter((o) => o.wall.kind === "exterior");
-  const hasEntrance = exteriorDoors.length > 0;
+  // An entrance is a door to the street: to the exterior, or to an outdoor space the
+  // street reaches. A door onto an enclosed courtyard is a perfectly good door — it just
+  // does not let anyone in from the road, so it never counts here.
+  const street = (o: Owner) => isStreet(o, model.streetOutdoor);
+  const streetDoors = doors.filter((o) => street(o.wall.neg) || street(o.wall.pos));
+  const hasEntrance = streetDoors.length > 0;
   if (!hasEntrance) {
     f.push({ rule: "entrance.missing", severity: "error", message: "no door leads outside; the house cannot be entered" });
-  } else if (exteriorDoors.length > 1) {
+  } else if (streetDoors.length > 1) {
     // say something true about what the plan already declares: telling an author to mark
     // the main entrance when they have marked it is advice they have to stop and check
-    const marked = exteriorDoors.filter((o) => o.spec.entrance);
-    const where = (o: ResolvedOpening) => sideName(isOpenSky(o.wall.neg) ? o.wall.pos : o.wall.neg);
-    const all = exteriorDoors.map(where).join(", ");
+    const marked = streetDoors.filter((o) => o.spec.entrance);
+    const where = (o: ResolvedOpening) => sideName(street(o.wall.neg) ? o.wall.pos : o.wall.neg);
+    const all = streetDoors.map(where).join(", ");
     const tail =
       marked.length === 0
         ? 'none is marked the main one with "entrance": true'
@@ -66,7 +70,22 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     f.push({
       rule: "entrance.multiple",
       severity: "info",
-      message: `${exteriorDoors.length} doors lead outside (${all}); ${tail}`,
+      message: `${streetDoors.length} doors lead outside (${all}); ${tail}`,
+    });
+  }
+  // Marking a courtyard door the main entrance is allowed by the schema — the door is
+  // legitimate — but it is not the way in, and saying so is more useful than silence.
+  for (const o of doors) {
+    if (!o.spec.entrance || street(o.wall.neg) || street(o.wall.pos)) continue;
+    const sky = isOpenSky(o.wall.neg) ? o.wall.neg : isOpenSky(o.wall.pos) ? o.wall.pos : undefined;
+    f.push({
+      rule: "entrance.not_street",
+      severity: "warning",
+      message: sky
+        ? `door #${o.spec.index} is marked the main entrance but opens onto ${sideName(sky)}, which the street does not reach`
+        : `door #${o.spec.index} is marked the main entrance but is an interior door between ${sideName(o.wall.neg)} and ${sideName(o.wall.pos)}`,
+      at: o.center,
+      opening: o.spec.index,
     });
   }
 
@@ -85,10 +104,9 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     }
   }
   if (hasEntrance) {
-    // outdoor spaces are nodes of their own now, so the walk starts from every one of
-    // them as well as from the street; which of them the street actually reaches is the
-    // next commit's business
-    const start = [ownerKey(EXTERIOR), ...model.plan.outdoor.map((o) => ownerKey(outdoorOwner(o.id)))];
+    // the walk starts wherever someone standing on the road already is: the street itself
+    // and every outdoor space it reaches. An enclosed courtyard is not a starting point.
+    const start = [ownerKey(EXTERIOR), ...[...model.streetOutdoor].map((id) => ownerKey(outdoorOwner(id)))];
     const seen = new Set<string>(start);
     const queue = [...start];
     while (queue.length) {

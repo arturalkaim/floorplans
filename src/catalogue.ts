@@ -27,9 +27,9 @@ export const RULES: readonly RuleDoc[] = [
 
   // semantics, produced by checkRules()
   { id: "window.not_exterior", severity: "error", catches: "a window sits on an interior wall" },
-  { id: "entrance.missing", severity: "error", catches: "no door leads outside" },
+  { id: "entrance.missing", severity: "error", catches: "no door leads to the street: to `\"exterior\"`, or to an outdoor space the street reaches. A door onto an enclosed courtyard is allowed and does not count" },
   { id: "space.no_access", severity: "error", catches: "a room has no door or cased opening" },
-  { id: "reach.unreachable", severity: "error", catches: "a room cannot be reached from the entrance" },
+  { id: "reach.unreachable", severity: "error", catches: "a room cannot be reached from the street, walking through rooms and through the outdoor spaces the street reaches" },
   { id: "habitable.no_window", severity: "warning", catches: "a living space has no daylight" },
   { id: "wet.no_window", severity: "warning", catches: "a bathroom or WC has no window; plan extraction" },
   { id: "wet.opens_to_kitchen", severity: "warning", catches: "a WC door opens straight into a kitchen" },
@@ -38,6 +38,7 @@ export const RULES: readonly RuleDoc[] = [
   { id: "door.min_width", severity: "warning", catches: "a door is narrower than its role wants", option: "doorMinWidth" },
   { id: "fixture.clearance", severity: "warning", catches: "the gap between two fixtures is too narrow to walk through", option: "minClearance" },
   { id: "door.swing_hits_fixture", severity: "warning", catches: "a door leaf sweeps into a fixture" },
+  { id: "entrance.not_street", severity: "warning", catches: "a door marked `\"entrance\": true` does not lead to the street — it opens onto an enclosed courtyard, or onto another room" },
   { id: "circulation.share", severity: "info", catches: "halls and corridors take more of the interior than expected", option: "circulationShare" },
   { id: "privacy.bedroom_off_living", severity: "info", catches: "a bedroom opens directly off the living room" },
   { id: "entrance.multiple", severity: "info", catches: "more than one door leads outside" },
