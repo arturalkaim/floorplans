@@ -30,8 +30,8 @@ export function Reference() {
   "rooms":    { "<id>": { "name", "kind", "zone", "poly" | "rect" } },
   "outdoor":  { "<id>": { "name", "poly" | "rect", "covered" } },
   "voids":    { "<id>": { "name", "poly" | "rect" } },
-  "fixtures": [ { "type", "in", "poly" | "at" + "size" } ],
-  "openings": [ { "type", "between", "on", "position", "width" } ]
+  "fixtures": [ { "id"?, "type", "in", "poly" | "at" + "size" } ],
+  "openings": [ { "id"?, "type", "between", "on", "position", "width" } ]
 }`}</code></pre>
 
       <h2>Rooms</h2>
@@ -176,12 +176,28 @@ export function Reference() {
 
       <h2>Findings</h2>
       <p>
-        Every finding is <code>{"{ rule, severity, message, level?, at?, rooms?, opening?, fixture?, vertical? }"}</code>.{" "}
+        Every finding is{" "}
+        <code>{"{ rule, severity, message, path, level?, at?, rooms?, opening?, fixture?, vertical? }"}</code>.{" "}
+        <code>path</code> is the JSON path of the thing the rule is about — <code>openings[3].width</code>,{" "}
+        <code>rooms.sala.rect</code>, <code>levels.piso1.fixtures[2]</code> — derived from the document that
+        was parsed rather than from a template, so it names a node that is really there and{" "}
+        <code>set</code> takes it verbatim. A field is only appended when the author wrote it: an opening that
+        let <code>position</code> default has no <code>position</code> to splice.
+      </p>
+      <p>
+        <code>opening</code> and <code>fixture</code> are stable ids, never array indices — an authored{" "}
+        <code>id</code>, or one synthesised as <code>&lt;type&gt;:&lt;a&gt;-&lt;b&gt;:&lt;n&gt;</code> for an
+        opening and <code>&lt;type&gt;:&lt;in&gt;:&lt;n&gt;</code> for a fixture, so deleting{" "}
+        <code>openings[2]</code> renumbers only its own pair's later siblings.{" "}
         <code>level</code> names the storey it is about, and is absent both on a building-wide finding and on
-        every finding of a document with no <code>levels</code> block. Schema
-        problems throw; geometry and semantic problems come back as findings so a broken plan still draws. The
-        CLI exits <code>0</code> when clean or info only, <code>1</code> at warning or above, <code>2</code> on
-        a schema error.
+        every finding of a document with no <code>levels</code> block.
+      </p>
+      <p>
+        <code>parse()</code> and <code>floorplan()</code> throw on a schema problem; <code>lint()</code> never
+        throws and returns it as a <code>schema.*</code> finding carrying the same document path, so one loop
+        handles every problem a document can have. Geometry and semantic problems are always findings, so a
+        broken plan still draws. The CLI exits <code>0</code> when clean or info only, <code>1</code> at
+        warning or above, <code>2</code> on a schema error.
       </p>
       {(["error", "warning", "info"] as const).map((sev) => (
         <section key={sev}>
