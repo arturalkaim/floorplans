@@ -11,17 +11,17 @@ import { shoelace } from "./geometry.ts";
 import { parse, PlanError } from "./parse.ts";
 import { checkRules, sortFindings } from "./rules.ts";
 import { renderSvg } from "./svg.ts";
-import type { Analysis, Finding, Model, Plan, Severity } from "./types.ts";
+import type { Analysis, Finding, LevelModel, Model, Plan, Severity } from "./types.ts";
 import type { RuleOptions } from "./rules.ts";
 import type { RenderOptions } from "./svg.ts";
 
 export { parse, PlanError, derive, checkRules, renderSvg, sortFindings };
 // the parser's own vocabularies, so documentation cannot drift from what it accepts
-export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES } from "./parse.ts";
+export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES, VERTICAL_TYPES } from "./parse.ts";
 export { RULES, ruleById } from "./catalogue.ts";
 // owner classes: rooms, outdoor spaces, the street and holes, plus the predicates that
 // tell them apart — a consumer reading model.walls or model.access needs these
-export { EXTERIOR, GAP, isOpenSky, isStreet, isVoid, outdoorOwner, ownerId, ownerKey, roomOwner, sameOwner } from "./types.ts";
+export { EXTERIOR, GAP, GROUND_LEVEL, isOpenSky, isStreet, isVoid, outdoorOwner, ownerId, ownerKey, roomOwner, sameOwner, voidOwner } from "./types.ts";
 export {
   applyDrag,
   applyMove,
@@ -31,7 +31,7 @@ export {
   movableFixtures,
 } from "./edit.ts";
 export type { Draggable, Movable } from "./edit.ts";
-export { projection } from "./svg.ts";
+export { levelOf, projection } from "./svg.ts";
 export type { Projection } from "./svg.ts";
 export type { RuleDoc } from "./catalogue.ts";
 // authoring support: keep a document canonical, and edit one value in place
@@ -65,29 +65,51 @@ export interface ScheduleRow {
   usableArea: number;
 }
 
-export interface Schedule {
+export interface OutdoorRow {
+  id: string;
+  name: string;
+  area: number;
+  /** floor taken by fixtures standing in this outdoor space, m² */
+  fixtureArea: number;
+  /** area less fixtureArea: a deck net of its pool */
+  usableArea: number;
+  covered: boolean;
+  /** can you walk here from the street? false for an enclosed courtyard */
+  streetConnected: boolean;
+}
+
+/** One storey's numbers. The same shape a single-level schedule has always had. */
+export interface LevelSchedule {
   rooms: ScheduleRow[];
   interiorArea: number;
   interiorClearArea: number;
   footprint: number;
   /** total pool surface, m² */
   waterArea: number;
-  outdoor: Array<{
-    id: string;
-    name: string;
-    area: number;
-    /** floor taken by fixtures standing in this outdoor space, m² */
-    fixtureArea: number;
-    /** area less fixtureArea: a deck net of its pool */
-    usableArea: number;
-    covered: boolean;
-    /** can you walk here from the street? false for an enclosed courtyard */
-    streetConnected: boolean;
-  }>;
+  outdoor: OutdoorRow[];
 }
 
-export function schedule(model: Model): Schedule {
-  const rooms = model.rooms.map((m) => ({
+export interface Schedule extends LevelSchedule {
+  /**
+   * Per level, ground-up, and the building's totals — present only on a document that
+   * authored `levels`. A single-level plan's schedule is byte-identical to what it was
+   * before levels existed, and the top-level numbers are always the ground level's.
+   */
+  levels?: Array<{ id: string; name: string } & LevelSchedule>;
+  building?: {
+    storeys: number;
+    /** every level's floor plate summed: gross floor area, m² */
+    grossArea: number;
+    /** the largest single plate: what the building stands on, m² */
+    footprint: number;
+    interiorArea: number;
+    interiorClearArea: number;
+    waterArea: number;
+  };
+}
+
+function levelSchedule(lm: LevelModel): LevelSchedule {
+  const rooms = lm.rooms.map((m) => ({
     id: m.room.id,
     name: m.room.name,
     kind: m.room.kind,
@@ -99,24 +121,41 @@ export function schedule(model: Model): Schedule {
   }));
   return {
     rooms,
-    interiorArea: model.interiorArea,
-    interiorClearArea: Math.round(rooms.reduce((s, r) => s + r.clearArea, 0) * 1000) / 1000,
-    footprint: model.envelope.area,
-    waterArea: Math.round(model.fixtures.filter((f) => f.fixture.type === "pool").reduce((s, f) => s + f.area, 0) * 1000) / 1000,
-    outdoor: model.plan.outdoor.map((o) => {
+    interiorArea: lm.interiorArea,
+    interiorClearArea: round(rooms.reduce((s, r) => s + r.clearArea, 0)),
+    footprint: lm.envelope.area,
+    waterArea: round(lm.fixtures.filter((f) => f.fixture.type === "pool").reduce((s, f) => s + f.area, 0)),
+    outdoor: lm.level.outdoor.map((o) => {
       const area = Math.abs(polyArea(o.poly));
-      const fixtureArea =
-        Math.round(model.fixtures.filter((f) => f.fixture.in === o.id).reduce((s, f) => s + f.area, 0) * 1000) / 1000;
+      const fixtureArea = round(lm.fixtures.filter((f) => f.fixture.in === o.id).reduce((s, f) => s + f.area, 0));
       return {
         id: o.id,
         name: o.name,
         area,
         fixtureArea,
-        usableArea: Math.round(Math.max(0, area - fixtureArea) * 1000) / 1000,
+        usableArea: round(Math.max(0, area - fixtureArea)),
         covered: o.covered,
-        streetConnected: model.streetOutdoor.has(o.id),
+        streetConnected: lm.streetOutdoor.has(o.id),
       };
     }),
+  };
+}
+
+export function schedule(model: Model): Schedule {
+  const ground = levelSchedule(model);
+  if (!model.plan.levelled) return ground;
+  const levels = model.levels.map((lm) => ({ id: lm.level.id, name: lm.level.name, ...levelSchedule(lm) }));
+  return {
+    ...ground,
+    levels,
+    building: {
+      storeys: model.building.storeys,
+      grossArea: model.building.grossArea,
+      footprint: model.building.footprint,
+      interiorArea: round(levels.reduce((s, l) => s + l.interiorArea, 0)),
+      interiorClearArea: round(levels.reduce((s, l) => s + l.interiorClearArea, 0)),
+      waterArea: round(levels.reduce((s, l) => s + l.waterArea, 0)),
+    },
   };
 }
 
@@ -124,7 +163,13 @@ export interface FloorplanResult {
   plan: Plan;
   model: Model;
   findings: Finding[];
+  /**
+   * The ground (or only) level's drawing, so a single-level caller is unchanged. Use
+   * `levels` to reach the others.
+   */
   svg: string;
+  /** every level, ground-up, each with its own drawing and its own findings */
+  levels: Array<{ id: string; name: string; svg: string; findings: Finding[] }>;
   schedule: Schedule;
 }
 
@@ -142,8 +187,18 @@ export function floorplan(input: unknown, opts: FloorplanOptions = {}): Floorpla
   const rank: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
   const mark = opts.markFindings ?? "warning";
   const marked = mark === "none" ? [] : findings.filter((f) => rank[f.severity] <= rank[mark]);
-  const svg = renderSvg(model, { ...opts.render, findings: marked });
-  return { plan, model, findings, svg, schedule: schedule(model) };
+  const levels = model.levels.map((lm) => {
+    // A finding with no level is building-wide, so it belongs on every sheet.
+    const mine = findings.filter((f) => f.level === undefined || f.level === lm.level.id);
+    return {
+      id: lm.level.id,
+      name: lm.level.name,
+      svg: renderSvg(model, { ...opts.render, level: lm.level.id, findings: marked.filter((f) => f.level === undefined || f.level === lm.level.id) }),
+      findings: mine,
+    };
+  });
+  const ground = levels.find((l) => l.id === model.level.id) ?? levels[0]!;
+  return { plan, model, findings, svg: ground.svg, levels, schedule: schedule(model) };
 }
 
 export function worstSeverity(findings: Finding[]): Severity | undefined {
@@ -153,4 +208,5 @@ export function worstSeverity(findings: Finding[]): Severity | undefined {
   return undefined;
 }
 
-const polyArea = (poly: Array<[number, number]>): number => Math.round(shoelace(poly) * 1000) / 1000;
+const round = (n: number): number => Math.round(n * 1000) / 1000;
+const polyArea = (poly: Array<[number, number]>): number => round(shoelace(poly));
