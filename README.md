@@ -696,7 +696,7 @@ and `arc.too_shallow` says so.
 | `position` | `"center"` (default), a number (metres from the wall's start to the opening centre), or `{ "from": "start"\|"end", "distance" }` |
 | `at` | `[x, y]`: place the opening by an absolute point instead of `on` + `position` — picks the nearest wall between the two spaces in `between` and projects the point onto it |
 | `width` | metres |
-| `hinge` | doors: `"start"` or `"end"` jamb. A wall's start is its west or north end; on a wall that is neither horizontal nor vertical it is whichever end the wall runs from — eastward, or northward when the wall is vertical. |
+| `hinge` | doors: `"start"` or `"end"` jamb. A wall's start is its west or north end; on a wall that is neither horizontal nor vertical it is whichever end the wall runs from — eastward, or northward when the wall is vertical. `Wall.start` in the model is that same end, and `--json=walls` prints it as the row's `from`. |
 | `swingInto` | doors: room the leaf opens into (default: the room in `between`, never the street or a terrace) |
 | `entrance` | doors: mark the main entrance. It must lead to the street, or you get `entrance.not_street` |
 | `glazed` | doors: `true` for a glazed door (default `false`) — counts as daylight for `habitable.no_window`, same as a window |

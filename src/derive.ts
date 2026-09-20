@@ -1089,21 +1089,29 @@ const mergeable = (a: Piece, b: Piece): boolean => {
 function wallFrom(parts: Part[], neg: Owner, pos: Owner, thickness: number, edges: number[]): Wall {
   const geos = parts.map(partGeometry);
   const geometry: WallGeometry = geos.length === 1 ? geos[0]! : { kind: "chain", parts: geos };
-  const start = ptM(parts[0]!.start);
-  const end = ptM(parts[parts.length - 1]!.end);
+  // the ends in the canonical direction — the direction `geometry` runs in and the one
+  // `neg`/`pos` are the left and right of
+  const a = ptM(parts[0]!.start);
+  const b = ptM(parts[parts.length - 1]!.end);
   const length = snap(parts.reduce((s, p) => s + partLength(p), 0) / 1000);
   const straight = geos.length === 1 && geos[0]!.kind === "segment";
-  const axis: Axis | undefined = !straight ? undefined : start[1] === end[1] ? "h" : start[0] === end[0] ? "v" : undefined;
-  const c = axis === "h" ? start[1] : axis === "v" ? start[0] : undefined;
-  const lo = axis === "h" ? Math.min(start[0], end[0]) : axis === "v" ? Math.min(start[1], end[1]) : 0;
-  const hi = axis === "h" ? Math.max(start[0], end[0]) : axis === "v" ? Math.max(start[1], end[1]) : length;
+  const axis: Axis | undefined = !straight ? undefined : a[1] === b[1] ? "h" : a[0] === b[0] ? "v" : undefined;
+  const c = axis === "h" ? a[1] : axis === "v" ? a[0] : undefined;
+  const lo = axis === "h" ? Math.min(a[0], b[0]) : axis === "v" ? Math.min(a[1], b[1]) : 0;
+  const hi = axis === "h" ? Math.max(a[0], b[0]) : axis === "v" ? Math.max(a[1], b[1]) : length;
+  // INVARIANT: `start` is the end `from` is at and `end` the end `to` is at, which is the
+  // west or north end first for an axis-aligned wall — the same "start" that `hinge` and
+  // `position.from` name, that `walls()` prints and that the README states. A vertical
+  // wall is the one place that differs from the canonical direction, which runs *north*:
+  // for it, and only for it, the two are swapped (B10).
+  const flipped = axis === "v";
   const w: Wall = {
     id: "",
     kind: isOpenSky(neg) || isOpenSky(pos) ? "exterior" : "partition",
     thickness,
     geometry,
-    start,
-    end,
+    start: flipped ? b : a,
+    end: flipped ? a : b,
     length,
     from: lo,
     to: hi,

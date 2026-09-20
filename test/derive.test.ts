@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { derive } from "../src/derive.ts";
+import { walls } from "../src/index.ts";
 import { doorSwing } from "../src/doors.ts";
 import { parse } from "../src/parse.ts";
 import { ownerId } from "../src/types.ts";
 import { has, rect, rulesOf, twoRooms } from "./helpers.ts";
 
 const analyze = (input: unknown) => derive(parse(input));
+
+const FIXTURE_NAMES = readdirSync(new URL("../fixtures/", import.meta.url))
+  .filter((n) => n.endsWith(".json"))
+  .map((n) => n.replace(/\.json$/, ""));
 
 describe("derive: walls", () => {
   it("derives exterior and partition segments for two rooms", () => {
@@ -457,5 +462,76 @@ describe("derive: a void is a hole in the slab (void.overlap)", () => {
   it("leaves moradia, which has two real voids, clean", () => {
     const doc = JSON.parse(readFileSync(new URL("../fixtures/moradia-2-pisos.json", import.meta.url), "utf8"));
     assert.ok(!has(analyze(doc).findings, "void.overlap"));
+  });
+});
+
+/**
+ * B10: one direction, one name.
+ *
+ * `Wall.start` used to be the end the *canonical* direction starts at — the one pointing
+ * east, or north when the wall is vertical. Everything else a consumer sees means the
+ * west or north end: `from`/`to`, the two points `walls()` prints, the jamb
+ * `hinge: "start"` and `position: { from: "start" }` pick, and the README. On a
+ * horizontal wall the two coincide. On every vertical wall `Wall.start` was the *south*
+ * end, so reading it to place a door at its "start" jamb reached for the wrong one.
+ *
+ * The canonical direction has not moved: it is what fixes `neg` and `pos`, it is still
+ * the direction `geometry` runs in, and `describe()` still quotes it for an angled wall.
+ * Only the two public field names now mean what every other spelling of "start" means.
+ * casa-t3's SVG is pinned byte for byte by levels-compat, and stays green.
+ */
+describe("Wall.start is the end `from` is at (B10)", () => {
+  const plan = {
+    walls: { exterior: 0.3, partition: 0.12 },
+    rooms: {
+      a: { name: "A", kind: "living", poly: rect(0, 0, 4, 4) },
+      b: { name: "B", kind: "office", poly: rect(4, 0, 4, 4) },
+    },
+    openings: [
+      { type: "door", between: ["exterior", "a"], on: { room: "a", side: "west" }, width: 1, entrance: true },
+      { type: "door", between: ["a", "b"], width: 0.8, hinge: "start" },
+      { type: "window", between: ["exterior", "a"], on: { room: "a", side: "north" }, width: 1.2 },
+      { type: "window", between: ["exterior", "b"], on: { room: "b", side: "north" }, width: 1.2 },
+    ],
+  };
+
+  it("agrees with `walls()` on every wall of every fixture, curved and angled included", () => {
+    for (const name of FIXTURE_NAMES) {
+      const doc = JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));
+      const { model } = analyze(doc);
+      const rows = walls(model);
+      let i = 0;
+      for (const lm of model.levels)
+        for (const w of lm.walls) {
+          const r = rows[i++]!;
+          assert.equal(r.id, w.id, `${name} ${lm.level.id}`);
+          // `+ 0` only to turn a -0 into a 0: `pointOn` can produce one on an angled
+          // wall, `JSON.stringify` prints both as "0", and `deepStrictEqual` does not
+          const z = (p: readonly [number, number]) => [p[0] + 0, p[1] + 0];
+          assert.deepEqual([z(w.start), z(w.end)], [z(r.from), z(r.to)], `${name} ${lm.level.id} ${w.id}`);
+        }
+      assert.equal(i, rows.length);
+    }
+  });
+
+  it("puts a vertical wall's start at its north end, as the README says", () => {
+    const { model } = analyze(plan);
+    const vertical = model.walls.filter((w) => w.axis === "v");
+    assert.equal(vertical.length, 3);
+    for (const w of vertical) {
+      assert.ok(w.start[1] < w.end[1], `${w.id}: start ${w.start} is not north of end ${w.end}`);
+      assert.deepEqual(w.start, [w.c, w.from]);
+      assert.deepEqual(w.end, [w.c, w.to]);
+    }
+    // and a horizontal wall's start is still its west end, which it always was
+    for (const w of model.walls.filter((x) => x.axis === "h")) assert.deepEqual(w.start, [w.from, w.c]);
+  });
+
+  it('puts the `hinge: "start"` jamb at the end `Wall.start` names', () => {
+    const { model } = analyze(plan);
+    const door = model.openings.find((o) => o.spec.type === "door" && !o.spec.entrance)!;
+    assert.equal(door.wall.axis, "v", "the a|b partition is the vertical wall B10 is about");
+    const d = (p: [number, number]) => Math.hypot(p[0] - door.hinge![0], p[1] - door.hinge![1]);
+    assert.ok(d(door.wall.start) < d(door.wall.end), `hinge ${door.hinge} is nearer the end than the start`);
   });
 });

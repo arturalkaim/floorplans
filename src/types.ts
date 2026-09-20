@@ -379,7 +379,18 @@ export type WallGeometry =
  * `from`/`to` are the wall's own 1-D parameter, and are **not** tied to that direction:
  * for an axis-aligned wall they stay the coordinate along its axis, ascending, because
  * every opening's `position` and every message quoting a wall already means that.
- * Elsewhere they run 0 … `length` from `start`.
+ * Elsewhere they run 0 … `length` from the canonical start.
+ *
+ * INVARIANT: `start` and `end` are the ends `from` and `to` are at — the west or north
+ * end first — and *not* the ends of the canonical direction. The two differ on exactly
+ * one kind of wall, the vertical one, whose canonical direction runs north while its
+ * parameter ascends south; for a horizontal, angled or curved wall they are the same
+ * points. This is the direction every public spelling of "start" already means: the jamb
+ * `hinge: "start"` and `position: { from: "start" }` pick, the `from`/`to` points
+ * `walls()` prints, and the README. Naming the canonical end `start` made a vertical
+ * wall's `start` its *south* end, which is a trap and nothing else (B10). Code that wants
+ * the canonical ends — the outward normal of an angled wall, say — takes them from
+ * `geometry`, which still runs that way.
  */
 export interface Wall {
   id: string;
