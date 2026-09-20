@@ -4,9 +4,9 @@ import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import { formatFindings, run } from "../src/cli.ts";
+import { EXAMPLE_PLAN, formatFindings, run } from "../src/cli.ts";
 import type { CliIo } from "../src/cli.ts";
-import { COMPASS_LINE, FIXTURE_TYPES, ID_RE, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "../src/index.ts";
+import { COMPASS_LINE, FIXTURE_TYPES, formatPlan, ID_RE, isSchemaFinding, lint, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, toDsl, VERTICAL_TYPES } from "../src/index.ts";
 import { twoRooms } from "./helpers.ts";
 
 function fakeIo(files: Record<string, string>, stdin = "") {
@@ -195,10 +195,16 @@ describe("cli: --schema (terse, default)", () => {
     for (const o of SCHEMA) for (const f of o.fields) if (f.doc.length > 20) assert.ok(!out.includes(f.doc), `--schema still contains the doc text for ${o.object}.${f.name}`);
   });
 
-  it("stays well under the ~800-token budget (docs/agent-review.md B10): measured 1 914 chars / 616 gpt-tokenizer o200k_base tokens for all 14 objects/73 fields plus the id/compass legend; this asserts a char proxy so the suite carries no tokenizer dependency", () => {
+  // The ~800-token budget (docs/agent-review.md B10) covered the bare field table; the
+  // legend (id format, compass axes) and the worked example (fix 4, docs/eval/cold/cold-run.md)
+  // that now follow it are worth more than the budget, and push the true cost to ~1 035
+  // gpt-tokenizer o200k_base tokens / 3 106 chars — see README.md's token table for the
+  // measured, tokenizer-backed number. This asserts a char proxy so the suite carries no
+  // tokenizer dependency, and exists only to catch an unbounded regression.
+  it("stays under a regression ceiling for its total length (field table + legend + example)", () => {
     const t = fakeIo({});
     run(["--schema"], t.io);
-    assert.ok(t.out().length < 2500, `--schema terse form grew to ${t.out().length} chars, past the regression ceiling`);
+    assert.ok(t.out().length < 4000, `--schema terse form grew to ${t.out().length} chars, past the regression ceiling`);
   });
 });
 
@@ -236,6 +242,33 @@ describe("cli: --schema legend states the id format and the compass axes", () =>
     const t = fakeIo({});
     run(["--schema"], t.io);
     assert.ok(t.out().includes(COMPASS_LINE), "--schema is missing the compass axes line");
+  });
+});
+
+// fix 4 (docs/eval/cold/cold-run.md): neither reference had a single worked example, and the
+// eval's own verdict was that one would have prevented most of the 20/20 JSON failures.
+describe("cli: --schema and --schema=dsl end with a worked example", () => {
+  it("EXAMPLE_PLAN is fixtures/cabin.json verbatim, so the printed example cannot drift from a real fixture", () => {
+    const cabin = JSON.parse(readFileSync(new URL("../fixtures/cabin.json", import.meta.url), "utf8"));
+    assert.deepEqual(EXAMPLE_PLAN, cabin);
+  });
+
+  it("--schema's example is EXAMPLE_PLAN through the compact formatter, and lints with no schema.* findings", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const example = formatPlan(EXAMPLE_PLAN).replace(/\n$/, "");
+    assert.ok(t.out().includes(`example:\n${example}`), "--schema's example section does not match formatPlan(EXAMPLE_PLAN)");
+    const linted = lint(example);
+    assert.deepEqual(linted.findings.filter(isSchemaFinding), []);
+  });
+
+  it("--schema=dsl's example is EXAMPLE_PLAN through toDsl, and lints with no schema.* findings", () => {
+    const t = fakeIo({});
+    run(["--schema=dsl"], t.io);
+    const example = toDsl(EXAMPLE_PLAN).replace(/\n$/, "");
+    assert.ok(t.out().includes(`## example\n\n${example}`), "--schema=dsl's example section does not match toDsl(EXAMPLE_PLAN)");
+    const linted = lint(example);
+    assert.deepEqual(linted.findings.filter(isSchemaFinding), []);
   });
 });
 

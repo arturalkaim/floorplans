@@ -30,17 +30,16 @@ describe("the DSL grammar covers the whole schema", () => {
     }
   });
 
-  it("prints a coverage table listing every statement and every field", () => {
-    const text = dslSchemaText();
-    for (const s of DSL_SCHEMA) assert.ok(text.includes(s.syntax.split("\n")[0]!), `--schema=dsl omits ${s.statement}`);
-    for (const f of schemaFields) assert.match(text, new RegExp(`^${f.replace(/\./g, "\\.")}\\s`, "m"), `--schema=dsl omits ${f}`);
+  it("prints every statement by default, but the field index only under {fieldIndex: true} (--schema=dsl-full)", () => {
+    const terse = dslSchemaText();
+    for (const s of DSL_SCHEMA) assert.ok(terse.includes(s.syntax.split("\n")[0]!), `--schema=dsl omits ${s.statement}`);
+    for (const f of schemaFields) assert.doesNotMatch(terse, new RegExp(`^${f.replace(/\./g, "\\.")}\\s`, "m"), `--schema=dsl (default) should no longer carry the field index, but still has ${f}`);
+
+    const full = dslSchemaText({ fieldIndex: true });
+    for (const s of DSL_SCHEMA) assert.ok(full.includes(s.syntax.split("\n")[0]!), `--schema=dsl-full omits ${s.statement}`);
+    for (const f of schemaFields) assert.match(full, new RegExp(`^${f.replace(/\./g, "\\.")}\\s`, "m"), `--schema=dsl-full omits ${f}`);
   });
 
-  // Fix 5, docs/eval/cold/cold-run.md item 2 under "Rule findings": 4 of 20 cold-agent DSL
-  // authors wrote a single `at` line for a multi-level stair despite the syntax's own "(one
-  // indented line per level served)" aside — a sentence about cardinality is exactly the
-  // fact a worked example removes any doubt about, so this one is the *first* thing shown
-  // under the statement, before the prose.
   it("puts the stairs statement's worked multi-level example before its doc sentence, not after", () => {
     const text = dslSchemaText();
     const stairs = DSL_SCHEMA.find((s) => s.statement === "stairs | lift | ramp")!;
@@ -49,17 +48,19 @@ describe("the DSL grammar covers the whole schema", () => {
     const docAt = text.indexOf(`— ${stairs.doc}`);
     assert.ok(exampleAt !== -1 && docAt !== -1 && exampleAt < docAt, "the worked example should appear before the doc sentence");
     // and it actually shows one `at` line per level, the fact 4/20 cold-agent DSL files got
-    // wrong
+    // wrong (docs/eval/cold/cold-run.md item 2 under "Rule findings")
     const atLines = stairs.example!.split("\n").filter((l) => l.trim().startsWith("at "));
     assert.equal(atLines.length, 2, `the stairs example should show 2 "at" lines (one per level served), found ${atLines.length}`);
   });
 
-  // Fix 3, docs/eval/cold/cold-run.md item 3: neither reference stated which x/y direction
-  // is which compass side, and brief 04's cold-agent porch placement guessed the wrong sign
-  // for south. Source: derive.ts reads a room's north wall off its minimum y and its south
-  // wall off its maximum y (and west/east the same way on x), so y increases southward.
-  it("states the x/y ↔ compass convention", () => {
+  it("states the x/y ↔ compass convention (docs/eval/cold/cold-run.md item 3)", () => {
     assert.ok(dslSchemaText().includes(COMPASS_LINE));
+  });
+
+  it("ends with a worked example when one is given, converted through toDsl", () => {
+    const doc = { rooms: { a: { rect: [0, 0, 3, 3] } } };
+    const text = dslSchemaText({ example: doc });
+    assert.match(text, /## example\n\nroom a rect 0,0 3x3\n?$/);
   });
 });
 

@@ -72,17 +72,18 @@ const USAGE = `usage: floorplan <plan.json> [--out plan.svg] [--level id] [--lin
        floorplan set <plan.json> <path> <value> [--json] [--dry-run]
        floorplan patch <plan.json> <patch.json|-> [--json] [--dry-run]
        floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
-       floorplan --schema[=full|md|dsl]
+       floorplan --schema[=full|md|dsl|dsl-full]
 
 A plan file may be JSON or the line DSL; the first non-space character says which.
 --level picks which storey to draw (default: the ground level), and scopes --json=walls.
 --out may contain {level}, and then one file per level is written.
 --json alone is { summary, findings }; =all adds schedule and walls; =schedule and
        =walls select one section.
---schema prints one typed-signature line per object, no docs, plus a legend
-         (id format, compass axes); =full prints the same table as compact JSON with docs;
+--schema prints one typed-signature line per object, no docs, plus a worked example;
+         =full prints the same table as compact JSON with docs;
          =md prints it as a Markdown table for a human reader;
-         =dsl prints the line DSL's grammar and the same legend. Needs no input file.`;
+         =dsl prints the line DSL's grammar and a worked example;
+         =dsl-full adds the field-by-field token index =dsl omits. Needs no input file.`;
 
 export function run(argv: string[], io: CliIo): number {
   if (argv[0] === "set") return runSet(argv.slice(1), io);
@@ -202,8 +203,9 @@ interface Args {
   areas: "clear" | "centreline" | "none" | undefined;
   mark: Severity | "none" | undefined;
   /**
-   * `--schema` (terse, default), `--schema=full` (JSON+docs), `--schema=md`, or
-   * `--schema=dsl` (the line DSL's grammar); needs no input file.
+   * `--schema` (terse, default), `--schema=full` (JSON+docs), `--schema=md`,
+   * `--schema=dsl` (the line DSL's grammar), or `--schema=dsl-full` (that grammar's full
+   * field index); needs no input file.
    */
   schema: SchemaMode | undefined;
 }
@@ -247,6 +249,7 @@ function parseArgs(argv: string[]): Args | Error {
     else if (t === "--schema=full") a.schema = "full";
     else if (t === "--schema=md") a.schema = "md";
     else if (t === "--schema=dsl") a.schema = "dsl";
+    else if (t === "--schema=dsl-full") a.schema = "dsl-full";
     else if (t.startsWith("-")) return new Error(`unknown option ${t}`);
     else if (a.input === undefined) a.input = t;
     else return new Error(`unexpected argument ${t}`);
@@ -563,10 +566,11 @@ function runPatch(argv: string[], io: CliIo): number {
   return finish(text, planPath, io, { json, dryRun });
 }
 
-/** Which form `--schema` prints: terse (default), full JSON+docs, a Markdown table, or the line DSL's grammar. */
-export type SchemaMode = "terse" | "full" | "md" | "dsl";
+/** Which form `--schema` prints: terse (default), full JSON+docs, a Markdown table, the
+ * line DSL's grammar, or that grammar's full field-by-field token index. */
+export type SchemaMode = "terse" | "full" | "md" | "dsl" | "dsl-full";
 
-/** The one place `--schema[=full|md|dsl]` is decided, rather than a branch in `run`. */
+/** The one place `--schema[=full|md|dsl|dsl-full]` is decided, rather than a branch in `run`. */
 function printSchema(mode: SchemaMode): string {
   switch (mode) {
     case "full":
@@ -577,11 +581,50 @@ function printSchema(mode: SchemaMode): string {
       // the other syntax's table, from DSL_SCHEMA rather than SCHEMA — but generated the
       // same way and for the same reason, so it cannot describe a token the parser
       // does not take
-      return dslSchemaText();
+      return dslSchemaText({ example: EXAMPLE_PLAN });
+    case "dsl-full":
+      return dslSchemaText({ example: EXAMPLE_PLAN, fieldIndex: true });
     default:
       return schemaTerse();
   }
 }
+
+/**
+ * A small, real, already-lint-clean plan — `fixtures/cabin.json`, canonical form, verbatim —
+ * appended to both `--schema` and `--schema=dsl` as a worked example (fix 4 for
+ * docs/eval/cold/cold-run.md: neither reference had one, and the eval's own verdict was that
+ * a single worked example would have prevented most of its 20/20 JSON failures and several
+ * of its DSL ones). It demonstrates an `on`+`position` opening, an `at`-placed opening, a
+ * room/outdoor pair, and both syntaxes' canonical form — but not a `fixture`, which
+ * `fixtures/cabin.json` has none of.
+ *
+ * A literal object rather than a file read: `--schema` must work from any working directory
+ * (this is a zero-dependency library an agent may run from anywhere, not just a checkout of
+ * this repo), and `printSchema` stays a plain function with no IO. `test/cli.test.ts` reads
+ * `fixtures/cabin.json` itself and asserts this constant deep-equals it, so the two cannot
+ * drift apart.
+ */
+export const EXAMPLE_PLAN: Record<string, unknown> = {
+  title: "Cabana",
+  walls: { exterior: 0.2, partition: 0.1 },
+  rooms: {
+    sala: { name: "Sala e cozinha", kind: "living", rect: [0, 0, 5, 4] },
+    wc: { name: "Casa de banho", kind: "wc", rect: [5, 0, 1.2, 2] },
+    arrumos: { name: "Arrumos", kind: "storage", rect: [5, 2, 1.2, 2] },
+  },
+  outdoor: {
+    deck: { name: "Deck", rect: [0, 4, 5, 2] },
+  },
+  openings: [
+    { type: "door", between: ["deck", "sala"], at: [0.9, 4], width: 0.9, hinge: "start", swingInto: "sala" },
+    { type: "door", between: ["sala", "wc"], position: { from: "end", distance: 0.5 }, width: 0.7, hinge: "end", swingInto: "wc" },
+    { type: "door", between: ["sala", "arrumos"], position: { from: "start", distance: 0.5 }, width: 0.7, hinge: "start", swingInto: "arrumos" },
+    { type: "window", between: ["exterior", "sala"], on: { room: "sala", side: "north" }, position: 2.5, width: 2.4 },
+    { type: "window", between: ["deck", "sala"], on: { room: "sala", side: "south" }, position: 3.4, width: 2 },
+    { type: "window", between: ["exterior", "sala"], on: { room: "sala", side: "west" }, width: 1.2 },
+    { type: "window", between: ["exterior", "wc"], on: { room: "wc", side: "east" }, width: 0.6 },
+  ],
+};
 
 /** Every object name SCHEMA declares, for `objectRef` below to check a `"; see X"` or
  * dotted-name reference against — a name that fits neither convention fails loudly there
@@ -621,8 +664,8 @@ function objectFieldType(owner: ObjectDoc["object"], f: FieldDoc): string {
 /**
  * `--schema` (default): one typed-signature line per object, generated from SCHEMA with no
  * doc text — required fields bare, optional `name?`, and no per-field prose — plus a short
- * legend (id format, compass axes, spelled-out enum vocabularies). `--schema=full` below
- * still carries every doc string for the cases that need it.
+ * legend (id format, compass axes, spelled-out enum vocabularies) and one worked example.
+ * `--schema=full` below still carries every doc string for the cases that need it.
  *
  * An enum with ≤6 values is spelled out inline (`enum(door|window|cased)`); a bigger one
  * (room.kind, fixture.type) is a name (`enum(ROOM_KINDS)`) resolved against VOCABULARIES
@@ -685,7 +728,8 @@ function schemaTerse(): string {
     COMPASS_LINE,
     ...VOCABULARIES.filter((v) => usedVocabularies.has(v.name)).map((v) => `${v.name} = ${[...v.values].join("|")}`),
   ];
-  return `${[...lines, "", ...legend].join("\n")}\n`;
+  const example = formatPlan(EXAMPLE_PLAN).replace(/\n$/, "");
+  return `${[...lines, "", ...legend, "", "example:", example].join("\n")}\n`;
 }
 
 /** Every enum vocabulary SCHEMA's fields point at, named for `schemaTerse`'s legend. */

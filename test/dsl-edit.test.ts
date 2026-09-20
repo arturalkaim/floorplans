@@ -269,9 +269,19 @@ describe("the main command reads a DSL file with no extra flags", () => {
 });
 
 describe("--schema=dsl", () => {
-  it("prints the grammar and every schema field's token", () => {
+  it("prints the grammar, but not the field-by-field token index (that is --schema=dsl-full's job)", () => {
     const t = fakeIo({});
     assert.equal(run(["--schema=dsl"], t.io), 0);
+    assert.match(t.out(), /^## statements$/m);
+    assert.match(t.out(), /^ +arc <x>,<y> r<radius> \[cw\|ccw\] \[large\]$/m);
+    assert.ok(!t.out().includes("opening.swingInto"), "--schema=dsl should no longer carry the 73-row field index by default");
+  });
+});
+
+describe("--schema=dsl-full", () => {
+  it("prints the grammar and every schema field's token", () => {
+    const t = fakeIo({});
+    assert.equal(run(["--schema=dsl-full"], t.io), 0);
     assert.match(t.out(), /^## statements$/m);
     assert.match(t.out(), /^opening\.swingInto\s+swing:<space>$/m);
     assert.match(t.out(), /^ +arc <x>,<y> r<radius> \[cw\|ccw\] \[large\]$/m);

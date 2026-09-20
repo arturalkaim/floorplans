@@ -1757,8 +1757,20 @@ export function lineOf(positions: DslPositions, path: string): number | undefine
  * and this function so the two references cannot state it two different ways. */
 export const COMPASS_LINE = "axes: x east, y south; north = -y";
 
-/** `--schema=dsl`: one line per statement kind with its tokens, then the field index. */
-export function dslSchemaText(): string {
+export interface DslSchemaOptions {
+  /** include the 73-row `<object>.<field> → token` index (`--schema=dsl-full`); the default
+   * omits it — it is what took `--schema=dsl` from 1 388 to well past a terse reference's
+   * budget, and every field it lists is already implied by the statement grammar above it. */
+  fieldIndex?: boolean;
+  /** appended, converted through `toDsl`, as `example:` — a real, already-lint-clean
+   * document (fix 4 for docs/eval/cold/cold-run.md: neither reference had one, and every
+   * failure the eval logged is a fact a worked example would have settled). */
+  example?: Record<string, unknown>;
+}
+
+/** `--schema=dsl`: one line per statement kind with its tokens; `--schema=dsl-full` adds the
+ * field index. Both end with a worked example when `opts.example` is given. */
+export function dslSchemaText(opts: DslSchemaOptions = {}): string {
   const out: string[] = [
     "# floorplan DSL — one entity per line; `{` as the first character means JSON instead",
     `# ${COMPASS_LINE}`,
@@ -1771,13 +1783,17 @@ export function dslSchemaText(): string {
     if (s.example) out.push(s.example);
     out.push(`  — ${s.doc}`, "");
   }
-  out.push(`## poly elements`, "", `  <x>,<y>`, `  ${ARC_SYNTAX}`, "");
-  out.push("## every schema field, and the token that writes it", "");
-  for (const o of SCHEMA) {
-    for (const f of o.fields) {
-      const tokens = DSL_SCHEMA.flatMap((s) => s.tokens.filter((t) => t.field === `${o.object}.${f.name}`).map((t) => t.token));
-      out.push(`${`${o.object}.${f.name}`.padEnd(28)} ${[...new Set(tokens)].join(" | ")}`);
+  out.push("## poly elements", "", "  <x>,<y>", `  ${ARC_SYNTAX}`);
+  if (opts.fieldIndex) {
+    out.push("", "## every schema field, and the token that writes it", "");
+    for (const o of SCHEMA) {
+      for (const f of o.fields) {
+        const tokens = DSL_SCHEMA.flatMap((s) => s.tokens.filter((t) => t.field === `${o.object}.${f.name}`).map((t) => t.token));
+        out.push(`${`${o.object}.${f.name}`.padEnd(28)} ${[...new Set(tokens)].join(" | ")}`);
+      }
     }
   }
+  // `toDsl` already ends its text with "\n"; strip it so the join below controls spacing.
+  if (opts.example) out.push("", "## example", "", toDsl(opts.example).replace(/\n$/, ""));
   return `${out.join("\n")}\n`;
 }

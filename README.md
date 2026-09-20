@@ -26,16 +26,18 @@ to read a plan back" below).
 
 | load | what it is | tokens |
 |---|---|---:|
-| `floorplan --schema` | one compact typed-signature line per object, with cardinality (`{id: room}`, `opening[]`) and a legend — all 14 objects and 73 fields | 616 |
-| `floorplan --schema=dsl` | the line DSL's grammar: every statement, and the token that writes each of those 73 fields | 1 469 |
+| `floorplan --schema` | one compact typed-signature line per object (with cardinality — `{id: room}`, `opening[]`), a legend, and a worked example — all 14 objects and 73 fields | 1 035 |
+| `floorplan --schema=dsl` | the line DSL's grammar — every statement and its tokens — plus the same legend and worked example, without the field-by-field index below | 1 045 |
+| `floorplan --schema=dsl-full` | `--schema=dsl` plus the field-by-field token index for all 73 fields | 1 668 |
 | `floorplan --schema=full` | the same JSON table with types, enums, cardinality and a one-sentence doc per field | 2 606 |
 | `floorplan --schema=md` | the full table as Markdown, for a human | 2 225 |
 
 Take `--schema` when you are editing a document you already have, and
-`--schema=dsl` when you are writing one from scratch: it costs 853 tokens more
-and the documents it teaches you to write are about half the size, so it pays
-for itself on the first house. All four are generated from the library itself,
-so none can list a field, a token or a rule the parser and linter do not
+`--schema=dsl` when you are writing one from scratch: the two now cost about
+the same to load (a worked example dominates both), and the documents the DSL
+teaches you to write are still about half the size, so it still pays for
+itself on the first house. All five are generated from the library itself, so
+none can list a field, a token or a rule the parser and linter do not
 actually have.
 
 ## Playground app
@@ -129,7 +131,7 @@ floorplan <plan.json> [--out plan.svg] [--level id] [--lint]
 floorplan set <plan.json> <path> <value> [--json] [--dry-run]
 floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
 floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
-floorplan --schema[=full|md|dsl]
+floorplan --schema[=full|md|dsl|dsl-full]
 ```
 
 A plan file may be JSON or the line DSL, and every command takes either: the first
@@ -148,12 +150,14 @@ the table the parser itself validates against (see "Plan format" below). Default
 typed-signature line per object — name, required/`?`, type, enum values inlined at ≤6 or a
 `enum(NAME)` reference otherwise, spelled out once in a trailing legend, cardinality on
 every nested-object field (`{id: room}` for an id-keyed map, `opening[]` for a list, bare
-`opening.on` for a single nested object) — plus the id format and the x/y ↔ compass axes:
-no per-field doc text, 616 tokens for all 14 objects/73 fields. `--schema=full` prints the
-same table as compact JSON with name, type, required, enum values, cardinality and the
-one-sentence doc, one field per line, 2 606 tokens. `--schema=md` prints the full table as
-Markdown. `--schema=dsl` prints the line DSL's grammar instead, from its own table (see
-"The line DSL" below), 1 469 tokens.
+`opening.on` for a single nested object) — plus the id format, the x/y ↔ compass axes, and
+one small worked example (`fixtures/cabin.json`, canonical form) at the end: no per-field
+doc text, 1 035 tokens for all 14 objects/73 fields. `--schema=full` prints the same table
+as compact JSON with name, type, required, enum values, cardinality and the one-sentence
+doc, one field per line, 2 606 tokens. `--schema=md` prints the full table as Markdown.
+`--schema=dsl` prints the line DSL's grammar instead, from its own table (see "The line
+DSL" below) plus the same legend and worked example, 1 045 tokens; `--schema=dsl-full`
+adds the field-by-field token index `--schema=dsl` omits, 1 668 tokens.
 
 `fmt` canonicalises a plan and converts it between the two syntaxes. Without `--to` the
 file keeps the syntax it is in; `--out` writes somewhere else, which is what a conversion
@@ -832,8 +836,9 @@ refuses such a document rather than dropping the key.
 
 ### The grammar
 
-Printed by `floorplan --schema=dsl` (1 469 tokens) and generated below from the same
-table, so neither can describe a token the parser does not take. `[...]` is optional.
+Printed by `floorplan --schema=dsl` (1 045 tokens; `--schema=dsl-full` adds the
+field-by-field token index below, 1 668 tokens) and generated below from the same table, so
+neither can describe a token the parser does not take. `[...]` is optional.
 
 <!-- generated from DSL_SCHEMA by test/readme-dsl.test.ts; run it with UPDATE_README=1 after a grammar change -->
 
