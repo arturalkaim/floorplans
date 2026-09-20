@@ -85,12 +85,56 @@ functions — the app only turns pointer events into coordinates.
 floorplan <plan.json> [--out plan.svg] [--lint] [--json] [--scale N]
                       [--theme auto|light|dark] [--labels auto|full|index]
                       [--areas clear|centreline|none] [--mark error|warning|info|none]
+floorplan set <plan.json> <path> <value> [--json] [--dry-run]
+floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
 ```
 
 Exit codes: `0` clean or info only, `1` findings at warning or above, `2` usage or schema error.
 
 On a schema error (exit `2`), `--json` prints `{"error":{"issues":[{"path","message"}]}}`
 to stdout instead of the text form on stderr; without `--json` the text form is unchanged.
+
+### `set` and `patch`: editing without re-emitting the document
+
+Re-emitting a whole plan to move one door costs on the order of 2000 tokens for a
+house-sized document; a splice costs about 20, regardless of plan size — so `set` and
+`patch` are how an agent should make small edits, not printing and rewriting the JSON.
+
+`set` changes one value at a path (the same dotted/bracketed form `pathToString` prints,
+e.g. `openings[3].position`, `rooms.sala.poly[2][0]`, `layout.cols[1]`):
+
+```
+floorplan set plan.json openings[3].position 2.1
+floorplan set plan.json rooms.sala.name Sala        # not valid JSON → treated as the string "Sala"
+floorplan set plan.json openings[3].position 2.1 --dry-run   # preview the new text, don't write
+```
+
+`patch` applies several operations at once, all-or-nothing — if any op fails, nothing is
+written and the CLI reports which one and why:
+
+```
+floorplan patch plan.json patch.json
+floorplan patch plan.json --patch -    # read the patch document from stdin
+```
+
+`patch.json` is a JSON array of `{ "op": "set" | "remove" | "append" | "insert", "path": "...", "value"?: <any>, "key"?: "..." }`
+(`op` defaults to `"set"`). `remove` deletes an array element or object member;
+`append` adds a new array element after the last one; `insert` adds `key: value` to an
+object (e.g. a new room in `rooms`). Example, deleting one opening and adding a room in
+one call:
+
+```json
+[
+  { "op": "remove", "path": "openings[9]" },
+  { "op": "insert", "path": "rooms", "key": "garagem", "value": { "name": "Garagem", "kind": "garage", "poly": [[0, -3], [4.6, -3], [4.6, 0], [0, 0]] } }
+]
+```
+
+Both verbs run the full pipeline on the result before writing anything: a change that
+fails schema validation (`PlanError`) leaves the file untouched and reports the error
+(as the JSON envelope above under `--json`) with exit `2`; a change that validates but
+still has findings is written, and those findings are printed exactly as `--lint` would
+(or as `--json`, alongside `schedule`).
 
 ## Library
 
@@ -284,7 +328,7 @@ src/rules.ts      semantic rules over the model
 src/svg.ts        Model → SVG string (+ the projection, for hit-testing)
 src/catalogue.ts  the rule catalogue: what the documentation reads
 src/format.ts     canonical formatting for plan documents
-src/jsonpos.ts    JSON with source positions, to edit one value in place
+src/jsonpos.ts    JSON with source positions, to splice/remove/append/insert in place
 src/edit.ts       which walls can be dragged, and what moving one writes
 src/cli.ts        command line (IO-free; takes a CliIo so tests can fake stdio/fs)
 src/bin.ts        the published executable ("bin" in package.json); wires real stdio/fs onto cli.ts
