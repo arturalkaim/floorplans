@@ -20,24 +20,30 @@ export function Reference() {
         opening, a fixture is exactly one line, never wrapped — with compact separators inside the entity and
         one member per line in anything that holds a collection of entities. It is what{" "}
         <code>formatText</code> produces and what every example here is stored as, and it is 26 % cheaper to
-        read and write than the prettified form.
+        read and write than the prettified form — 31 % with <code>rect</code>.
       </p>
 
       <h2>The shape of a document</h2>
       <pre><code>{`{
   "title": "Casa T3",
   "walls": { "exterior": 0.30, "partition": 0.12 },
-  "rooms":    { "<id>": { "name", "kind", "zone", "poly" } },
-  "outdoor":  { "<id>": { "name", "poly", "covered" } },
+  "rooms":    { "<id>": { "name", "kind", "zone", "poly" | "rect" } },
+  "outdoor":  { "<id>": { "name", "poly" | "rect", "covered" } },
   "fixtures": [ { "type", "in", "poly" | "at" + "size" } ],
   "openings": [ { "type", "between", "on", "position", "width" } ]
 }`}</code></pre>
 
       <h2>Rooms</h2>
       <p>
-        Give a room a <code>poly</code>, or place it in a <code>layout</code> grid and omit the polygon. The
-        polygon is rectilinear, any winding, and may have any number of corners — L, T and U shapes are all
-        legal, so long as every edge is axis aligned.
+        Give a room a <code>poly</code> or a <code>rect</code>, or place it in a <code>layout</code> grid and
+        omit the geometry. The polygon is rectilinear, any winding, and may have any number of corners — L, T
+        and U shapes are all legal, so long as every edge is axis aligned.
+      </p>
+      <p>
+        <code>{'"rect": [x, y, width, height]'}</code> is the same rectangle written as one row instead of
+        four points — the mirror of a fixture's <code>at</code> + <code>size</code>. It is an alternative to{" "}
+        <code>poly</code>, never both, and the parser expands it to the four corners, so nothing downstream
+        knows the difference. A drag writes back in whichever form the source uses.
       </p>
       <h3>kind</h3>
       <ul className="tokens">{[...ROOM_KINDS].map((k) => <li key={k}><code>{k}</code></li>)}</ul>
@@ -74,7 +80,8 @@ export function Reference() {
       <p>
         Things that stand inside a space: they do not divide it, they take up floor. <code>in</code> names a
         room <em>or</em> an outdoor space, so a pool is a pool whether it sits in a spa or on a terrace. Give a{" "}
-        <code>poly</code>, or <code>at</code> and <code>size</code> for a rectangle. Rooms then report{" "}
+        <code>poly</code>, or <code>at</code> and <code>size</code> for a rectangle (rooms spell the same
+        convenience <code>rect</code>). Rooms then report{" "}
         <code>usableArea</code> — the clear area less its fixtures.
       </p>
       <h3>type</h3>

@@ -47,8 +47,13 @@ A wall is offered for dragging only when the move has a representation in the so
 | a `layout` grid | `cols[i]` and `cols[i+1]`, one growing by what the other loses | the wall sits on a track boundary |
 | a `layout` grid, far edge | the last track, so the building grows or shrinks | the wall is the far edge of the grid |
 | room polygons | the shared coordinate in the two spaces the wall separates | the wall spans the whole of each edge it touches |
-| an outdoor `poly` | the coordinate shared by the edge's two corners | the space is authored with a `poly` rather than placed on the grid |
+| a room `rect` | `x`/`width` or `y`/`height`: the near side moves the origin, the far side resizes | as above |
+| an outdoor `poly` or `rect` | the coordinate shared by the edge's two corners, or the matching `rect` pair | the space authored its own geometry rather than being placed on the grid |
 | a fixture | its body moves, its four sides resize it | always; written back as `poly`, or as `at`/`size`, whichever the source uses |
+
+A space is always written back **in the form it was authored in** — a `rect` room stays a
+`rect`, a `poly` room stays a `poly` — so a drag never reformats a document someone is
+still typing in. That is the contract fixtures have kept for `poly` versus `at`+`size`.
 
 An outdoor space has no walls — nothing derives from it — so its own edges are the
 handles, and dragging one resizes the deck or terrace without touching the house. A
@@ -61,8 +66,8 @@ inserted, which is a different operation than a drag — so the wall is simply n
 draggable. Only the two spaces a wall separates ever move; a room that merely shares the
 coordinate stays where it is. The one edge that never moves is the near edge of a grid,
 because the grid is anchored at 0 and shifting it would rewrite every coordinate in the
-document. A grid boundary also carries any polygon anchored to it, so a courtyard
-declared with an absolute `poly` travels with the tracks instead of tearing open. Everything else is
+document. A grid boundary also carries any space anchored to it, so a courtyard
+declared with an absolute `poly` or `rect` travels with the tracks instead of tearing open. Everything else is
 clamped rather than forbidden, and because `derive()` reports problems as findings rather
 than throwing, a drag that makes the plan invalid turns the findings red live instead of
 being blocked. Drags land on 5 cm; hold Alt for millimetres.
@@ -123,10 +128,11 @@ close to a real field (`"positon"` → `did you mean "position"?`). A key prefix
   "title": "Casa T3",
   "walls": { "exterior": 0.30, "partition": 0.12 },
   "rooms": {
-    "hall":  { "name": "Hall",  "kind": "hall",    "zone": "day",   "poly": [[0,4.4],[4.6,4.4],[4.6,8],[0,8]] },
-    "suite": { "name": "Suite", "kind": "bedroom", "zone": "night", "poly": [[0,0],[4.6,0],[4.6,4.4],[0,4.4]] }
+    "hall":  { "name": "Hall",  "kind": "hall",    "zone": "day",   "rect": [0, 4.4, 4.6, 3.6] },
+    "suite": { "name": "Suite", "kind": "bedroom", "zone": "night", "rect": [0, 0, 4.6, 4.4] },
+    "sala":  { "name": "Sala",  "kind": "living",  "zone": "day",   "poly": [[6.6,5.8],[12,5.8],[12,10.6],[4.6,10.6],[4.6,7.8],[6.6,7.8]] }
   },
-  "outdoor": { "porch": { "name": "Alpendre", "poly": [[6.6,10.6],[12,10.6],[12,13.4],[6.6,13.4]], "covered": true } },
+  "outdoor": { "porch": { "name": "Alpendre", "covered": true, "rect": [6.6, 10.6, 5.4, 2.8] } },
   "openings": [
     { "type": "door", "between": ["exterior", "hall"], "position": { "from": "start", "distance": 1.7 },
       "width": 1.0, "hinge": "end", "swingInto": "hall", "entrance": true },
@@ -162,16 +168,20 @@ chosen for the reader who pays per token:
 
 Measured with the `o200k_base` BPE, this repository's seven fixtures:
 
-| fixture | before | canonical | lines (old formatter → now) |
-|---|---:|---:|---|
-| casa-t3 | 2 322 | **1 687** (−27 %) | 141 → 49 |
-| apartment-t2 | 1 079 | 794 (−26 %) | 74 → 38 |
-| casa-piscina | 1 169 | 868 (−26 %) | 47 → 46 |
-| quinta | 1 042 | 791 (−24 %) | 50 → 44 |
-| casa-patio | 805 | 607 (−25 %) | 42 → 36 |
-| broken | 677 | 483 (−29 %) | 23 → 23 |
-| cabin | 644 | 473 (−27 %) | 41 → 21 |
-| **all seven** | **7 738** | **5 703 (−26 %)** | 418 → 257 |
+| fixture | before | canonical | as shipped, with `rect` | lines (old formatter → now) |
+|---|---:|---:|---:|---|
+| casa-t3 | 2 322 | 1 687 | **1 501** (−35 %) | 141 → 49 |
+| apartment-t2 | 1 079 | 794 | 794 (−26 %) | 74 → 38 |
+| casa-piscina | 1 169 | 868 | 868 (−26 %) | 47 → 46 |
+| quinta | 1 042 | 791 | 763 (−27 %) | 50 → 44 |
+| casa-patio | 805 | 607 | 585 (−27 %) | 42 → 36 |
+| broken | 677 | 483 | 411 (−39 %) | 23 → 23 |
+| cabin | 644 | 473 | 429 (−33 %) | 41 → 21 |
+| **all seven** | **7 738** | **5 703** | **5 351 (−31 %)** | 418 → 257 |
+
+The third column is what this repository ships: the canonical form plus `rect` for every
+room and outdoor space that is a plain rectangle (see **Rooms**). casa-piscina's deck stays
+`poly`-authored on purpose, so the poly write-back path keeps its coverage.
 
 The old formatter wrapped anything past 140 columns, which turned casa-t3 into 141 lines
 and saved 1 % (2 322 → 2 302); it was the most expensive form in the table it was meant to
@@ -186,6 +196,11 @@ up is not a grid.
 Formatting is idempotent (`formatText(formatText(x)) === formatText(x)`), preserves the
 parsed plan exactly, and leaves every `jsonpos` path resolvable — a drag still splices one
 number in place and the document stays canonical without a reformat.
+
+`formatPlan(value)` is the underlying *document* printer: it emits the keys it is given, so
+a document authored with `rect` keeps its `rect`. A parsed `Plan` has already had `rect`
+expanded to four points, so `formatPlan(plan)` cannot recover the shorthand — `formatText`,
+text in and text out, is the one that preserves the author's form.
 
 ### Grid authoring (compiles to polygons)
 
@@ -211,8 +226,8 @@ same token in several cells makes one rectilinear room, `.` is void.
 ### Outdoor spaces
 
 `outdoor` entries are open sky, not floor: they carry `name`, `covered`, and either a
-`poly` or a token in `layout.areas`. They stay out of `interiorArea` and appear in
-`schedule.outdoor`.
+`poly`, a `rect` or a token in `layout.areas`. They stay out of `interiorArea` and appear
+in `schedule.outdoor`.
 
 Declaring one *inside* the footprint makes a courtyard. The walls around it derive as
 **exterior** walls, so a window onto a patio counts as daylight
@@ -223,13 +238,13 @@ whole point of a patio house. Without the declaration the same void is a `tiling
 {
   "layout": { "cols": [3.6, 4.0, 3.6], "rows": [3.4, 4.0, 3.4],
               "areas": ["sala sala cozinha", "sala . cozinha", "hall hall hall"] },
-  "outdoor": { "patio": { "name": "Pátio", "poly": [[3.6,3.4],[7.6,3.4],[7.6,7.4],[3.6,7.4]] } }
+  "outdoor": { "patio": { "name": "Pátio", "rect": [3.6, 3.4, 4.0, 4.0] } }
 }
 ```
 
 A pool or a terrace is the same thing with a different name — the model tracks area and
 `covered`, not what the surface is made of. A garden shack is better modelled as a
-detached **room**: give it a poly away from the house and its own exterior door, and it
+detached **room**: give it a `rect` away from the house and its own exterior door, and it
 derives real walls without tripping `tiling.gap` or `reach.unreachable`. Its floor does
 count toward `interiorArea`, so deduct it if that matters to you.
 
@@ -241,6 +256,14 @@ count toward `interiorArea`, so deduct it if that matters to you.
 | `habitable` / `wet` / `circulation` | derived from `kind`; set explicitly to override |
 | `zone` | free label used for fill colour (e.g. `night`, `day`) |
 | `poly` | rectilinear polygon, any winding; omit when placed via `layout` |
+| `rect` | `[x, y, width, height]` — the same rectangle as four points, for the common case |
+
+`poly` and `rect` are mutually exclusive, exactly as a fixture's `poly` and `at`+`size`
+are; giving both is `has both a poly and a rect; use one`. `rect` is authoring sugar and
+nothing more — the parser expands it to four corners, so `derive`, the rules and the
+renderer never see it — but it is worth having: it is 18 tokens cheaper per room and it is
+the one way to write a rectangle you cannot get wrong. Eleven of casa-t3's thirteen rooms
+are rectangles, and writing them as `rect` costs 186 tokens less.
 
 ### Openings
 

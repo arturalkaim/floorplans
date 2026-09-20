@@ -19,7 +19,7 @@
     "wc": {"name":"WC","kind":"wc","zone":"night"}
   },
   "outdoor": {
-    "patio": {"name":"Pátio","covered":false,"poly":[[3.6,3.4],[7.6,3.4],[7.6,7.4],[3.6,7.4]]}
+    "patio": {"name":"Pátio","covered":false,"rect":[3.6,3.4,4,4]}
   },
   "openings": [
     {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"west"},"width":1,"swingInto":"hall","entrance":true},

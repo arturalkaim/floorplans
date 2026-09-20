@@ -19,11 +19,11 @@
     "corredor": {"name":"Corredor","kind":"corridor","zone":"day"},
     "cozinha": {"name":"Cozinha","kind":"kitchen","zone":"day"},
     "sala": {"name":"Sala","kind":"living","zone":"day"},
-    "arrecadacao": {"name":"Arrecadação","kind":"storage","zone":"anexo","poly":[[7,13],[10.2,13],[10.2,15.6],[7,15.6]]}
+    "arrecadacao": {"name":"Arrecadação","kind":"storage","zone":"anexo","rect":[7,13,3.2,2.6]}
   },
   "outdoor": {
     "jardim": {"name":"Jardim interior","covered":false},
-    "terraco": {"name":"Terraço","covered":false,"poly":[[0.2,12.6],[6,12.6],[6,16.4],[0.2,16.4]]}
+    "terraco": {"name":"Terraço","covered":false,"rect":[0.2,12.6,5.8,3.8]}
   },
   "fixtures": [
     {"type":"pool","in":"terraco","name":"Piscina","at":[0.6,13],"size":[5,3],"depth":1.5}

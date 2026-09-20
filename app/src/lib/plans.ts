@@ -18,7 +18,7 @@ export interface Example {
 
 export const EXAMPLES: Example[] = [
   { id: "casa-piscina", name: "Casa com Piscina", shows: "fixtures: an indoor pool, sanitary ware, a kitchen run", source: casaPiscina },
-  { id: "casa-t3", name: "Casa T3", shows: "the seed house: thirteen rooms authored as polygons", source: casaT3 },
+  { id: "casa-t3", name: "Casa T3", shows: "the seed house: thirteen rooms, eleven rects and two L-shapes", source: casaT3 },
   { id: "casa-patio", name: "Casa com Pátio", shows: "a courtyard — the Sala is lit only through it", source: casaPatio },
   { id: "quinta", name: "Quinta", shows: "an inner garden, a pool on a terrace, a detached shack", source: quinta },
   { id: "apartment-t2", name: "Apartamento T2", shows: "authored as a track grid instead of polygons", source: apartmentT2 },

@@ -4,22 +4,22 @@
   "walls": {"exterior":0.3,"partition":0.12},
   "north": 0,
   "rooms": {
-    "suite": {"name":"Suite parental","kind":"bedroom","zone":"night","poly":[[0,0],[4.6,0],[4.6,4.4],[0,4.4]]},
-    "wc_suite": {"name":"WC suite","kind":"bath","zone":"night","poly":[[4.6,0],[6.8,0],[6.8,2.2],[4.6,2.2]]},
-    "closet": {"name":"Closet","kind":"storage","zone":"night","poly":[[4.6,2.2],[6.8,2.2],[6.8,4.4],[4.6,4.4]]},
-    "quarto1": {"name":"Quarto 1","kind":"bedroom","zone":"night","poly":[[6.8,0],[10.4,0],[10.4,4.4],[6.8,4.4]]},
-    "quarto2": {"name":"Quarto 2","kind":"bedroom","zone":"night","poly":[[10.4,0],[14,0],[14,4.4],[10.4,4.4]]},
-    "wc_comum": {"name":"WC comum","kind":"bath","zone":"night","poly":[[14,0],[16.8,0],[16.8,4.4],[14,4.4]]},
-    "distrib": {"name":"Distribuidor","kind":"corridor","zone":"night","poly":[[4.6,4.4],[16.8,4.4],[16.8,5.8],[4.6,5.8]]},
-    "hall": {"name":"Hall","kind":"hall","zone":"day","poly":[[0,4.4],[4.6,4.4],[4.6,8],[0,8]]},
-    "escritorio": {"name":"Escritório","kind":"office","zone":"work","poly":[[0,8],[4.6,8],[4.6,10.6],[0,10.6]]},
-    "wc_social": {"name":"WC social","kind":"wc","zone":"day","poly":[[4.6,5.8],[6.6,5.8],[6.6,7.8],[4.6,7.8]]},
+    "suite": {"name":"Suite parental","kind":"bedroom","zone":"night","rect":[0,0,4.6,4.4]},
+    "wc_suite": {"name":"WC suite","kind":"bath","zone":"night","rect":[4.6,0,2.2,2.2]},
+    "closet": {"name":"Closet","kind":"storage","zone":"night","rect":[4.6,2.2,2.2,2.2]},
+    "quarto1": {"name":"Quarto 1","kind":"bedroom","zone":"night","rect":[6.8,0,3.6,4.4]},
+    "quarto2": {"name":"Quarto 2","kind":"bedroom","zone":"night","rect":[10.4,0,3.6,4.4]},
+    "wc_comum": {"name":"WC comum","kind":"bath","zone":"night","rect":[14,0,2.8,4.4]},
+    "distrib": {"name":"Distribuidor","kind":"corridor","zone":"night","rect":[4.6,4.4,12.2,1.4]},
+    "hall": {"name":"Hall","kind":"hall","zone":"day","rect":[0,4.4,4.6,3.6]},
+    "escritorio": {"name":"Escritório","kind":"office","zone":"work","rect":[0,8,4.6,2.6]},
+    "wc_social": {"name":"WC social","kind":"wc","zone":"day","rect":[4.6,5.8,2,2]},
     "sala": {"name":"Sala comum","kind":"living","zone":"day","poly":[[6.6,5.8],[12,5.8],[12,10.6],[4.6,10.6],[4.6,7.8],[6.6,7.8]]},
     "cozinha": {"name":"Cozinha","kind":"kitchen","zone":"day","poly":[[12,5.8],[15,5.8],[15,7.6],[16.8,7.6],[16.8,10.6],[12,10.6]]},
-    "despensa": {"name":"Despensa","kind":"storage","zone":"work","poly":[[15,5.8],[16.8,5.8],[16.8,7.6],[15,7.6]]}
+    "despensa": {"name":"Despensa","kind":"storage","zone":"work","rect":[15,5.8,1.8,1.8]}
   },
   "outdoor": {
-    "alpendre": {"name":"Alpendre","covered":true,"poly":[[6.6,10.6],[12,10.6],[12,13.4],[6.6,13.4]]}
+    "alpendre": {"name":"Alpendre","covered":true,"rect":[6.6,10.6,5.4,2.8]}
   },
   "openings": [
     {"type":"door","between":["exterior","hall"],"position":{"from":"start","distance":1.7},"width":1,"hinge":"end","swingInto":"hall","entrance":true},

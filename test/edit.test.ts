@@ -15,6 +15,14 @@ import {
 const load = (n: string) => readFileSync(new URL(`../fixtures/${n}.json`, import.meta.url), "utf8");
 const modelOf = (text: string) => analyze(parse(JSON.parse(text))).model;
 
+/** A space's corners as the document has them, in whichever form it is authored. */
+function cornersOf(entry: { poly?: [number, number][]; rect?: [number, number, number, number] }): [number, number][] {
+  if (entry.poly) return entry.poly;
+  if (!entry.rect) return [];
+  const [x, y, w, h] = entry.rect;
+  return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+}
+
 describe("edit: which walls a drawing may offer to drag", () => {
   it("resizes tracks on a grid plan, and never the edge the grid is anchored to", () => {
     const text = load("casa-patio");
@@ -34,7 +42,9 @@ describe("edit: which walls a drawing may offer to drag", () => {
 
   it("declines exactly those walls whose edge would have to be split", () => {
     const text = load("casa-t3");
-    const doc = JSON.parse(text) as { rooms: Record<string, { poly: [number, number][] }> };
+    const doc = JSON.parse(text) as {
+      rooms: Record<string, { poly?: [number, number][]; rect?: [number, number, number, number] }>;
+    };
     const model = modelOf(text);
     const walls = draggableWalls(text, model);
     const declined = model.walls.filter((w) => !walls.has(w.id));
@@ -46,7 +56,7 @@ describe("edit: which walls a drawing may offer to drag", () => {
       // a wall is refused only because some space it separates has a vertex on that line
       // beyond the wall's run, which a drag would have to split the edge to handle
       const wouldSplit = owners.some((id) =>
-        (doc.rooms[id]?.poly ?? []).some(
+        cornersOf(doc.rooms[id] ?? {}).some(
           (pt) => {
             const on = pt[axis]!;
             const at = pt[1 - axis]!;
@@ -155,7 +165,7 @@ describe("edit: moving a wall rewrites the source and nothing else", () => {
     const d = draggableWalls(text, model).get(wall.id)!;
     const before = JSON.parse(text).rooms;
     const after = JSON.parse(applyDrag(text, d, 0.4)).rooms;
-    const moved = Object.keys(before).filter((k) => JSON.stringify(before[k].poly) !== JSON.stringify(after[k].poly));
+    const moved = Object.keys(before).filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
     const owners = [wall.neg, wall.pos].filter((o) => o !== "exterior");
     assert.deepEqual(moved.sort(), owners.sort());
   });
@@ -237,6 +247,86 @@ describe("edit: outdoor spaces resize by their own edges", () => {
     const edges = draggableOutdoorEdges(text, modelOf(text));
     assert.ok(![...edges.values()].some((d) => d.writes.startsWith("Jardim")));
     assert.ok([...edges.values()].some((d) => d.writes.startsWith("Terraço")));
+  });
+});
+
+describe("edit: a rect-authored space is written back as a rect", () => {
+  // cabin is authored entirely with `rect`, including its deck
+  const CABIN = "cabin";
+
+  it("never writes a poly path into a document that has no poly", () => {
+    const text = load(CABIN);
+    const model = modelOf(text);
+    const walls = draggableWalls(text, model);
+    assert.ok(walls.size > 0);
+    for (const d of walls.values())
+      for (const e of d.edits(d.c + 0.3)) assert.ok(!e.path.includes("poly"), `${d.wallId} wrote ${e.path.join(".")}`);
+    assert.ok(!applyDrag(text, [...walls.values()][0]!, 0.3).includes('"poly"'), "the document stays rect-authored");
+  });
+
+  it("moves the near side by shifting the origin and keeping the far side still", () => {
+    const text = load(CABIN);
+    const model = modelOf(text);
+    // sala's west wall is its rect's origin side: x moves, w absorbs the difference
+    const wall = model.walls.find((w) => w.axis === "v" && w.c === 0)!;
+    const d = draggableWalls(text, model).get(wall.id)!;
+    const after = JSON.parse(applyDrag(text, d, -0.5)).rooms;
+    assert.deepEqual(after.sala.rect, [-0.5, 0, 5.5, 4], "origin moved west, the east side stayed put");
+  });
+
+  it("moves the far side by resizing alone, leaving the origin untouched", () => {
+    const text = load(CABIN);
+    const model = modelOf(text);
+    // the wc's east wall is its rect's far side: only the width changes
+    const wall = model.walls.find((w) => w.axis === "v" && w.c === 6.2 && w.neg === "wc")!;
+    const d = draggableWalls(text, model).get(wall.id)!;
+    const after = JSON.parse(applyDrag(text, d, 6.6)).rooms;
+    assert.deepEqual(after.wc.rect, [5, 0, 1.6, 2]);
+    assert.deepEqual(after.arrumos.rect, [5, 2, 1.2, 2], "the room next door did not follow");
+  });
+
+  it("keeps the plan tiling through a drag on every rect-authored wall", () => {
+    const text = load(CABIN);
+    const model = modelOf(text);
+    for (const d of draggableWalls(text, model).values())
+      for (const delta of [0.2, -0.2]) {
+        const out = applyDrag(text, d, d.c + delta);
+        const findings = analyze(parse(JSON.parse(out))).findings.filter((f) => f.rule.startsWith("tiling."));
+        assert.deepEqual(findings, [], `${d.wallId} by ${delta}`);
+      }
+  });
+
+  it("resizes a rect-authored outdoor space by its own edges", () => {
+    const text = load(CABIN);
+    const model = modelOf(text);
+    const edges = draggableOutdoorEdges(text, model);
+    assert.equal(edges.size, 4, "a rectangular deck still has four edges");
+    const south = [...edges.values()].find((d) => d.writes.includes("south"))!;
+    assert.deepEqual(
+      JSON.parse(applyDrag(text, south, south.c + 1.5)).outdoor.deck.rect,
+      [0, 4, 5, 3.5],
+      "height grew, origin unmoved",
+    );
+    const west = [...edges.values()].find((d) => d.writes.includes("west"))!;
+    assert.deepEqual(
+      JSON.parse(applyDrag(text, west, west.c - 1)).outdoor.deck.rect,
+      [-1, 4, 6, 2],
+      "origin moved west, the east side stayed put",
+    );
+  });
+
+  it("carries a rect anchored to a grid boundary when that boundary moves", () => {
+    // casa-patio's courtyard is a rect whose west edge sits on a grid line
+    const text = load("casa-patio");
+    const model = modelOf(text);
+    const before = JSON.parse(text).outdoor.patio.rect as number[];
+    const wall = model.walls.find((w) => w.axis === "v" && Math.abs(w.c - before[0]!) < 1e-6)!;
+    const d = draggableWalls(text, model).get(wall.id)!;
+    const out = applyDrag(text, d, d.c + 0.3);
+    const after = JSON.parse(out).outdoor.patio.rect as number[];
+    assert.equal(after[0], before[0]! + 0.3, "the courtyard's west edge travelled with the wall");
+    assert.equal(after[2], before[2]! - 0.3, "and it did not tear open behind it");
+    assert.deepEqual(analyze(parse(JSON.parse(out))).findings.filter((f) => f.rule.startsWith("tiling.")), []);
   });
 });
 

@@ -46,8 +46,8 @@ describe("format: one entity per line, compact inside", () => {
   });
 
   it("spends separators on structure and nothing else", () => {
-    const out = formatPlan({ rooms: { a: { name: "A", poly: [[0, 0], [4, 0], [4, 3], [0, 3]] } } });
-    assert.equal(out, '{\n  "rooms": {\n    "a": {"name":"A","poly":[[0,0],[4,0],[4,3],[0,3]]}\n  }\n}\n');
+    const out = formatPlan({ rooms: { a: { name: "A", rect: [0, 0, 4, 3] } } });
+    assert.equal(out, '{\n  "rooms": {\n    "a": {"name":"A","rect":[0,0,4,3]}\n  }\n}\n');
   });
 
   it("keeps a short top-level value on its own line rather than exploding it", () => {
@@ -131,6 +131,12 @@ describe("format + splice: a drag only rewrites numbers", () => {
     const r = spliceAt(text, ["layout", "cols", 1], "3.85");
     assert.equal(r.text.slice(0, r.start), text.slice(0, r.start));
     assert.equal(r.text.slice(r.start + r.inserted), text.slice(r.start + r.removed));
+  });
+  it("splices a number inside a rect the same way", () => {
+    const text = formatText(load("cabin"));
+    const after = spliceAt(text, ["rooms", "sala", "rect", 2], "5.4").text;
+    assert.equal(formatText(after), after);
+    assert.deepEqual(JSON.parse(after).rooms.sala.rect, [0, 0, 5.4, 4]);
   });
   it("positions still resolve after formatting", () => {
     for (const n of FIXTURES) {
