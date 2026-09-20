@@ -606,6 +606,12 @@ export interface Finding {
   /** `opening.off_wall`: the id of the nearest wall and how far the point is from it */
   nearest?: string;
   distance?: number;
+  /**
+   * `structure.over_open_sky`: the floor plates on the level below that the room *does*
+   * stand on, in the order rooms, covered outdoor spaces, voids. Empty when the room
+   * hangs over open sky along its whole footprint.
+   */
+  below?: Array<{ kind: "room" | "outdoor" | "void"; id: string }>;
 }
 
 /** A thing in the document that knows where it was written and what keys it carries. */

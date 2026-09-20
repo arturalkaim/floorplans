@@ -815,7 +815,7 @@ about a `vertical` element carries `vertical` instead, because it has no `fixtur
 (`entrance.*`, `reach.*`) and absent on **every** finding of a document with no `levels`
 block.
 
-Three rules carry the facts their message already states, structured, so acting on one
+Four rules carry the facts their message already states, structured, so acting on one
 needs no prose parsing:
 
 | rule | extra fields |
@@ -823,6 +823,7 @@ needs no prose parsing:
 | `wall.ambiguous` | `candidates: [{ wall, side?, from, to }]` — the segments it had to choose between |
 | `room.min_dimension` | `measured`, `minimum`, `rect: [x, y, width, height]` (the clear floor) |
 | `opening.off_wall` | `nearest` (a wall id, as `--json=walls` prints it), `distance` |
+| `structure.over_open_sky` | `below: [{ kind, id }]` — the floor plates on the level below the room does stand on |
 
 Schema problems reach the same channel through `lint()` as `schema.*` findings, one per
 issue, all `error`, each with the issue's own document path:
@@ -876,7 +877,7 @@ Across levels:
 | `level.unreachable` | error | a storey no stair, lift or ramp arrives on |
 | `stair.no_arrival` | error | a vertical element's footprint is not inside the space its `in` names, or it stands on one level and joins nothing |
 | `stair.misaligned` | warning | consecutive footprints barely overlap, or do not overlap at all: not one shaft |
-| `structure.over_open_sky` | warning | a room stands over no room below — a cantilever, or a room that has lost its support |
+| `structure.over_open_sky` | warning | a room stands over open sky below — over no room, no covered outdoor space and no void: a cantilever, or a room that has lost its support |
 | `stair.pitch` | info | with `risers` and `height`: the pitch or the going is outside the comfortable range |
 | `stair.headroom` | info | with `risers`, `height` and `up`: the floor above stays closed too far up the flight |
 | `entrance.not_ground` | info | a door opens to the outside on a level the street does not meet |

@@ -50,7 +50,7 @@ export const RULES: readonly RuleDoc[] = [
   { id: "level.unreachable", severity: "error", catches: "a level no stair, lift or ramp arrives on; the defining multi-level failure" },
   { id: "stair.no_arrival", severity: "error", catches: "a vertical element's footprint is not inside the space its `in` names on that level, or it stands on one level only and joins nothing" },
   { id: "stair.misaligned", severity: "warning", catches: "a vertical element's footprints on consecutive levels barely overlap, or do not overlap at all — it is not one shaft" },
-  { id: "structure.over_open_sky", severity: "warning", catches: "a room stands over no room on the level below: a cantilever, or a room that has lost its support" },
+  { id: "structure.over_open_sky", severity: "warning", catches: "a room stands over open sky on the level below — over no room, no covered outdoor space and no void: a cantilever, or a room that has lost its support" },
   { id: "stair.pitch", severity: "info", catches: "with `risers` and the level's `height`: the flight's pitch or going is outside the comfortable range", option: "stairPitch" },
   { id: "stair.headroom", severity: "info", catches: "with `risers`, `height` and `up`: the floor above stays closed too far up the flight to keep headroom", option: "minHeadroom" },
   { id: "entrance.not_ground", severity: "info", catches: "a door opens to the outside on a level the street does not meet; mark that level `\"ground\": true` if the site slopes" },

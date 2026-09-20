@@ -194,7 +194,7 @@ describe("levels: what only exists between storeys", () => {
     const f = analyze(parse(doc)).findings.find((x) => x.rule === "structure.over_open_sky")!;
     assert.ok(f, "a metre of overhang should be reported");
     assert.equal(f.severity, "warning");
-    assert.match(f.message, /standing over no room on Piso 0/);
+    assert.match(f.message, /standing over open sky on Piso 0/);
     assert.ok(!rules(twoStoreys()).includes("structure.over_open_sky"));
   });
 
@@ -286,5 +286,104 @@ describe("levels: a void is the dual of an outdoor space", () => {
     assert.equal(upper.interiorArea, 30.8); // 35 less the 4.2 m2 stairwell, which is not floor
     assert.equal(upper.envelope.area, 35);
     assert.equal(upper.envelope.outline.length, 1);
+  });
+});
+
+/**
+ * B8: what holds a room up is a floor plate, not a room.
+ *
+ * `structure.over_open_sky` compared the upper room against `lower.rooms` alone, so the
+ * two commonest multi-level configurations — a bedroom over a covered porch, a bedroom
+ * over a stairwell void — were reported as cantilevers. A `covered` outdoor space has a
+ * roof by definition, and that roof is this room's floor; a `void` is a hole inside the
+ * building (the INVARIANT on `isVoid` in src/types.ts), so the structure around it is
+ * still there.
+ */
+describe("structure.over_open_sky asks what is below, not which rooms are below (B8)", () => {
+  /** the ground floor, whatever the level above stands on */
+  const stack = (p0: Record<string, unknown>) => ({
+    walls: { exterior: 0.3, partition: 0.12 },
+    stack: ["p0", "p1"],
+    levels: {
+      p0: { name: "Piso 0", height: 2.7, ground: true, ...p0 },
+      p1: {
+        name: "Piso 1",
+        height: 2.6,
+        rooms: {
+          patamar: { name: "Patamar", kind: "hall", rect: [0, 0, 2, 5] },
+          quarto: { name: "Quarto", kind: "bedroom", rect: [2, 0, 6, 5] },
+        },
+        openings: [
+          { type: "door", between: ["patamar", "quarto"], width: 0.9 },
+          { type: "window", between: ["exterior", "quarto"], on: { room: "quarto", side: "north" }, width: 1.2 },
+        ],
+      },
+    },
+    vertical: [
+      {
+        id: "esc",
+        type: "stairs",
+        risers: 16,
+        at: [
+          { level: "p0", in: "hall", rect: [0.2, 0.2, 1, 2.6] },
+          { level: "p1", in: "patamar", rect: [0.2, 0.2, 1, 1.2] },
+        ],
+      },
+    ],
+  });
+
+  /** hall over the west half, and whatever the caller puts over the east half */
+  const westHall = {
+    rooms: { hall: { name: "Hall", kind: "hall", rect: [0, 0, 4, 5] } },
+    openings: [{ type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "west" }, width: 1, entrance: true }],
+  };
+  const east = [[4, 0], [8, 0], [8, 5], [4, 5]];
+
+  const sky = (doc: unknown) => analyze(parse(doc)).findings.filter((x) => x.rule === "structure.over_open_sky");
+
+  it("does not report a bedroom over a covered porch", () => {
+    const f = sky(stack({ ...westHall, outdoor: { alpendre: { name: "Alpendre", poly: east, covered: true } } }));
+    assert.deepEqual(f.map((x) => x.message), []);
+  });
+
+  it("still reports a bedroom over an uncovered terrace: no roof is no floor", () => {
+    const f = sky(stack({ ...westHall, outdoor: { terraco: { name: "Terraço", poly: east, covered: false } } }));
+    assert.equal(f.length, 1);
+    assert.match(f[0]!.message, /Quarto has 20 m² standing over open sky on Piso 0, the rest on Hall/);
+    // and it says what the room does stand on, so the fix is one edit away
+    assert.deepEqual(f[0]!.below, [{ kind: "room", id: "hall" }]);
+  });
+
+  it("does not report a bedroom over a stairwell void", () => {
+    const f = sky(
+      stack({
+        rooms: {
+          hall: { name: "Hall", kind: "hall", poly: [[0, 0], [8, 0], [8, 5], [6.5, 5], [6.5, 2], [5, 2], [5, 5], [0, 5]] },
+        },
+        voids: { vaz: { name: "Caixa de escada", rect: [5, 2, 1.5, 3] } },
+        openings: [{ type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "west" }, width: 1, entrance: true }],
+      }),
+    );
+    assert.deepEqual(f.map((x) => x.message), []);
+  });
+
+  it("still reports a real cantilever, and names every kind of support it does have", () => {
+    const f = sky(
+      stack({
+        // the ground floor stops at x = 6: 2 m of the bedroom hangs over the garden
+        rooms: { hall: { name: "Hall", kind: "hall", rect: [0, 0, 3, 5] } },
+        outdoor: { alpendre: { name: "Alpendre", poly: [[3, 0], [4.5, 0], [4.5, 5], [3, 5]], covered: true } },
+        voids: { vaz: { name: "Vazio", rect: [4.5, 0, 1.5, 5] } },
+        openings: [{ type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "west" }, width: 1, entrance: true }],
+      }),
+    );
+    assert.equal(f.length, 1);
+    // quarto is x 2 → 8; hall, alpendre and vazio together reach x = 6, so 2 × 5 = 10 m²
+    assert.match(f[0]!.message, /Quarto has 10 m²/);
+    assert.deepEqual(f[0]!.below, [
+      { kind: "room", id: "hall" },
+      { kind: "outdoor", id: "alpendre" },
+      { kind: "void", id: "vaz" },
+    ]);
   });
 });

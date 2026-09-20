@@ -597,20 +597,57 @@ function verticalRules(
   for (let k = 1; k < model.levels.length; k++) {
     const upper = model.levels[k]!;
     const lower = model.levels[k - 1]!;
+    const support = supportOn(lower);
     for (const m of upper.rooms) {
-      const un = uncovered(m.room, lower.rooms.map((r) => r.room));
+      const un = uncovered(m.room, support.map((s) => s.shape));
       if (un.area <= 1e-6) continue;
+      // what it *does* stand on, so the reader can see whether 2 m² of overhang is the
+      // porch being a metre short or the room being in the wrong place entirely
+      const on_ = support.filter((s) => overlapArea(m.room, s.shape) > 1e-6);
+      const below = on_.map((s) => ({ kind: s.kind, id: s.id }));
+      const rest = on_.length === 0 ? "nothing below it at all" : `the rest on ${on_.map((s) => s.name).join(", ")}`;
       f.push({
         ...on(upper.level.id),
         rule: "structure.over_open_sky",
         severity: "warning",
-        message: `${m.room.name} has ${snap(un.area)} m² standing over no room on ${lower.level.name}; a cantilever is real, but so is a room that has lost its support`,
+        message: `${m.room.name} has ${snap(un.area)} m² standing over open sky on ${lower.level.name}, ${rest}; a cantilever is real, but so is a room that has lost its support`,
         path: m.room.path,
         at: un.at,
         rooms: [m.room.id],
+        below,
       });
     }
   }
+}
+
+/** A floor plate on the level below, and what it is called in the document. */
+interface Support {
+  kind: "room" | "outdoor" | "void";
+  id: string;
+  name: string;
+  shape: Shape;
+}
+
+/**
+ * What can hold a room up from one level down.
+ *
+ * A room is the obvious case. A `covered` outdoor space is a roof by definition
+ * (`SCHEMA`, src/parse.ts), and a roof is the floor of whatever stands on it — a bedroom
+ * over a porch is the commonest first floor there is. A `void` is a hole in *that*
+ * level's slab, not in this one: by the INVARIANT on `isVoid` (src/types.ts) a declared
+ * void has the building over it, which is why the wall beside a stairwell derives as a
+ * partition, so the structure that surrounds it is still there to carry this floor.
+ *
+ * What is left out is open sky: the street, and an outdoor space with no roof.
+ */
+function supportOn(lower: LevelModel): Support[] {
+  return [
+    ...lower.rooms.map((r): Support => ({ kind: "room", id: r.room.id, name: r.room.name, shape: r.room })),
+    ...lower.level.outdoor
+      .filter((o) => o.covered)
+      .map((o): Support => ({ kind: "outdoor", id: o.id, name: o.name, shape: o })),
+    ...lower.level.voids.map((v): Support => ({ kind: "void", id: v.id, name: v.name, shape: v })),
+  ];
 }
 
 const name = (byLevel: Map<string, LevelModel>, id: string) => byLevel.get(id)?.level.name ?? id;
