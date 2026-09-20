@@ -463,6 +463,45 @@ describe("cli: set", () => {
     assert.equal(JSON.parse(t.out()).openings[1].width, 0.5);
     assert.equal(status, 1, "exit code still reflects findings under dry-run");
   });
+
+  // runSet() used to treat any positional token starting with "-" as an unknown option,
+  // so a negative value right after <path> could never be set (docs/reviews/gpt-5.5.md §2.3).
+  it("accepts a negative integer as the value, not an unknown option", () => {
+    const t = fakeIo({ "plan.json": clean });
+    const status = run(["set", "plan.json", "rooms.a.poly[0][0]", "-1", "--dry-run"], t.io);
+    assert.doesNotMatch(t.err(), /unknown option/);
+    assert.notEqual(status, 2, t.err());
+    assert.equal(JSON.parse(t.out()).rooms.a.poly[0][0], -1);
+  });
+
+  it("accepts a negative decimal as the value", () => {
+    const t = fakeIo({ "plan.json": clean });
+    const status = run(["set", "plan.json", "rooms.a.poly[0][0]", "-1.5", "--dry-run"], t.io);
+    assert.doesNotMatch(t.err(), /unknown option/);
+    assert.notEqual(status, 2, t.err());
+    assert.equal(JSON.parse(t.out()).rooms.a.poly[0][0], -1.5);
+  });
+
+  it("reproduces the review's exact repro: -1 as the value right after the path", () => {
+    // fixtures/casa-v.dsl has negative coordinates throughout; this mirrors the review's
+    // `floorplan set plan.json 'rooms.suite.poly[1][0]' -1` verbatim.
+    const suite = JSON.stringify({
+      walls: { exterior: 0.3, partition: 0.12 },
+      rooms: { suite: { name: "Suite", kind: "bedroom", poly: [[0, 0], [4, 0], [4, 3], [0, 3]] } },
+      openings: [{ type: "door", between: ["exterior", "suite"], on: { room: "suite", side: "south" }, width: 0.9, entrance: true }],
+    });
+    const t = fakeIo({ "plan.json": suite });
+    run(["set", "plan.json", "rooms.suite.poly[1][0]", "-1", "--dry-run"], t.io);
+    assert.doesNotMatch(t.err(), /unknown option -1/);
+  });
+
+  it("-- ends option parsing, so a dash-led filename after it is a positional, not an option", () => {
+    const t = fakeIo({ "-plan.json": clean });
+    const status = run(["set", "--", "-plan.json", "rooms.a.poly[0][0]", "-1"], t.io);
+    assert.doesNotMatch(t.err(), /unknown option/);
+    assert.notEqual(status, 2, t.err());
+    assert.equal(JSON.parse(t.written["-plan.json"]!).rooms.a.poly[0][0], -1);
+  });
 });
 
 describe("cli: patch", () => {
@@ -528,6 +567,25 @@ describe("cli: patch", () => {
     run(["patch", "plan.json", "patch.json", "--dry-run"], t.io);
     assert.equal(t.written["plan.json"], undefined);
     assert.equal(JSON.parse(t.out()).walls.exterior, 0.35);
+  });
+
+  // PATCH_USAGE documents `<patch.json|->` as a bare positional, but runPatch() treated
+  // any token starting with "-" as an unknown option — including the lone "-" itself —
+  // so this form only worked through the explicit `--patch -` flag, never positionally.
+  it("reads the patch document from stdin with a bare - positional, not just --patch -", () => {
+    const t = fakeIo({ "plan.json": clean }, threeOps);
+    const status = run(["patch", "plan.json", "-"], t.io);
+    assert.doesNotMatch(t.err(), /unknown option/);
+    assert.notEqual(status, 2, t.err());
+    assert.equal(JSON.parse(t.written["plan.json"]!).walls.exterior, 0.35);
+  });
+
+  it("-- ends option parsing, so a dash-led filename after it is a positional, not an option", () => {
+    const t = fakeIo({ "-plan.json": clean, "patch.json": threeOps });
+    const status = run(["patch", "--", "-plan.json", "patch.json"], t.io);
+    assert.doesNotMatch(t.err(), /unknown option/);
+    assert.notEqual(status, 2, t.err());
+    assert.equal(JSON.parse(t.written["-plan.json"]!).walls.exterior, 0.35);
   });
 });
 

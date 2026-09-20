@@ -14,7 +14,10 @@ export function Gallery() {
   const cards = useMemo(
     () =>
       EXAMPLES.map((e) => {
-        const r = floorplan(JSON.parse(e.source), {
+        // e.source is raw text in whichever syntax the fixture is written (JSON or DSL);
+        // floorplan() sniffs it itself (src/index.ts), so it is passed through untouched
+        // rather than JSON.parse()d — the DSL example (Cabana) is not valid JSON.
+        const r = floorplan(e.source, {
           render: { scale: 16, labels: "index", areas: "none", dimensions: false, title: "" },
           markFindings: "none",
         });

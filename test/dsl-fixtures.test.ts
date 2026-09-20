@@ -43,3 +43,42 @@ describe("the .dsl fixtures are canonical and mean their .json twins", () => {
     }
   });
 });
+
+/**
+ * app/src/lib/plans.ts loads Cabana from `cabin.dsl?raw`, and the gallery used to call
+ * `floorplan(JSON.parse(e.source), opts)` on every example's raw text (app/src/routes/
+ * gallery.tsx). `JSON.parse` on the DSL text throws a `SyntaxError` — uncaught, inside a
+ * `useMemo` — which crashes the whole `Gallery` component, not just Cabana's card: React
+ * unmounts the component tree on an uncaught render error, so every other card disappears
+ * with it. The fix is to hand `e.source` to `floorplan()` untouched, exactly as
+ * `useFloorplan.ts` already does, and let the library's own `source()` sniffing (src/
+ * index.ts) decide the syntax.
+ */
+describe("floorplan() takes gallery-shaped input for both syntaxes", () => {
+  const cabinJson = load("cabin", "json");
+  const cabinDsl = load("cabin", "dsl");
+  // the exact options gallery.tsx passes
+  const GALLERY_OPTS = {
+    render: { scale: 16, labels: "index" as const, areas: "none" as const, dimensions: false, title: "" },
+    markFindings: "none" as const,
+  };
+
+  it("JSON.parse(e.source) — the gallery's old call — throws on the DSL example", () => {
+    assert.throws(() => JSON.parse(cabinDsl), SyntaxError);
+  });
+
+  it("floorplan(e.source, opts) — the fix — renders both a JSON and a DSL example the same way", () => {
+    // stand-in for a JSON-sourced card, called the old way: an already-parsed object
+    const fromJsonObject = floorplan(JSON.parse(cabinJson), GALLERY_OPTS);
+    // the fixed gallery call: raw text handed straight to floorplan(), for every example
+    const fromDslText = floorplan(cabinDsl, GALLERY_OPTS);
+    const fromJsonText = floorplan(cabinJson, GALLERY_OPTS);
+
+    assert.equal(fromDslText.svg, fromJsonObject.svg);
+    assert.equal(fromJsonText.svg, fromJsonObject.svg);
+    assert.deepEqual(fromDslText.levels.map((l) => l.svg), fromJsonObject.levels.map((l) => l.svg));
+    // findings match field for field; `line` is the one thing the DSL adds
+    assert.deepEqual(fromDslText.findings.map(({ line, ...f }) => f), fromJsonObject.findings);
+    assert.deepEqual(fromJsonText.findings, fromJsonObject.findings);
+  });
+});

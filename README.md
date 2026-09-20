@@ -283,7 +283,12 @@ floorplan set plan.json "$(floorplan plan.json --json | jq -r '.findings[0].path
 floorplan set plan.json openings[3].position 2.1
 floorplan set plan.json rooms.sala.name Sala        # not valid JSON → treated as the string "Sala"
 floorplan set plan.json openings[3].position 2.1 --dry-run   # preview the new text, don't write
+floorplan set plan.json rooms.suite.poly[1][0] -1   # a negative value is still a value, not an option
 ```
+
+A negative number is recognised as `<value>` even though it starts with `-`, once
+`<plan>` and `<path>` are already filled — `set`, `patch` and `fmt` all also accept `--`
+to end option parsing outright, for the rare file whose name itself starts with `-`.
 
 `patch` applies several operations at once, all-or-nothing — if any op fails, nothing is
 written and the CLI reports which one and why:
@@ -483,9 +488,12 @@ be a ring, and a single ring cannot express a hole.
 
 ### Canonical form — how a plan should be written
 
-`formatText(source)` puts a document into the canonical form, and every fixture in this
-repository is byte-identical to its own canonical form (a test enforces it). The form is
-chosen for the reader who pays per token:
+`formatText(source)` puts a document into the canonical form, in whichever syntax `source`
+is already written — the same sniffing `parse()`, `floorplan()` and `floorplan fmt` do — and
+every fixture in this repository is byte-identical to its own canonical form (a test
+enforces it). What follows is JSON's canonical form; the DSL's is "The line DSL" further
+down and has its own canonical printer, `toDsl`. The form is chosen for the reader who pays
+per token:
 
 - **One entity per line, regardless of width.** A room, an outdoor space, an opening or a
   fixture is exactly one line and is never wrapped. That is what makes a plan skimmable,

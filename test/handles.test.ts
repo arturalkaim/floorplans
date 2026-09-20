@@ -8,13 +8,16 @@ import {
   applyHandle,
   applyVertexHandle,
   draggableWalls,
+  lint,
   parse,
+  parseDsl,
+  toDsl,
   wallHandles,
 } from "../src/index.ts";
 import type { OffsetHandle, RadiusHandle, VertexHandle } from "../src/edit.ts";
 import { rulesOf } from "./helpers.ts";
 
-const load = (n: string) => readFileSync(new URL(`../fixtures/${n}.json`, import.meta.url), "utf8");
+const load = (n: string, ext: "json" | "dsl" = "json") => readFileSync(new URL(`../fixtures/${n}.${ext}`, import.meta.url), "utf8");
 const modelOf = (text: string) => analyze(parse(JSON.parse(text))).model;
 const offsets = (m: Map<string, unknown>) => [...m.values()].filter((h): h is OffsetHandle => (h as OffsetHandle).kind === "offset");
 
@@ -227,5 +230,61 @@ describe("handles: the grid keeps its own drag", () => {
     const before = JSON.parse(text) as { rooms: { arrecadacao: { rect: number[] } }; layout: { cols: number[] } };
     assert.deepEqual(after.layout.cols, before.layout.cols, "the house does not move");
     assert.notDeepEqual(after.rooms.arrecadacao.rect, before.rooms.arrecadacao.rect, "the shack does");
+  });
+});
+
+/**
+ * `applyHandle()` and `applyVertexHandle()` used to call `spliceAll()` directly (src/
+ * edit.ts:942, :950) instead of the syntax-aware `applyEdits()` that `applyDrag()`/
+ * `applyMove()` already route through (:82, :421, :598). `spliceAll` is `jsonpos`'s own
+ * splice, which parses its input with `JSON.parse`-shaped position tracking — so calling
+ * it on DSL text throws where the DSL's first token isn't valid JSON. casa-v is all
+ * poly-authored angled walls (fixtures/casa-v.dsl), so it has both an offset handle and a
+ * vertex handle to exercise.
+ */
+describe("handles: applyHandle/applyVertexHandle work on DSL text too", () => {
+  const modelOfText = (text: string) => lint(text).model!;
+  // `authored` records each entity's own field order, which differs between a
+  // hand-written JSON document and one the DSL compiler produced; sort it away before
+  // comparing, the same way test/dsl-edit.test.ts's `fmt` round-trip test does.
+  const strip = (v: unknown) => JSON.parse(JSON.stringify(v, (k, x) => (k === "authored" ? [...(x as string[])].sort() : x)));
+
+  it("applyHandle on an offset handle produces the same Plan from DSL as from JSON", () => {
+    const json = load("casa-v", "json");
+    const dsl = load("casa-v", "dsl");
+    const jModel = modelOfText(json);
+    const dModel = modelOfText(dsl);
+    const jHandles = wallHandles(json, jModel);
+    const dHandles = wallHandles(dsl, dModel);
+    const jOffset = offsets(jHandles)[0] as OffsetHandle;
+    const dOffset = dHandles.get(jOffset.id) as OffsetHandle;
+    assert.ok(jOffset && dOffset, "both syntaxes offer the same offset handle id");
+
+    // before the fix, this throws inside jsonpos's spliceAll trying to parse DSL as JSON
+    const outDsl = applyHandle(dsl, dOffset, dOffset.at + 0.2);
+    const outJson = applyHandle(json, jOffset, jOffset.at + 0.2);
+    assert.deepEqual(strip(parse(parseDsl(outDsl).doc)), strip(parse(JSON.parse(outJson))));
+    // still canonical DSL, apart from the edited numbers
+    assert.equal(toDsl(parseDsl(outDsl).doc), outDsl);
+  });
+
+  it("applyVertexHandle produces the same Plan from DSL as from JSON", () => {
+    const json = load("casa-v", "json");
+    const dsl = load("casa-v", "dsl");
+    const jModel = modelOfText(json);
+    const dModel = modelOfText(dsl);
+    const jHandles = wallHandles(json, jModel);
+    const dHandles = wallHandles(dsl, dModel);
+    const jVertex = [...jHandles.values()].find((h): h is VertexHandle => h.kind === "vertex")!;
+    const dVertex = dHandles.get(jVertex.id) as VertexHandle;
+    assert.ok(jVertex && dVertex, "both syntaxes offer the same vertex handle id");
+
+    // before the fix, this throws inside jsonpos's spliceAll trying to parse DSL as JSON
+    const to: [number, number] = [jVertex.at[0] + 0.3, jVertex.at[1] - 0.2];
+    const outDsl = applyVertexHandle(dsl, dVertex, to);
+    const outJson = applyVertexHandle(json, jVertex, to);
+    assert.deepEqual(strip(parse(parseDsl(outDsl).doc)), strip(parse(JSON.parse(outJson))));
+    // still canonical DSL, apart from the edited numbers
+    assert.equal(toDsl(parseDsl(outDsl).doc), outDsl);
   });
 });

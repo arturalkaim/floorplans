@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { parseDsl, toDsl } from "../src/dsl.ts";
 import { formatPlan, formatText } from "../src/format.ts";
 import { parseWithPositions, spliceAt } from "../src/jsonpos.ts";
 import { parse } from "../src/parse.ts";
 
 const FIXTURES = ["casa-t3", "casa-piscina", "quinta", "cabin", "broken", "apartment-t2", "casa-patio", "moradia-2-pisos", "broken-levels", "casa-angulo", "casa-redonda", "broken-geometria", "casa-v"];
 const load = (n: string) => readFileSync(new URL(`../fixtures/${n}.json`, import.meta.url), "utf8");
+const loadDsl = (n: string) => readFileSync(new URL(`../fixtures/${n}.dsl`, import.meta.url), "utf8");
 
 describe("format: the document keeps its meaning", () => {
   it("round trips every fixture", () => {
@@ -143,5 +145,37 @@ describe("format + splice: a drag only rewrites numbers", () => {
       const text = formatText(load(n));
       assert.doesNotThrow(() => parseWithPositions(text), n);
     }
+  });
+});
+
+/**
+ * README says `formatText(source)` "puts a document into canonical form" (README.md:491)
+ * with no mention that this is JSON-only, and `floorplan fmt` already sniffs the syntax
+ * (`isDslText` in src/cli.ts's `runFmt`) rather than assuming JSON — so `formatText` should
+ * too, instead of throwing `JSON.parse`'s "unexpected token" on a DSL document.
+ */
+describe("formatText sniffs the syntax, the way `fmt` already does", () => {
+  const DSL_TWINS = ["cabin", "casa-t3", "moradia-2-pisos", "casa-v"];
+
+  it("formats DSL text as canonical DSL, not JSON.parse's error", () => {
+    for (const n of DSL_TWINS) {
+      const text = loadDsl(n);
+      assert.equal(formatText(text), toDsl(parseDsl(text).doc), n);
+    }
+  });
+
+  it("is idempotent on DSL text", () => {
+    for (const n of DSL_TWINS) {
+      const once = formatText(loadDsl(n));
+      assert.equal(formatText(once), once, n);
+    }
+  });
+
+  it("every canonical .dsl fixture is already its own formatText output", () => {
+    for (const n of DSL_TWINS) assert.equal(formatText(loadDsl(n)), loadDsl(n), n);
+  });
+
+  it("still formats JSON text as canonical JSON — both spellings, same document", () => {
+    for (const n of DSL_TWINS) assert.equal(formatText(load(n)), formatPlan(JSON.parse(load(n))), n);
   });
 });
