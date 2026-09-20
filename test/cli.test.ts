@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { describe, it } from "node:test";
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { after, before, describe, it } from "node:test";
 import { formatFindings, run } from "../src/cli.ts";
 import type { CliIo } from "../src/cli.ts";
 import { twoRooms } from "./helpers.ts";
 
-function fakeIo(files: Record<string, string>) {
+function fakeIo(files: Record<string, string>, stdin = "") {
   const out: string[] = [];
   const err: string[] = [];
   const written: Record<string, string> = {};
@@ -20,6 +23,7 @@ function fakeIo(files: Record<string, string>) {
     writeFile: (p, s) => {
       written[p] = s;
     },
+    readStdin: () => stdin,
   };
   return { io, out: () => out.join(""), err: () => err.join(""), written };
 }
@@ -94,5 +98,141 @@ describe("cli", () => {
     const res = spawnSync(process.execPath, ["src/bin.ts", "fixtures/casa-t3.json", "--lint"], { cwd: new URL("..", import.meta.url), encoding: "utf8" });
     assert.equal(res.status, 1, res.stderr);
     assert.match(res.stdout, /circulation\.share/);
+  });
+});
+
+describe("cli: set", () => {
+  it("splices a door width, writes the file, and prints the new findings", () => {
+    // openings[1] (door a↔b, 0.8 m) is above the 0.7 m interior minimum, so `clean`
+    // has no findings; narrowing it below that trips door.min_width.
+    const t = fakeIo({ "plan.json": clean });
+    assert.equal(run(["set", "plan.json", "openings[1].width", "0.5"], t.io), 1);
+    assert.match(t.out(), /door\.min_width/);
+    assert.equal(JSON.parse(t.written["plan.json"]!).openings[1].width, 0.5);
+  });
+
+  it("treats a value that is not valid JSON as a string", () => {
+    const t = fakeIo({ "plan.json": clean });
+    assert.equal(run(["set", "plan.json", "rooms.a.name", "Sala"], t.io), 0);
+    assert.equal(JSON.parse(t.written["plan.json"]!).rooms.a.name, "Sala");
+  });
+
+  it("refuses to write a value that fails schema, and reports why", () => {
+    const t = fakeIo({ "plan.json": clean });
+    assert.equal(run(["set", "plan.json", "rooms.a.kind", "potato"], t.io), 2);
+    assert.equal(t.written["plan.json"], undefined, "file must be left untouched");
+    assert.match(t.err(), /unknown kind/);
+  });
+
+  it("--json reports a JsonPosError as a JSON envelope with line/column, file untouched", () => {
+    const t = fakeIo({ "plan.json": clean });
+    assert.equal(run(["set", "plan.json", "nope.field", "1", "--json"], t.io), 2);
+    assert.equal(t.written["plan.json"], undefined);
+    const parsed = JSON.parse(t.out());
+    assert.match(parsed.error.message, /no value at nope\.field/);
+    assert.equal(typeof parsed.error.line, "number");
+  });
+
+  it("--dry-run prints the new text without writing", () => {
+    const t = fakeIo({ "plan.json": clean });
+    const status = run(["set", "plan.json", "openings[1].width", "0.5", "--dry-run"], t.io);
+    assert.equal(t.written["plan.json"], undefined, "dry-run must not write");
+    assert.equal(JSON.parse(t.out()).openings[1].width, 0.5);
+    assert.equal(status, 1, "exit code still reflects findings under dry-run");
+  });
+});
+
+describe("cli: patch", () => {
+  const threeOps = JSON.stringify([
+    { op: "set", path: "walls.exterior", value: 0.35 },
+    { op: "append", path: "openings", value: { type: "window", between: ["exterior", "a"], on: { room: "a", side: "north" }, width: 1.0 } },
+    { op: "insert", path: "", key: "_note", value: "patched" },
+  ]);
+
+  it("applies three ops in order and writes once", () => {
+    const t = fakeIo({ "plan.json": clean, "patch.json": threeOps });
+    const status = run(["patch", "plan.json", "patch.json"], t.io);
+    assert.notEqual(status, 2, t.err());
+    const patched = JSON.parse(t.written["plan.json"]!);
+    assert.equal(patched.walls.exterior, 0.35);
+    assert.equal(patched.openings.length, JSON.parse(clean).openings.length + 1);
+    assert.deepEqual(patched.openings.at(-1), { type: "window", between: ["exterior", "a"], on: { room: "a", side: "north" }, width: 1 });
+    assert.equal(patched._note, "patched");
+  });
+
+  it("a failing second op leaves the file untouched and names the op", () => {
+    const patch = JSON.stringify([
+      { op: "set", path: "walls.exterior", value: 0.35 },
+      { op: "set", path: "nope.field", value: 1 },
+      { op: "set", path: "title", value: "should not apply" },
+    ]);
+    const t = fakeIo({ "plan.json": clean, "patch.json": patch });
+    assert.equal(run(["patch", "plan.json", "patch.json"], t.io), 2);
+    assert.equal(t.written["plan.json"], undefined);
+    assert.match(t.err(), /op 1/);
+    assert.match(t.err(), /nope\.field/);
+  });
+
+  it("--json reports the failing op with its line/column", () => {
+    const patch = JSON.stringify([{ op: "set", path: "nope.field", value: 1 }]);
+    const t = fakeIo({ "plan.json": clean, "patch.json": patch });
+    assert.equal(run(["patch", "plan.json", "patch.json", "--json"], t.io), 2);
+    assert.equal(t.written["plan.json"], undefined);
+    const parsed = JSON.parse(t.out());
+    assert.equal(parsed.error.op, 0);
+    assert.equal(parsed.error.kind, "set");
+    assert.equal(typeof parsed.error.line, "number");
+    assert.equal(typeof parsed.error.column, "number");
+  });
+
+  it("refuses to write when the patched result fails schema", () => {
+    const patch = JSON.stringify([{ op: "set", path: "rooms.a.kind", value: "potato" }]);
+    const t = fakeIo({ "plan.json": clean, "patch.json": patch });
+    assert.equal(run(["patch", "plan.json", "patch.json"], t.io), 2);
+    assert.equal(t.written["plan.json"], undefined);
+    assert.match(t.err(), /unknown kind/);
+  });
+
+  it("reads the patch document from stdin with --patch -", () => {
+    const t = fakeIo({ "plan.json": clean }, threeOps);
+    const status = run(["patch", "plan.json", "--patch", "-"], t.io);
+    assert.notEqual(status, 2, t.err());
+    assert.equal(JSON.parse(t.written["plan.json"]!).walls.exterior, 0.35);
+  });
+
+  it("--dry-run prints the new text without writing", () => {
+    const t = fakeIo({ "plan.json": clean, "patch.json": threeOps });
+    run(["patch", "plan.json", "patch.json", "--dry-run"], t.io);
+    assert.equal(t.written["plan.json"], undefined);
+    assert.equal(JSON.parse(t.out()).walls.exterior, 0.35);
+  });
+});
+
+describe("cli: set/patch through bin.ts (real process, temp copy of a fixture)", () => {
+  let dir: string;
+  let planPath: string;
+
+  before(() => {
+    dir = mkdtempSync(join(tmpdir(), "floorplan-cli-"));
+    planPath = join(dir, "casa-t3.json");
+    copyFileSync(new URL("../fixtures/casa-t3.json", import.meta.url), planPath);
+  });
+
+  after(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("set writes the change to the real file on disk", () => {
+    const res = spawnSync(
+      process.execPath,
+      ["src/bin.ts", "set", planPath, "openings[0].position.distance", "2.0"],
+      { cwd: new URL("..", import.meta.url), encoding: "utf8" },
+    );
+    assert.equal(res.status, 1, res.stderr); // casa-t3 still has its usual warnings/info
+    assert.match(res.stdout, /habitable\.no_window|wet\.no_window|circulation\.share/);
+    const written = readFileSync(planPath, "utf8");
+    assert.equal(JSON.parse(written).openings[0].position.distance, 2.0);
+    // formatting outside the edited value is untouched
+    assert.match(written, /"distance": 2\.0 \},\s*"width": 1\.0/);
   });
 });

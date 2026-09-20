@@ -36,7 +36,18 @@ export type { Projection } from "./svg.ts";
 export type { RuleDoc } from "./catalogue.ts";
 // authoring support: keep a document canonical, and edit one value in place
 export { formatPlan, formatText } from "./format.ts";
-export { JsonPosError, metres, nodeAt, parseWithPositions, pathToString, spliceAll, spliceAt } from "./jsonpos.ts";
+export {
+  appendAt,
+  insertKey,
+  JsonPosError,
+  metres,
+  nodeAt,
+  parseWithPositions,
+  pathToString,
+  removeAt,
+  spliceAll,
+  spliceAt,
+} from "./jsonpos.ts";
 export type { FormatOptions } from "./format.ts";
 export type { JsonKind, JsonNode, JsonPath } from "./jsonpos.ts";
 export type * from "./types.ts";
