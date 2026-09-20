@@ -23,8 +23,7 @@
   "openings": [
     {"type":"door","between":["exterior","sala"],"at":[8.5,22.799],"width":1,"swingInto":"sala","entrance":true},
     {"type":"window","between":["exterior","sala"],"at":[12.5,22.799],"width":2.4},
-    {"type":"window","between":["deck","sala"],"at":[9.4,12],"width":4.5},
-    {"type":"door","between":["sala","deck"],"at":[13.35,12],"width":3,"sliding":true,"glazed":true},
+    {"type":"door","between":["sala","deck"],"at":[11,12],"width":8,"sliding":true,"glazed":true},
     {"type":"door","between":["sala","corr_w"],"at":[6.394,12.35],"width":0.9,"swingInto":"corr_w"},
     {"type":"door","between":["sala","corr_e"],"at":[15.606,12.35],"width":0.9,"swingInto":"corr_e"},
     {"type":"door","between":["corr_w","wc_w"],"at":[5.188,11.661],"width":0.8,"swingInto":"wc_w"},

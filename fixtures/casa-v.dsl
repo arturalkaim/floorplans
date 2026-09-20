@@ -16,8 +16,7 @@ outdoor patio "Jardim" poly 0.2,0.222 5,8.536 5,4 17,4 17,8.536 21,1.608
 
 door sala at 8.5,22.799 w1 swing:sala entrance
 window sala at 12.5,22.799 w2.4
-window deck>sala at 9.4,12 w4.5
-door sala>deck at 13.35,12 w3 glazed sliding
+door sala>deck at 11,12 w8 glazed sliding
 door sala>corr_w at 6.394,12.35 w0.9 swing:corr_w
 door sala>corr_e at 15.606,12.35 w0.9 swing:corr_e
 door corr_w>wc_w at 5.188,11.661 w0.8 swing:wc_w

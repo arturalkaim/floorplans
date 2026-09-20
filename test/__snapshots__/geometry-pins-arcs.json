@@ -3371,25 +3371,15 @@
     {
      "index": 2,
      "wall": "w1",
-     "from": 7.15,
-     "to": 11.65,
+     "from": 7,
+     "to": 15,
      "center": [
-      9.4,
+      11,
       12
      ]
     },
     {
      "index": 3,
-     "wall": "w1",
-     "from": 11.85,
-     "to": 14.85,
-     "center": [
-      13.35,
-      12
-     ]
-    },
-    {
-     "index": 4,
      "wall": "w24",
      "from": 0.25,
      "to": 1.15,
@@ -3404,7 +3394,7 @@
      "swingRoom": "corr_w"
     },
     {
-     "index": 5,
+     "index": 4,
      "wall": "w25",
      "from": 0.25,
      "to": 1.15,
@@ -3419,7 +3409,7 @@
      "swingRoom": "corr_e"
     },
     {
-     "index": 6,
+     "index": 5,
      "wall": "w22",
      "from": 0.8,
      "to": 1.6,
@@ -3434,7 +3424,7 @@
      "swingRoom": "wc_w"
     },
     {
-     "index": 7,
+     "index": 6,
      "wall": "w21",
      "from": 1.35,
      "to": 2.25,
@@ -3449,7 +3439,7 @@
      "swingRoom": "quarto1"
     },
     {
-     "index": 8,
+     "index": 7,
      "wall": "w15",
      "from": 1.251,
      "to": 2.151,
@@ -3464,7 +3454,7 @@
      "swingRoom": "quarto2"
     },
     {
-     "index": 9,
+     "index": 8,
      "wall": "w14",
      "from": 0.25,
      "to": 1.15,
@@ -3479,7 +3469,7 @@
      "swingRoom": "suite"
     },
     {
-     "index": 10,
+     "index": 9,
      "wall": "w6",
      "from": 1,
      "to": 1.8,
@@ -3494,7 +3484,7 @@
      "swingRoom": "wc_suite"
     },
     {
-     "index": 11,
+     "index": 10,
      "wall": "w18",
      "from": 2.9,
      "to": 3.9,
@@ -3509,7 +3499,7 @@
      "swingRoom": "patio"
     },
     {
-     "index": 12,
+     "index": 11,
      "wall": "w28",
      "from": 0.8,
      "to": 1.6,
@@ -3524,7 +3514,7 @@
      "swingRoom": "lavandaria"
     },
     {
-     "index": 13,
+     "index": 12,
      "wall": "w31",
      "from": 1.551,
      "to": 2.451,
@@ -3539,7 +3529,7 @@
      "swingRoom": "escritorio"
     },
     {
-     "index": 14,
+     "index": 13,
      "wall": "w33",
      "from": 0.2,
      "to": 1.2,
@@ -3554,7 +3544,7 @@
      "swingRoom": "brincar"
     },
     {
-     "index": 15,
+     "index": 14,
      "wall": "w30",
      "from": 1,
      "to": 2,
@@ -3569,7 +3559,7 @@
      "swingRoom": "patio"
     },
     {
-     "index": 16,
+     "index": 15,
      "wall": "w16",
      "from": 0.9,
      "to": 1.5,
@@ -3579,7 +3569,7 @@
      ]
     },
     {
-     "index": 17,
+     "index": 16,
      "wall": "w11",
      "from": 1.2,
      "to": 2.4,
@@ -3589,7 +3579,7 @@
      ]
     },
     {
-     "index": 18,
+     "index": 17,
      "wall": "w7",
      "from": 1.101,
      "to": 2.301,
@@ -3599,7 +3589,7 @@
      ]
     },
     {
-     "index": 19,
+     "index": 18,
      "wall": "w5",
      "from": 0.4,
      "to": 2,
@@ -3609,7 +3599,7 @@
      ]
     },
     {
-     "index": 20,
+     "index": 19,
      "wall": "w10",
      "from": 0.7,
      "to": 1.9,
@@ -3619,7 +3609,7 @@
      ]
     },
     {
-     "index": 21,
+     "index": 20,
      "wall": "w4",
      "from": 1.1,
      "to": 1.7,
@@ -3629,7 +3619,7 @@
      ]
     },
     {
-     "index": 22,
+     "index": 21,
      "wall": "w36",
      "from": 0.9,
      "to": 1.5,
@@ -3639,7 +3629,7 @@
      ]
     },
     {
-     "index": 23,
+     "index": 22,
      "wall": "w37",
      "from": 1.301,
      "to": 2.701,
@@ -3649,7 +3639,7 @@
      ]
     },
     {
-     "index": 24,
+     "index": 23,
      "wall": "w39",
      "from": 1.999,
      "to": 3.599,
@@ -3659,7 +3649,7 @@
      ]
     },
     {
-     "index": 25,
+     "index": 24,
      "wall": "w38",
      "from": 2,
      "to": 3.4,
