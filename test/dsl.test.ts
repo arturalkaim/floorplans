@@ -299,6 +299,21 @@ describe("round-trip", () => {
     assert.throws(() => toDsl({ _note: "mine", rooms: {} }), /no spelling for the private key "_note"/);
     assert.throws(() => toDsl(JSON.parse(load("broken-levels", "json"))), /no spelling for the private key "_note"/);
   });
+
+  it("refuses a private key nested inside an entity, not just at the document root", () => {
+    // toDsl used to check Object.keys(doc) only, then print known fields per entity —
+    // so a private key nested inside a room was silently dropped rather than refused.
+    const doc = { rooms: { a: { name: "A", kind: "living", rect: [0, 0, 4, 3], _note: "keep" } } };
+    assert.throws(() => toDsl(doc), /no spelling for the private key "rooms\.a\._note"/);
+  });
+
+  it("refuses a private key nested inside a level", () => {
+    const doc = {
+      stack: ["g"],
+      levels: { g: { name: "G", ground: true, rooms: { a: { name: "A", kind: "living", rect: [0, 0, 4, 3], "x-tool": "drawn" } } } },
+    };
+    assert.throws(() => toDsl(doc), /no spelling for the private key "levels\.g\.rooms\.a\.x-tool"/);
+  });
 });
 
 describe("stable ids are the same for a DSL document as for its JSON twin", () => {

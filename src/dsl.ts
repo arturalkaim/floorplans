@@ -32,6 +32,8 @@
 // table, the README section and the app's reference page — there is no hand-written prose
 // copy of it anywhere, for the same reason SCHEMA has none (docs/agent-review.md B10).
 
+import { pathToString } from "./jsonpos.ts";
+import type { JsonPath } from "./jsonpos.ts";
 import { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "./parse.ts";
 import type { ObjectDoc } from "./parse.ts";
 
@@ -1642,6 +1644,33 @@ function levelBody(level: J): string[][] {
   return groups;
 }
 
+const PRIVATE_KEY_RE = /^(_|x-)/;
+
+/**
+ * Refuse a document carrying a private (`_`/`x-`) key anywhere the printer would visit —
+ * not just at the root. The printer emits only the fields it recognises per entity, so a
+ * private key nested inside a room, a level, an opening's `position`, and so on would
+ * otherwise be silently dropped rather than reported (README's "DSL conversion refuses
+ * private keys rather than dropping them"). Walking the whole tree is a superset of "every
+ * object the printer visits" — rooms, outdoor, voids, openings, fixtures, vertical,
+ * levels, layout, grid, walls, position/on objects all fall out of it for free, and it
+ * stays correct as the schema grows without needing a matching list here.
+ */
+function checkNoPrivateKeys(value: unknown, path: JsonPath): void {
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => checkNoPrivateKeys(v, [...path, i]));
+    return;
+  }
+  if (!isObj(value)) return;
+  for (const key of Object.keys(value)) {
+    if (PRIVATE_KEY_RE.test(key)) {
+      const at = pathToString([...path, key]);
+      throw new DslError([{ line: 1, column: 1, message: `line 1: the DSL has no spelling for the private key ${JSON.stringify(at)}; keep that document as JSON` }]);
+    }
+  }
+  for (const [key, v] of Object.entries(value)) checkNoPrivateKeys(v, [...path, key]);
+}
+
 /**
  * Print a JSON plan document as canonical DSL. Like `formatPlan`, this is a *document*
  * printer: it writes the fields it is given, so a document authored with `rect` keeps its
@@ -1651,10 +1680,7 @@ function levelBody(level: J): string[][] {
  */
 export function toDsl(doc: unknown): string {
   if (!isObj(doc)) throw new TypeError("a plan document must be a JSON object");
-  for (const key of Object.keys(doc)) {
-    if (/^(_|x-)/.test(key))
-      throw new DslError([{ line: 1, column: 1, message: `line 1: the DSL has no spelling for the private key ${JSON.stringify(key)}; keep that document as JSON` }]);
-  }
+  checkNoPrivateKeys(doc, []);
 
   const groups: string[][] = [];
 
