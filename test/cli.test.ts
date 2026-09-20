@@ -232,7 +232,9 @@ describe("cli: set/patch through bin.ts (real process, temp copy of a fixture)",
     assert.match(res.stdout, /habitable\.no_window|wet\.no_window|circulation\.share/);
     const written = readFileSync(planPath, "utf8");
     assert.equal(JSON.parse(written).openings[0].position.distance, 2.0);
-    // formatting outside the edited value is untouched
-    assert.match(written, /"distance": 2\.0 \},\s*"width": 1\.0/);
+    // formatting outside the edited value is untouched: the document is still in its
+    // canonical form once the edited number is put back
+    const original = readFileSync(new URL("../fixtures/casa-t3.json", import.meta.url), "utf8");
+    assert.equal(written.replace('"distance":2.0', '"distance":1.7'), original);
   });
 });
