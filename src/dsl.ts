@@ -1478,15 +1478,21 @@ export function parseDsl(text: string): DslDocument {
       continue;
     }
     if (toks.length === 0) continue;
-    // An indented line is a continuation of the pending layout/vertical statement — unless
-    // its first token is itself a statement keyword, in which case it is a statement like
-    // any other. This is what lets a `level`'s body be written indented (the cold-agent
-    // eval's own worked example shows it that way, docs/eval/cold3a/cold-run.md "the one
-    // failure mode": 3/20 plans failed to parse because an agent indented `room`/`door`/
-    // `window` lines under `level`, reading the picture as prescriptive). Indentation is
-    // never significant beyond this one check — no dedent tracking, no depth comparison —
-    // so nesting further under an already-indented statement still works the same way.
-    if (/^[ \t]/.test(raw) && !statementVerbs().includes(toks[0]!.text)) {
+    // An indented line is a continuation of a pending layout/vertical statement whenever
+    // one is pending, full stop — a `layout`'s row or a vertical element's `at` line may
+    // start with any token, including one that also happens to be a statement verb (a
+    // room called "stairs" or "door" placed in `layout.areas`, docs/agent-review.md B4).
+    // Only when *nothing* is pending does the first token's identity decide anything: if
+    // it is a statement keyword, the indented line is a statement of its own, which is
+    // what lets a `level`'s body be written indented (the cold-agent eval's own worked
+    // example shows it that way, docs/eval/cold3a/cold-run.md "the one failure mode":
+    // 3/20 plans failed to parse because an agent indented `room`/`door`/`window` lines
+    // under `level`, reading the picture as prescriptive). The verb check must never run
+    // while a continuation is pending — that is exactly the ambiguity a cell named
+    // `stairs` exposed. Indentation is otherwise never significant — no dedent tracking,
+    // no depth comparison — so nesting further under an already-indented statement, or
+    // under a level, still works the same way.
+    if (/^[ \t]/.test(raw) && (pending || !statementVerbs().includes(toks[0]!.text))) {
       continuation(raw, toks);
       continue;
     }

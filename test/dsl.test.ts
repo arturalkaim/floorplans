@@ -94,6 +94,26 @@ describe("the grammar: one entity per line", () => {
     assert.deepEqual(doc("layout\n  a b\n  a c"), { layout: { areas: ["a b", "a c"] } });
   });
 
+  // docs/agent-review.md B4: a layout row is a continuation, full stop, whenever a layout
+  // is pending — even when its first cell id is also a statement verb ("stairs", "door",
+  // "void", "level", …, all legal room ids under ID_RE). The old rule read the row's first
+  // token as a *statement* whenever it looked like a verb, which is exactly backwards while
+  // a layout is still collecting rows: `  stairs hall` used to become a `vertical` element
+  // named "hall", not the layout's own row.
+  it("treats a layout row as a continuation even when its first cell id is a statement verb", () => {
+    assert.deepEqual(doc("room stairs rect 0,0 1x1\nroom hall rect 1,0 1x1\nlayout cols 1,1 rows 1\n  stairs hall"), {
+      rooms: { stairs: { rect: [0, 0, 1, 1] }, hall: { rect: [1, 0, 1, 1] } },
+      layout: { cols: [1, 1], rows: [1], areas: ["stairs hall"] },
+    });
+    assert.deepEqual(doc("room door rect 0,0 1x1\nroom hall rect 1,0 1x1\nlayout cols 1,1 rows 1\n  door hall"), {
+      rooms: { door: { rect: [0, 0, 1, 1] }, hall: { rect: [1, 0, 1, 1] } },
+      layout: { cols: [1, 1], rows: [1], areas: ["door hall"] },
+    });
+    // a level's indented body is unaffected: nothing is pending there, so the verb rule
+    // still applies and a `room`/`door` line is a statement, exactly as before
+    assert.deepEqual(doc("level ground\n  room hall rect 0,0 3x3"), doc("level ground\nroom hall rect 0,0 3x3"));
+  });
+
   it("reads an opening's spaces, placement, width and flags in any token order", () => {
     const a = doc("door hall>wc @0.6 w0.8 hinge:end swing:wc entrance glazed id:porta");
     const b = doc("door hall>wc w0.8 @0.6 id:porta glazed entrance swing:wc hinge:end");
