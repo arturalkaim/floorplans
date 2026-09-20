@@ -435,8 +435,11 @@ export interface RoomModel {
   /** bearing of the room's own frame, degrees clockwise from east; 0 for a rectilinear room */
   bearing: number;
   /**
-   * The largest circle that fits in the clear floor. Rotation-invariant and defined for
-   * a curved room, which is what makes it the narrowness measure a rectangle cannot be.
+   * The largest circle that fits in the clear floor **that nothing stands on**: the
+   * fixtures the room hosts, a stair's footprint among them, are holes in it. Rotation-
+   * invariant and defined for a curved room, which is what makes it the narrowness
+   * measure a rectangle cannot be, and it excludes what is in the way for the same reason
+   * `largestRect` does — the two are answers to one question asked of two shapes.
    */
   inscribed: { at: Pt; r: number };
   /**

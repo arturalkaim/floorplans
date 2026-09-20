@@ -419,3 +419,76 @@ describe("the clear rectangle deducts wall thickness in a rotated frame (B9)", (
     }
   });
 });
+
+/**
+ * gpt-5.5 §2.6: the inscribed circle ignored everything standing on the floor.
+ *
+ * The rectilinear path excludes an occupied cell from its sweep (`g.busy`), so a
+ * rectangular room's `clearRect` — and therefore its `minDimension` — has always gone
+ * round a kitchen island. The non-rectilinear path measured the largest circle in the
+ * wall-offset ring and nothing else, so a round living room with a 2 m island in the
+ * middle of it reported the same narrowness empty or full.
+ */
+describe("the inscribed circle goes round the furniture too (gpt-5.5 §2.6)", () => {
+  /** a round room, 6 m across, with a door so it lints as a room rather than a cave */
+  const round = (fixtures: unknown[]) => ({
+    walls: { exterior: 0.3, partition: 0.12 },
+    rooms: {
+      sala: {
+        name: "Sala",
+        kind: "living",
+        poly: [[3, 0], { arc: [6, 3], r: 3, sweep: "cw" }, { arc: [3, 6], r: 3, sweep: "cw" }, { arc: [0, 3], r: 3, sweep: "cw" }, { arc: [3, 0], r: 3, sweep: "cw" }],
+      },
+    },
+    openings: [{ type: "door", between: ["exterior", "sala"], at: [3, 0], width: 1, entrance: true }],
+    fixtures,
+  });
+  const salaOf = (fixtures: unknown[]) => analyze(parse(round(fixtures))).model.rooms[0]!;
+
+  it("measures the empty room by its own diameter", () => {
+    const empty = salaOf([]);
+    // 6 m across on centrelines, less 0.15 of wall face each side, and a millimetre off
+    // that because the offset ring of a flattened circle is a polygon
+    assert.equal(empty.minDimension, 5.698);
+    assert.equal(empty.minDimension, snap(2 * empty.inscribed.r));
+  });
+
+  it("reports a smaller minDimension once an island stands in the middle of it", () => {
+    const empty = salaOf([]);
+    const busy = salaOf([{ type: "island", in: "sala", name: "Ilha", at: [2, 2], size: [2, 2] }]);
+    assert.ok(
+      busy.minDimension < empty.minDimension,
+      `an island did not narrow the room: ${busy.minDimension} against ${empty.minDimension}`,
+    );
+    // the island spans x 2→4, y 2→4 in a room whose clear floor is the circle of radius
+    // 2.849 about (3, 3); the biggest circle left touches one side of the island and the
+    // wall opposite: 1 + ρ = 2.849 − ρ, so ρ = 0.925 and the room measures 1.849
+    assert.equal(busy.minDimension, 1.849);
+    assert.ok(Math.abs(busy.inscribed.at[0] - 3) < 0.001 && Math.abs(busy.inscribed.at[1] - 4.925) < 0.001, JSON.stringify(busy.inscribed.at));
+    // `inscribed.r` is rounded to the millimetre before it is published, so the two
+    // agree to a millimetre and not to the digit
+    assert.ok(Math.round(Math.abs(busy.minDimension - 2 * busy.inscribed.r) * 1000) <= 1);
+    // and the circle is no longer centred on the island
+    assert.ok(Math.hypot(busy.inscribed.at[0] - 3, busy.inscribed.at[1] - 3) > 1, "the circle is no longer centred on the room");
+  });
+
+  it("is not narrowed by a fixture standing outside the room", () => {
+    const empty = salaOf([]);
+    const elsewhere = salaOf([{ type: "island", in: "sala", name: "Ilha", at: [20, 20], size: [2, 2] }]);
+    assert.equal(elsewhere.minDimension, empty.minDimension);
+  });
+
+  it("agrees with the rectilinear path, which has always excluded fixtures", () => {
+    // the same room, square: `clearRect` sweeps round the island and `minDimension` is
+    // its short side. The two paths now answer the same question.
+    const square = {
+      walls: { exterior: 0.3, partition: 0.12 },
+      rooms: { sala: { name: "Sala", kind: "living", rect: [0, 0, 6, 6] } },
+      openings: [{ type: "door", between: ["exterior", "sala"], on: { room: "sala", side: "west" }, width: 1, entrance: true }],
+      fixtures: [{ type: "island", in: "sala", name: "Ilha", at: [2, 0], size: [2, 6] }],
+    };
+    const m = analyze(parse(square)).model.rooms[0]!;
+    // the island splits the room into two strips, 1.85 and 1.85 clear
+    assert.equal(m.minDimension, 1.85);
+  });
+});

@@ -670,6 +670,30 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
   };
   const planGrid = gridOf(0);
 
+  /**
+   * The rings of everything standing on one room's floor, to be read as holes in it.
+   *
+   * Only what the room hosts, and only where it is inside the room's box: the inscribed
+   * circle's containment test is even-odd across the rings it is given, which is the
+   * polylabel convention and assumes every hole is inside the outer ring. A fixture that
+   * is not — which is `fixture.outside_space`, an error in its own right — would
+   * otherwise make points *outside* the room count as inside it and hand the search a
+   * circle that fits nowhere.
+   *
+   * A vertical element's footprint is included, as it is in the sweep grid's `busy`: a
+   * stair takes up the floor it stands on even though `fixtureArea` does not count it.
+   */
+  const occupiedRings = (room: Shape & { id: string }): P[][] => {
+    const b = shapeBox(room);
+    return planFixtures
+      .filter((f) => f.in === room.id)
+      .filter((f) => {
+        const fb = shapeBox(f);
+        return fb.x0 >= b.x0 - MM && fb.y0 >= b.y0 - MM && fb.x1 <= b.x1 + MM && fb.y1 <= b.y1 + MM;
+      })
+      .map((f) => ringPoints(ringOf(f)));
+  };
+
   // ---- room metrics ----
   const roomModels: RoomModel[] = rooms.map((room) => {
     const ring = ringOf(room);
@@ -703,7 +727,13 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
     const split = splitByThickness(ring, arr, rooms.indexOf(room), wallOfEdge, room.id);
     const clear = offsetRing(split.ring, (i) => split.dist[i]! / 2);
     const clearArea = Math.abs(ringArea(clear)) / 1e6;
-    const inscribed = poleOfInaccessibility(clear.pts.length ? [ringPoints(clear)] : [[[0, 0]]], 0.5);
+    // Whatever stands on the floor is a hole in it. The rectilinear sweep has always
+    // known that — `owned` refuses a cell anything is standing on — and the circle has to
+    // ask the same question, or a round living room with an island in the middle of it
+    // measures as wide empty as full (gpt-5.5 §2.6). `poleOfInaccessibility` takes holes
+    // after the outer ring, and its even-odd containment test does the rest.
+    const holes = occupiedRings(room);
+    const inscribed = poleOfInaccessibility(clear.pts.length ? [ringPoints(clear), ...holes] : [[[0, 0]]], 0.5);
 
     if (clear.pts.length === 0 && area > 0) {
       findings.push({
@@ -744,7 +774,7 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
       clearRect,
       bearing: bearingDeg,
       inscribed: { at: ptM([inscribed.at[0], inscribed.at[1]] as P), r: snap(inscribed.r / 1000) },
-      minDimension: straight ? snap(Math.min(clearRect.w, clearRect.h)) : snap((2 * inscribed.r) / 1000),
+      minDimension: straight ? snap(Math.min(clearRect.w, clearRect.h)) : snap(Math.max(0, (2 * inscribed.r) / 1000)),
       labelAt: [snap(label[0]), snap(label[1])],
       exteriorWindow: false,
       exteriorFaces: [...faces],
