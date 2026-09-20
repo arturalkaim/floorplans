@@ -15,6 +15,13 @@ export function Reference() {
         downwards, and rooms must tile the footprint exactly — walls are derived from the edges they share,
         never authored. Plans are rectilinear and single level.
       </p>
+      <p>
+        Write it in canonical form: <strong>one entity per line</strong> — a room, an outdoor space, an
+        opening, a fixture is exactly one line, never wrapped — with compact separators inside the entity and
+        one member per line in anything that holds a collection of entities. It is what{" "}
+        <code>formatText</code> produces and what every example here is stored as, and it is 26 % cheaper to
+        read and write than the prettified form.
+      </p>
 
       <h2>The shape of a document</h2>
       <pre><code>{`{

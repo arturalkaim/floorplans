@@ -1,9 +1,9 @@
 {
   "title": "Casa com Pátio",
-  "walls": { "exterior": 0.30, "partition": 0.12 },
+  "walls": {"exterior":0.3,"partition":0.12},
   "layout": {
-    "cols": [3.6, 4.0, 3.6],
-    "rows": [3.4, 4.0, 1.6, 3.4],
+    "cols": [3.6,4,3.6],
+    "rows": [3.4,4,1.6,3.4],
     "areas": [
       "sala   sala   cozinha",
       "sala   .      cozinha",
@@ -12,27 +12,25 @@
     ]
   },
   "rooms": {
-    "sala":    { "name": "Sala",    "kind": "living",  "zone": "day" },
-    "cozinha": { "name": "Cozinha", "kind": "kitchen", "zone": "day" },
-    "hall":    { "name": "Hall",    "kind": "hall",    "zone": "day" },
-    "quarto":  { "name": "Quarto",  "kind": "bedroom", "zone": "night" },
-    "wc":      { "name": "WC",      "kind": "wc",      "zone": "night" }
+    "sala": {"name":"Sala","kind":"living","zone":"day"},
+    "cozinha": {"name":"Cozinha","kind":"kitchen","zone":"day"},
+    "hall": {"name":"Hall","kind":"hall","zone":"day"},
+    "quarto": {"name":"Quarto","kind":"bedroom","zone":"night"},
+    "wc": {"name":"WC","kind":"wc","zone":"night"}
   },
   "outdoor": {
-    "patio": { "name": "Pátio", "poly": [[3.6,3.4],[7.6,3.4],[7.6,7.4],[3.6,7.4]], "covered": false }
+    "patio": {"name":"Pátio","covered":false,"poly":[[3.6,3.4],[7.6,3.4],[7.6,7.4],[3.6,7.4]]}
   },
   "openings": [
-    { "type": "door", "between": ["exterior", "hall"], "on": { "room": "hall", "side": "west" },
-      "width": 1.0, "swingInto": "hall", "entrance": true },
-    { "type": "door", "between": ["exterior", "hall"], "on": { "room": "hall", "side": "north", "near": [5.6, 7.4] },
-      "width": 1.0, "swingInto": "hall" },
-    { "type": "door", "between": ["hall", "sala"], "width": 1.0, "swingInto": "sala" },
-    { "type": "door", "between": ["hall", "cozinha"], "width": 0.9, "swingInto": "cozinha" },
-    { "type": "door", "between": ["hall", "quarto"], "width": 0.9, "swingInto": "quarto" },
-    { "type": "door", "between": ["hall", "wc"], "width": 0.8, "swingInto": "wc" },
-    { "type": "window", "between": ["exterior", "sala"],    "on": { "room": "sala",    "side": "east", "near": [3.6, 5.4] }, "width": 2.0 },
-    { "type": "window", "between": ["exterior", "cozinha"], "on": { "room": "cozinha", "side": "east" }, "width": 1.6 },
-    { "type": "window", "between": ["exterior", "quarto"],  "on": { "room": "quarto",  "side": "south" }, "width": 1.8 },
-    { "type": "window", "between": ["exterior", "wc"],      "on": { "room": "wc",      "side": "south" }, "width": 0.6 }
+    {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"west"},"width":1,"swingInto":"hall","entrance":true},
+    {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"north","near":[5.6,7.4]},"width":1,"swingInto":"hall"},
+    {"type":"door","between":["hall","sala"],"width":1,"swingInto":"sala"},
+    {"type":"door","between":["hall","cozinha"],"width":0.9,"swingInto":"cozinha"},
+    {"type":"door","between":["hall","quarto"],"width":0.9,"swingInto":"quarto"},
+    {"type":"door","between":["hall","wc"],"width":0.8,"swingInto":"wc"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"east","near":[3.6,5.4]},"width":2},
+    {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"east"},"width":1.6},
+    {"type":"window","between":["exterior","quarto"],"on":{"room":"quarto","side":"south"},"width":1.8},
+    {"type":"window","between":["exterior","wc"],"on":{"room":"wc","side":"south"},"width":0.6}
   ]
 }

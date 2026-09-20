@@ -136,6 +136,57 @@ close to a real field (`"positon"` → `did you mean "position"?`). A key prefix
 }
 ```
 
+### Canonical form — how a plan should be written
+
+`formatText(source)` puts a document into the canonical form, and every fixture in this
+repository is byte-identical to its own canonical form (a test enforces it). The form is
+chosen for the reader who pays per token:
+
+- **One entity per line, regardless of width.** A room, an outdoor space, an opening or a
+  fixture is exactly one line and is never wrapped. That is what makes a plan skimmable,
+  diffable, and addressable — "replace line 14" is a whole opening.
+- **Compact separators inside the entity** (`{"type":"door","width":0.8}`): no space after
+  `:` or `,`. Pretty separators were measured at 28 % of the document.
+- **Container or entity is decided by shape, not by depth.** A value is a *container* when
+  it holds a collection of entities (every member is an object) or when something inside it
+  is one; a container opens and closes on its own lines with one member per line at a
+  2-space indent. Everything else is an *entity* and prints on one line. That makes
+  `rooms`, `outdoor`, `openings` and `fixtures` containers and a room one line today, and
+  it will make a `levels` map a container of per-level containers of one-entity lines with
+  no change to the formatter. `walls` holds two numbers, so it stays on one line, and so
+  does a room's `poly`, which is a list of rows rather than a collection of entities.
+  `layout.areas` is the one exception and it is a key, not a shape: it is an ASCII picture,
+  so its rows print one per line and keep lining up.
+- **Points stay inline**, numbers print shortest round-trip (`4.6`, never `4.60`), and
+  there is no column alignment to maintain.
+
+Measured with the `o200k_base` BPE, this repository's seven fixtures:
+
+| fixture | before | canonical | lines (old formatter → now) |
+|---|---:|---:|---|
+| casa-t3 | 2 322 | **1 687** (−27 %) | 141 → 49 |
+| apartment-t2 | 1 079 | 794 (−26 %) | 74 → 38 |
+| casa-piscina | 1 169 | 868 (−26 %) | 47 → 46 |
+| quinta | 1 042 | 791 (−24 %) | 50 → 44 |
+| casa-patio | 805 | 607 (−25 %) | 42 → 36 |
+| broken | 677 | 483 (−29 %) | 23 → 23 |
+| cabin | 644 | 473 (−27 %) | 41 → 21 |
+| **all seven** | **7 738** | **5 703 (−26 %)** | 418 → 257 |
+
+The old formatter wrapped anything past 140 columns, which turned casa-t3 into 141 lines
+and saved 1 % (2 322 → 2 302); it was the most expensive form in the table it was meant to
+improve. Three decisions in the new form were taken on measurements rather than taste:
+pretty separators inside entities would cost **+28 %** (5 703 → 7 309) and are out; the one
+space after a structural key (`"rooms": {` rather than `"rooms":{`) costs **1.7 %**
+(95 tokens over seven fixtures) and is kept, because it is the only thing marking structure
+in a document that is otherwise wall-to-wall punctuation; keeping `layout.areas` as a
+picture costs **8–10 tokens** per grid plan and is kept, because a grid that does not line
+up is not a grid.
+
+Formatting is idempotent (`formatText(formatText(x)) === formatText(x)`), preserves the
+parsed plan exactly, and leaves every `jsonpos` path resolvable — a drag still splices one
+number in place and the document stays canonical without a reformat.
+
 ### Grid authoring (compiles to polygons)
 
 Most house plans sit on a small track grid. Author it like CSS `grid-template-areas`;
