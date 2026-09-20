@@ -131,9 +131,17 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
      * level's header, despite the doc sentence already saying the rule — a sentence about
      * ordering is exactly the fact a worked example removes any doubt about). Shown, then
      * told: the doc sentence below states the rule this snippet demonstrates.
+     *
+     * Printed flush with the `e.g.` column, not indented under it (docs/eval/cold3a/
+     * cold-run.md "the one failure mode"): a cold agent read this snippet's old, visually
+     * indented rendering as prescriptive and indented every room/door/window line under
+     * `level` in 3 of 20 plans, hitting the parser's "no statement above this one" error.
+     * `stairs`'s and `layout`'s examples below are indented on purpose — those really are
+     * indented in a real file — so this one is flush on purpose: indentation in an example
+     * now always means indentation in the file, never a merely visual nesting.
      */
-    example: "    e.g. level ground\n         room hall rect 0,0 2x2\n         door hall.south w0.9 entrance\n         level first\n         room bed rect 0,0 3x3",
-    doc: "a storey header: statements belong to the most recent level line, until the next one",
+    example: "    e.g. level ground\n    room hall rect 0,0 2x2\n    door hall.south w0.9 entrance\n    level first\n    room bed rect 0,0 3x3",
+    doc: "a storey header: statements belong to the most recent level line, until the next one. Indenting statements under a level line is allowed and changes nothing",
     tokens: [
       { token: "<id>", field: "plan.levels", required: true, doc: "level id; its presence makes the document multi-level" },
       { token: '"Name"', field: "level.name", required: false, doc: "display name; default the id" },
@@ -191,7 +199,11 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
     // `stairs` also spans indented lines (docs/eval/cold2/cold-run.md gap 4: calling this
     // "the one multi-line statement" contradicted the very next worked example), so the doc
     // no longer claims uniqueness — only what the picture means.
-    example: "    e.g. layout cols 3,3 rows 3,3\n           a a\n           . b",
+    //
+    // Indented here by exactly the 2 spaces `toDsl` itself writes for a real file's rows —
+    // every multi-line example prints indentation only where the file needs it, and by how
+    // much (docs/eval/cold3a/cold-run.md; see the `level` example's comment for why).
+    example: "    e.g. layout cols 3,3 rows 3,3\n      a a\n      . b",
     doc: 'an ASCII picture placing already-declared spaces on the track grid; the same id in several cells is one space spanning them, "." is empty',
     tokens: [
       { token: "layout", field: "level.layout", required: false, doc: "the statement itself" },
@@ -259,7 +271,10 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
     syntax:
       'stairs | lift | ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)\n' +
       `        at <level> in:<space> ${GEOM}      (one indented line per level served)`,
-    example: "    e.g. stairs main\n           at ground in:hall rect 3.6,0.4 1.2x3\n           at first in:landing rect 3.6,0.4 1.2x3",
+    // Indented here by exactly the 2 spaces `toDsl` itself writes for a real file's `at`
+    // lines — see the `level` example's comment for why every multi-line example now does
+    // this (docs/eval/cold3a/cold-run.md).
+    example: "    e.g. stairs main\n      at ground in:hall rect 3.6,0.4 1.2x3\n      at first in:landing rect 3.6,0.4 1.2x3",
     doc: "vertical circulation: the only entity that spans levels, joined by its id and never by overlap — one `at` line per level it serves, never one line per element",
     tokens: [
       { token: "stairs|lift|ramp", field: "plan.vertical", required: false, doc: "the statement itself" },
@@ -1442,7 +1457,15 @@ export function parseDsl(text: string): DslDocument {
       continue;
     }
     if (toks.length === 0) continue;
-    if (/^[ \t]/.test(raw)) {
+    // An indented line is a continuation of the pending layout/vertical statement — unless
+    // its first token is itself a statement keyword, in which case it is a statement like
+    // any other. This is what lets a `level`'s body be written indented (the cold-agent
+    // eval's own worked example shows it that way, docs/eval/cold3a/cold-run.md "the one
+    // failure mode": 3/20 plans failed to parse because an agent indented `room`/`door`/
+    // `window` lines under `level`, reading the picture as prescriptive). Indentation is
+    // never significant beyond this one check — no dedent tracking, no depth comparison —
+    // so nesting further under an already-indented statement still works the same way.
+    if (/^[ \t]/.test(raw) && !statementVerbs().includes(toks[0]!.text)) {
       continuation(raw, toks);
       continue;
     }
