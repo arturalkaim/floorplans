@@ -2,7 +2,7 @@ import { occupantRef } from "./derive.ts";
 import { doorSwing } from "./doors.ts";
 import { bbox, boxGap, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
 import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, RoomKind } from "./types.ts";
-import { isOpenSky, isStreet, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
+import { inLevel, isOpenSky, isStreet, outdoorOwner, ownerId, ownerKey, pathTo, roomOwner } from "./types.ts";
 
 export interface RuleOptions {
   /** share of interior area above which circulation is flagged (default 0.10) */
@@ -119,9 +119,12 @@ function buildingRules(
     return where(lm.level.id, sideName(street(o.wall.neg) ? o.wall.pos : o.wall.neg));
   };
 
+  // a building-wide finding about an absence points at the ground level's opening list,
+  // which is where the door that is missing would have to be written
+  const groundOpenings = inLevel(model.level, "openings");
   const hasEntrance = streetDoors.length > 0;
   if (!hasEntrance) {
-    f.push({ rule: "entrance.missing", severity: "error", message: "no door leads outside; the house cannot be entered" });
+    f.push({ rule: "entrance.missing", severity: "error", message: "no door leads outside; the house cannot be entered", path: groundOpenings });
   } else if (streetDoors.length > 1) {
     // say something true about what the plan already declares: telling an author to mark
     // the main entrance when they have marked it is advice they have to stop and check
@@ -137,6 +140,7 @@ function buildingRules(
       rule: "entrance.multiple",
       severity: "info",
       message: `${streetDoors.length} doors lead outside (${all}); ${tail}`,
+      path: groundOpenings,
     });
   }
 
@@ -149,8 +153,9 @@ function buildingRules(
       rule: "entrance.not_ground",
       severity: "info",
       message: `door #${d.o.spec.index} opens to the outside on ${d.lm.level.name}, which the street does not meet; it is a balcony door, not a way in`,
+      path: d.o.spec.path,
       at: d.o.center,
-      opening: d.o.spec.index,
+      opening: d.o.spec.id,
     });
   }
 
@@ -186,6 +191,7 @@ function buildingRules(
         rule: "reach.unreachable",
         severity: "error",
         message: `${m.room.name} cannot be reached from the entrance${why}`,
+        path: m.room.path,
         rooms: [m.room.id],
         at: m.labelAt,
       });
@@ -220,8 +226,9 @@ function levelRules(
       message: sky
         ? `door #${o.spec.index} is marked the main entrance but opens onto ${sideName(sky)}, which the street does not reach`
         : `door #${o.spec.index} is marked the main entrance but is an interior door between ${sideName(o.wall.neg)} and ${sideName(o.wall.pos)}`,
+      path: pathTo(o.spec, "entrance"),
       at: o.center,
-      opening: o.spec.index,
+      opening: o.spec.id,
     });
   }
 
@@ -232,6 +239,7 @@ function levelRules(
         rule: "space.no_access",
         severity: "error",
         message: `${m.room.name} has no door or cased opening`,
+        path: m.room.path,
         rooms: [m.room.id],
         at: m.labelAt,
       });
@@ -246,6 +254,7 @@ function levelRules(
         rule: "habitable.no_window",
         severity: "warning",
         message: `${m.room.name} is habitable but has no exterior window or glazed exterior door${m.exteriorFaces.length ? ` (it has an exterior wall on the ${m.exteriorFaces.join("/")})` : " and no exterior wall to put one on"}`,
+        path: m.room.path,
         rooms: [m.room.id],
         at: m.labelAt,
       });
@@ -254,6 +263,7 @@ function levelRules(
         rule: "wet.no_window",
         severity: "warning",
         message: `${m.room.name} has no exterior window; plan mechanical extraction`,
+        path: m.room.path,
         rooms: [m.room.id],
         at: m.labelAt,
       });
@@ -274,9 +284,10 @@ function levelRules(
         rule: "wet.opens_to_kitchen",
         severity: "warning",
         message: `${nameOf(a)} opens directly into ${nameOf(b)}; most codes want a lobby between a WC and a kitchen`,
+        path: o.spec.path,
         rooms: [a, b],
         at: o.center,
-        opening: o.spec.index,
+        opening: o.spec.id,
       });
     }
     if (ka === "bedroom" && kb === "bedroom") {
@@ -284,9 +295,10 @@ function levelRules(
         rule: "privacy.bedroom_through_route",
         severity: "warning",
         message: `${nameOf(a)} and ${nameOf(b)} connect directly; one bedroom is a route to the other`,
+        path: o.spec.path,
         rooms: [a, b],
         at: o.center,
-        opening: o.spec.index,
+        opening: o.spec.id,
       });
     }
     const living = new Set<RoomKind>(["living", "kitchen"]);
@@ -295,9 +307,10 @@ function levelRules(
         rule: "privacy.bedroom_off_living",
         severity: "info",
         message: `${ka === "bedroom" ? nameOf(a) : nameOf(b)} opens directly off ${ka === "bedroom" ? nameOf(b) : nameOf(a)}`,
+        path: o.spec.path,
         rooms: [a, b],
         at: o.center,
-        opening: o.spec.index,
+        opening: o.spec.id,
       });
     }
   }
@@ -312,8 +325,13 @@ function levelRules(
       rule: "room.min_dimension",
       severity: "warning",
       message: `${m.room.name} (${m.room.kind}): ${m.minDimension} m at its narrowest; comfort minimum is ${min} m (clear floor ${r.w} × ${r.h} m)`,
+      path: pathTo(m.room, "poly", "rect"),
       rooms: [m.room.id],
       at: m.labelAt,
+      // the same numbers the message states, so a fix needs no prose parsing
+      measured: m.minDimension,
+      minimum: min,
+      rect: [r.x0, r.y0, r.w, r.h],
     });
   }
   const dmw = { interior: 0.7, entrance: 0.9, ...opts.doorMinWidth };
@@ -325,8 +343,9 @@ function levelRules(
         rule: "door.min_width",
         severity: "warning",
         message: `door #${o.spec.index} (${o.spec.width} m) between ${sideName(o.wall.neg)} and ${sideName(o.wall.pos)} is narrower than ${min} m`,
+        path: pathTo(o.spec, "width"),
         at: o.center,
-        opening: o.spec.index,
+        opening: o.spec.id,
       });
     }
   }
@@ -343,6 +362,8 @@ function levelRules(
       rule: "circulation.share",
       severity: "info",
       message: `${circ.map((m) => m.room.name).join(" + ")} take ${Math.round(share * 100)} % of the interior (${snap(circArea)} m²); above ${Math.round(maxShare * 100)} % is worth questioning`,
+      // about the balance between several rooms, so it names the collection they are in
+      path: inLevel(lm.level, "rooms"),
       rooms: circ.map((m) => m.room.id),
     });
   }
@@ -361,6 +382,7 @@ function levelRules(
           rule: "door.swing_collision",
           severity: "info",
           message: `doors #${a.o.spec.index} and #${b.o.spec.index} swing into the same corner of ${nameOf(a.o.swingRoom!)}`,
+          path: pathTo(a.o.spec, "hinge"),
           rooms: [a.o.swingRoom!],
           at: a.s!.hinge,
         });
@@ -382,6 +404,7 @@ function levelRules(
         rule: "fixture.clearance",
         severity: "warning",
         message: `only ${gap} m between ${a.fixture.name} and ${b.fixture.name} in ${nameOf(a.fixture.in)}; leave ≥ ${minClearance} m to walk through`,
+        path: pathTo(a.fixture, "poly", "at"),
         at: [snap((a.bbox.x1 + b.bbox.x0) / 2), snap((a.bbox.y0 + b.bbox.y1) / 2)],
         rooms: [a.fixture.in],
         ...occupantRef(a.fixture),
@@ -409,9 +432,10 @@ function levelRules(
         rule: "door.swing_hits_fixture",
         severity: "warning",
         message: `door #${o.spec.index} swings into ${fm.fixture.name} in ${nameOf(fm.fixture.in)}; rehang it or move the fixture`,
+        path: pathTo(o.spec, "hinge"),
         at: swing.hinge,
         rooms: [fm.fixture.in],
-        opening: o.spec.index,
+        opening: o.spec.id,
         ...occupantRef(fm.fixture),
       });
     }
@@ -445,6 +469,8 @@ function verticalRules(
       rule: "level.unreachable",
       severity: "error",
       message: `${level.name} has no stair, lift or ramp: nothing arrives on it`,
+      // the element that is missing would be written here, at the document root
+      path: "vertical",
     });
   }
 
@@ -456,6 +482,7 @@ function verticalRules(
         rule: "stair.no_arrival",
         severity: "error",
         message: `${v.name} ${plan.levelled ? `stands on ${byLevel.get(only.level)?.level.name ?? only.level} and ` : ""}goes nowhere; a vertical element needs a footprint on each of the levels it joins`,
+        path: `${v.path}.at`,
         at: centre(only.poly),
         vertical: v.id,
       });
@@ -471,6 +498,7 @@ function verticalRules(
           rule: "stair.no_arrival",
           severity: "error",
           message: `${v.name} is not fully inside ${at.in} on ${lm.level.name}; that is the space you are meant to step off it into`,
+          path: at.path,
           at: centre(at.poly),
           rooms: [at.in],
           vertical: v.id,
@@ -491,6 +519,7 @@ function verticalRules(
           over === 0
             ? `${v.name} does not sit over itself: its footprints on ${name(byLevel, a.level)} and ${name(byLevel, b.level)} do not overlap at all`
             : `${v.name} overlaps itself by only ${snap(over)} m² between ${name(byLevel, a.level)} and ${name(byLevel, b.level)}; a shaft that steps sideways needs a landing`,
+        path: b.path,
         at: centre(b.poly),
         vertical: v.id,
       });
@@ -516,6 +545,7 @@ function verticalRules(
           rule: "stair.pitch",
           severity: "info",
           message: `${v.name}: ${snap(Math.round(pitch * 10) / 10)}° pitch — ${v.risers} risers of ${snap(Math.round(rise * 1000) / 1000)} m over a ${snap(length)} m flight gives a ${snap(Math.round(going * 1000) / 1000)} m going; ${stair.min}–${stair.max}° and a going of ${stair.going} m upwards is the comfortable range`,
+          path: pathTo(v, "risers"),
           at: centre(lower.poly),
           vertical: v.id,
         });
@@ -532,6 +562,8 @@ function verticalRules(
           rule: "stair.headroom",
           severity: "info",
           message: `${v.name} passes under the ${upper.level === lower.level ? "slab" : name(byLevel, upper.level) + " slab"} with ${snap(Math.round(Math.max(0, headroom) * 100) / 100)} m of headroom: the floor above stays closed for ${snap(dOpen)} m of the flight; open it sooner, or declare a void, to keep ${stair.headroom} m`,
+          // the fix is a void on the level above, which is where the flight breaks through
+          path: inLevel(above.level, "voids"),
           at: centre(lower.poly),
           vertical: v.id,
         });
@@ -553,6 +585,7 @@ function verticalRules(
         rule: "structure.over_open_sky",
         severity: "warning",
         message: `${m.room.name} has ${snap(un.area)} m² standing over no room on ${lower.level.name}; a cantilever is real, but so is a room that has lost its support`,
+        path: m.room.path,
         at: un.at,
         rooms: [m.room.id],
       });

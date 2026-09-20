@@ -16,9 +16,10 @@ import type {
   RoomModel,
   Side,
   Vertical,
+  WallCandidate,
   WallSegment,
 } from "./types.ts";
-import { EXTERIOR, GAP, isOpenSky, isVoid, outdoorOwner, ownerId, ownerKey, roomOwner, sameOwner, voidOwner } from "./types.ts";
+import { EXTERIOR, GAP, inLevel, isOpenSky, isVoid, outdoorOwner, ownerId, ownerKey, pathTo, roomOwner, sameOwner, voidOwner } from "./types.ts";
 
 const MM = 0.001;
 const CORNER_SLIVER = 0.1;
@@ -68,10 +69,15 @@ export function derive(plan: Plan): Analysis {
 function syntheticFixtures(vertical: Vertical[], level: Level): Fixture[] {
   const out: Fixture[] = [];
   for (const v of vertical) {
-    for (const at of v.at) {
-      if (at.level !== level.id) continue;
+    v.at.forEach((at, j) => {
+      if (at.level !== level.id) return;
       out.push({
         index: -1,
+        // ":" keeps this out of the authored-fixture id namespace, exactly as a
+        // synthesised opening id is kept out of the authored one
+        id: `vertical:${v.id}`,
+        path: `${v.path}.at[${j}]`,
+        authored: [],
         type: v.type === "stairs" ? "stairs" : "other",
         name: v.name,
         in: at.in,
@@ -79,7 +85,7 @@ function syntheticFixtures(vertical: Vertical[], level: Level): Fixture[] {
         depth: undefined,
         vertical: v.id,
       });
-    }
+    });
   }
   return out;
 }
@@ -130,6 +136,9 @@ function buildingOf(plan: Plan, models: LevelModel[]): Model["building"] {
 function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model: LevelModel; findings: Finding[] } {
   const findings: Finding[] = [];
   const rooms = level.rooms;
+  // Document paths come from the parser, which recorded where it read each entity — never
+  // from a template built here (docs/gaps-design.md §2.5).
+  const byRoomId = new Map(rooms.map((r) => [r.id, r]));
 
   // ---- arrangement grid from every distinct x / y ----
   const xset = new Set<number>();
@@ -210,6 +219,8 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
       rule: "tiling.overlap",
       severity: "error",
       message: `rooms ${rooms.join(", ")} overlap over ${region.area} m² from (${region.x0}, ${region.y0}) to (${region.x1}, ${region.y1})`,
+      // a relation between several rooms: the path names the first, the rest are in `rooms`
+      path: byRoomId.get(rooms[0]!)?.path ?? inLevel(level, "rooms"),
       at: region.at,
       rooms,
     });
@@ -220,6 +231,8 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
       rule: "tiling.gap",
       severity: "error",
       message: `no room covers a ${region.area} m² area from (${region.x0}, ${region.y0}) to (${region.x1}, ${region.y1}); the plan has a hole`,
+      // an absence has no entity to name, so it names the collection a fix would add to
+      path: inLevel(level, "rooms"),
       at: region.at,
     });
   }
@@ -280,6 +293,7 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
         rule: "outdoor.overlap",
         severity: "error",
         message: `${o.name} is open sky but ${r.name} is built over it`,
+        path: pathTo(r, "poly", "rect"),
         at: [snap((b.x0 + b.x1) / 2), snap((b.y0 + b.y1) / 2)],
         rooms: [r.id],
       });
@@ -312,9 +326,10 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
         rule: "fixture.outside_space",
         severity: "error",
         message: `${fm.fixture.name} (fixture #${fm.fixture.index}) is not fully inside ${fm.fixture.in}`,
+        path: pathTo(fm.fixture, "poly", "at"),
         at: [snap((fm.bbox.x0 + fm.bbox.x1) / 2), snap((fm.bbox.y0 + fm.bbox.y1) / 2)],
         rooms: [fm.fixture.in],
-        fixture: fm.fixture.index,
+        fixture: fm.fixture.id,
       });
     }
   }
@@ -328,6 +343,7 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
         rule: "fixture.overlap",
         severity: "error",
         message: `${a.fixture.name} and ${b.fixture.name} overlap in ${a.fixture.in}`,
+        path: pathTo(a.fixture, "poly", "at"),
         at: [snap((a.bbox.x0 + a.bbox.x1) / 2), snap((a.bbox.y0 + a.bbox.y1) / 2)],
         rooms: [a.fixture.in],
         ...occupantRef(a.fixture),
@@ -439,8 +455,9 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
           rule: "opening.collision",
           severity: "error",
           message: `openings #${a.spec.index} and #${b.spec.index} overlap on the wall between ${label(a.wall.neg)} and ${label(a.wall.pos)}`,
+          path: pathTo(b.spec, "at", "position"),
           at: b.center,
-          opening: b.spec.index,
+          opening: b.spec.id,
         });
       }
     }
@@ -452,8 +469,9 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
           rule: "window.not_exterior",
           severity: "error",
           message: `window #${o.spec.index} sits on the interior wall between ${label(o.wall.neg)} and ${label(o.wall.pos)}`,
+          path: `${o.spec.path}.between`,
           at: o.center,
-          opening: o.spec.index,
+          opening: o.spec.id,
         });
       } else {
         // the wall is exterior, so exactly one side is open sky; the other is the room
@@ -528,8 +546,8 @@ export const label = (o: Owner): string =>
  * into the document's `fixtures`; a vertical element's synthetic footprint has no such
  * index, so it names the element instead.
  */
-export const occupantRef = (f: Fixture): { fixture: number } | { vertical: string } =>
-  f.vertical === undefined ? { fixture: f.index } : { vertical: f.vertical };
+export const occupantRef = (f: Fixture): { fixture: string } | { vertical: string } =>
+  f.vertical === undefined ? { fixture: f.id } : { vertical: f.vertical };
 
 /**
  * Does the id an opening's `between` names refer to this owner? The literal "exterior" is
@@ -633,9 +651,24 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
   let cands = walls.filter(
     (w) => (refMatches(a, w.neg) && refMatches(b, w.pos)) || (refMatches(b, w.neg) && refMatches(a, w.pos)),
   );
-  const fail = (rule: string, message: string) => {
-    findings.push({ rule, severity: "error", message, opening: spec.index, rooms: spec.between.filter((s) => s !== "exterior") });
+  const fail = (rule: string, message: string, extra: Partial<Finding> = {}) => {
+    findings.push({
+      rule,
+      severity: "error",
+      message,
+      path: spec.path,
+      opening: spec.id,
+      rooms: spec.between.filter((s) => s !== "exterior"),
+      ...extra,
+    });
     return undefined;
+  };
+  /** the same wall the message describes, structured, so a fix needs no prose parsing */
+  const candidate = (w: WallSegment, roomRef?: string): WallCandidate => {
+    const c: WallCandidate = { wall: w.id, from: pointOn(w, w.from), to: pointOn(w, w.to) };
+    // `side` is only meaningful relative to a room; `at` names a point, not a room
+    if (roomRef !== undefined) c.side = sideOf(w, roomRef);
+    return c;
   };
   if (cands.length === 0) {
     const neighbours = (id: string) =>
@@ -647,7 +680,9 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
         ),
       ].join(", ");
     const hint = a === "exterior" ? `${b} touches: ${neighbours(b)}` : b === "exterior" ? `${a} touches: ${neighbours(a)}` : `${a} touches: ${neighbours(a)}; ${b} touches: ${neighbours(b)}`;
-    return fail("wall.unresolved", `opening #${spec.index} (${spec.type}): ${refLabel(a)} and ${refLabel(b)} share no wall. ${hint}`);
+    return fail("wall.unresolved", `opening #${spec.index} (${spec.type}): ${refLabel(a)} and ${refLabel(b)} share no wall. ${hint}`, {
+      path: `${spec.path}.between`,
+    });
   }
   let centre: number;
   if (spec.at) {
@@ -664,6 +699,7 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
       return fail(
         "wall.ambiguous",
         `opening #${spec.index}: point (${at[0]}, ${at[1]}) is equidistant from ${nearest.length} wall segments (${desc}); move it, or use "on" instead of "at" to disambiguate`,
+        { path: `${spec.path}.at`, candidates: nearest.map((x) => candidate(x.w)) },
       );
     }
     const nearWall = nearest[0]!.w;
@@ -673,6 +709,7 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
       return fail(
         "opening.off_wall",
         `opening #${spec.index}: point (${at[0]}, ${at[1]}) is ${snap(minD)} m from the nearest wall (${describe(nearWall)}), farther than half its thickness plus tolerance (${snap(limit)} m)`,
+        { path: `${spec.path}.at`, nearest: nearWall.id, distance: snap(minD) },
       );
     }
     cands = [nearWall];
@@ -682,7 +719,10 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
     if (spec.on) {
       const { room, side, near } = spec.on;
       if (side) cands = cands.filter((w) => sideOf(w, room) === side);
-      if (cands.length === 0) return fail("wall.unresolved", `opening #${spec.index}: ${room} has no wall to ${refLabel(a === room ? b : a)} on its ${side} side`);
+      if (cands.length === 0)
+        return fail("wall.unresolved", `opening #${spec.index}: ${room} has no wall to ${refLabel(a === room ? b : a)} on its ${side} side`, {
+          path: `${spec.path}.on`,
+        });
       if (near && cands.length > 1) {
         cands.sort((w1, w2) => distToWall(near, w1) - distToWall(near, w2));
         cands = [cands[0]!];
@@ -694,6 +734,7 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
       return fail(
         "wall.ambiguous",
         `opening #${spec.index}: ${refLabel(a)} and ${refLabel(b)} share ${cands.length} wall segments (${desc}); add "on": { "room": "${roomRef}", "side": … } or "near": [x, y]`,
+        { path: pathTo(spec, "on"), candidates: cands.map((w) => candidate(w, roomRef)) },
       );
     }
     const wall = cands[0]!;
@@ -713,8 +754,9 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
       rule: "opening.overflow",
       severity: "error",
       message: `opening #${spec.index} (${spec.type}, ${spec.width} m) does not fit the ${snap(wall.to - wall.from)} m wall between ${label(wall.neg)} and ${label(wall.pos)} at that position`,
+      path: pathTo(spec, "width"),
       at: pointOn(wall, centre),
-      opening: spec.index,
+      opening: spec.id,
     });
   } else {
     for (const gap of [from - wall.from, wall.to - to]) {
@@ -723,8 +765,9 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
           rule: "opening.near_corner",
           severity: "warning",
           message: `opening #${spec.index} leaves a ${snap(gap)} m sliver of wall at a corner; move it to the corner or leave ≥ ${CORNER_SLIVER} m`,
+          path: pathTo(spec, "at", "position"),
           at: pointOn(wall, centre),
-          opening: spec.index,
+          opening: spec.id,
         });
         break;
       }
