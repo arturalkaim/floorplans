@@ -87,6 +87,59 @@ describe("derive: tiling", () => {
     assert.ok(f);
     assert.deepEqual(f.rooms, ["a", "b"]);
   });
+  it("merges a multi-cell overlap into one finding naming every room in it", () => {
+    // a and b overlap over x 3..4; a third room far away injects y = 1 and y = 2 into
+    // the arrangement grid, splitting that overlap into three stacked cells
+    const { findings } = analyze({
+      rooms: { a: { poly: rect(0, 0, 4, 3) }, b: { poly: rect(3, 0, 3, 3) }, m: { poly: rect(10, 1, 1, 1) } },
+    });
+    const overlaps = findings.filter((f) => f.rule === "tiling.overlap");
+    assert.equal(overlaps.length, 1, `expected one tiling.overlap, got ${overlaps.length}`);
+    assert.deepEqual(overlaps[0]!.rooms, ["a", "b"]);
+    assert.deepEqual(overlaps[0]!.at, [3.5, 1.5]);
+    assert.match(overlaps[0]!.message, /3 m²/);
+  });
+  it("merges a multi-cell hole into one finding with its bbox, area and centroid", () => {
+    // the void from x 1..3, y 1..3 is a single 2 x 2 m hole, but two of its own
+    // enclosing rooms are split (n1/n2 at x = 2, w1/w2 at y = 2), so the arrangement
+    // grid cuts it into four cells
+    const { findings } = analyze({
+      rooms: {
+        n1: { poly: rect(0, 0, 2, 1) },
+        n2: { poly: rect(2, 0, 2, 1) },
+        s: { poly: rect(0, 3, 4, 1) },
+        w1: { poly: rect(0, 1, 1, 1) },
+        w2: { poly: rect(0, 2, 1, 1) },
+        e: { poly: rect(3, 1, 1, 2) },
+      },
+    });
+    const gaps = findings.filter((f) => f.rule === "tiling.gap");
+    assert.equal(gaps.length, 1, `expected one tiling.gap, got ${gaps.length}`);
+    assert.deepEqual(gaps[0]!.at, [2, 2]);
+    assert.match(gaps[0]!.message, /4 m²/);
+    assert.match(gaps[0]!.message, /\(1, 1\)/);
+    assert.match(gaps[0]!.message, /\(3, 3\)/);
+  });
+  it("keeps two separate holes as two findings", () => {
+    const { findings } = analyze({
+      rooms: {
+        n1: { poly: rect(0, 0, 3, 1) },
+        s1: { poly: rect(0, 2, 3, 1) },
+        w1: { poly: rect(0, 1, 1, 1) },
+        e1: { poly: rect(2, 1, 1, 1) },
+        n2: { poly: rect(3, 0, 3, 1) },
+        s2: { poly: rect(3, 2, 3, 1) },
+        w2: { poly: rect(3, 1, 1, 1) },
+        e2: { poly: rect(5, 1, 1, 1) },
+      },
+    });
+    const gaps = findings.filter((f) => f.rule === "tiling.gap");
+    assert.equal(gaps.length, 2, `expected two separate tiling.gap findings, got ${gaps.length}`);
+    assert.deepEqual(
+      gaps.map((f) => f.at).sort((x, y) => x![0]! - y![0]!),
+      [[1.5, 1.5], [4.5, 1.5]],
+    );
+  });
   it("a concave envelope (L-shaped house) has no gap", () => {
     const { findings } = analyze({ rooms: { a: { poly: rect(0, 0, 6, 3) }, b: { poly: rect(0, 3, 3, 3) } } });
     assert.equal(findings.length, 0);

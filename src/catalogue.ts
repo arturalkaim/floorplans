@@ -14,8 +14,8 @@ export interface RuleDoc {
 
 export const RULES: readonly RuleDoc[] = [
   // geometry and topology, produced by derive()
-  { id: "tiling.gap", severity: "error", catches: "a hole in the plan: somewhere inside the footprint no room covers the floor" },
-  { id: "tiling.overlap", severity: "error", catches: "two rooms claim the same area" },
+  { id: "tiling.gap", severity: "error", catches: "a hole in the plan: somewhere inside the footprint no room covers the floor (one finding per contiguous hole, however many cells it spans)" },
+  { id: "tiling.overlap", severity: "error", catches: "two or more rooms claim the same area (one finding per contiguous overlap, however many cells it spans)" },
   { id: "wall.unresolved", severity: "error", catches: "an opening names two spaces that share no wall" },
   { id: "wall.ambiguous", severity: "error", catches: "the two spaces share several walls; say which with `on`" },
   { id: "opening.overflow", severity: "error", catches: "the opening is wider than the wall it sits on, at that position" },

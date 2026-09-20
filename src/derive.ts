@@ -89,28 +89,29 @@ export function derive(plan: Plan): Analysis {
     if (o.length >= 1) return o[0]!;
     return outside[i]![j] ? "exterior" : "gap";
   };
-  const cellCentre = (i: number, j: number): Pt => [snap((xs[i]! + xs[i + 1]!) / 2), snap((ys[j]! + ys[j + 1]!) / 2)];
-
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rowsN; j++) {
-      const o = ownersOf[i]![j]!;
-      if (o.length > 1) {
-        findings.push({
-          rule: "tiling.overlap",
-          severity: "error",
-          message: `rooms ${o.join(", ")} overlap around (${cellCentre(i, j).join(", ")})`,
-          at: cellCentre(i, j),
-          rooms: o,
-        });
-      } else if (o.length === 0 && !outside[i]![j]) {
-        findings.push({
-          rule: "tiling.gap",
-          severity: "error",
-          message: `no room covers the area around (${cellCentre(i, j).join(", ")}); the plan has a hole`,
-          at: cellCentre(i, j),
-        });
-      }
-    }
+  // A gap or an overlap is a region, not a cell: flood-fill 4-connected cells of the same
+  // kind into one component and report it once, with the component's bbox, area and
+  // area-weighted centroid. Reporting per cell instead makes one hole or one overlap look
+  // like several findings, once per arrangement-grid cell it happens to span.
+  for (const cells of tilingComponents((i, j) => ownersOf[i]![j]!.length > 1, cols, rowsN)) {
+    const region = cellRegion(cells, xs, ys);
+    const rooms = [...new Set(cells.flatMap(([i, j]) => ownersOf[i]![j]!))];
+    findings.push({
+      rule: "tiling.overlap",
+      severity: "error",
+      message: `rooms ${rooms.join(", ")} overlap over ${region.area} m² from (${region.x0}, ${region.y0}) to (${region.x1}, ${region.y1})`,
+      at: region.at,
+      rooms,
+    });
+  }
+  for (const cells of tilingComponents((i, j) => ownersOf[i]![j]!.length === 0 && !outside[i]![j]!, cols, rowsN)) {
+    const region = cellRegion(cells, xs, ys);
+    findings.push({
+      rule: "tiling.gap",
+      severity: "error",
+      message: `no room covers a ${region.area} m² area from (${region.x0}, ${region.y0}) to (${region.x1}, ${region.y1}); the plan has a hole`,
+      at: region.at,
+    });
   }
 
   // ---- wall pieces between cells with different owners ----
@@ -371,6 +372,59 @@ export function derive(plan: Plan): Analysis {
 
 const isVoid = (o: Owner) => o === "exterior" || o === "gap";
 export const label = (o: Owner): string => (o === "exterior" ? "the exterior" : o === "gap" ? "a gap" : o);
+
+/** 4-connected components of arrangement-grid cells matching `mask`, as lists of [i, j]. */
+function tilingComponents(mask: (i: number, j: number) => boolean, cols: number, rowsN: number): Array<Array<[number, number]>> {
+  const seen: boolean[][] = Array.from({ length: cols }, () => new Array<boolean>(rowsN).fill(false));
+  const groups: Array<Array<[number, number]>> = [];
+  for (let i0 = 0; i0 < cols; i0++) {
+    for (let j0 = 0; j0 < rowsN; j0++) {
+      if (!mask(i0, j0) || seen[i0]![j0]) continue;
+      const cells: Array<[number, number]> = [];
+      const stack: Array<[number, number]> = [[i0, j0]];
+      seen[i0]![j0] = true;
+      while (stack.length) {
+        const [i, j] = stack.pop()!;
+        cells.push([i, j]);
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const ni = i + di;
+          const nj = j + dj;
+          if (ni < 0 || nj < 0 || ni >= cols || nj >= rowsN || seen[ni]![nj] || !mask(ni, nj)) continue;
+          seen[ni]![nj] = true;
+          stack.push([ni, nj]);
+        }
+      }
+      groups.push(cells);
+    }
+  }
+  return groups;
+}
+
+/** bbox, area and area-weighted centroid of a set of arrangement-grid cells, in metres. */
+function cellRegion(cells: Array<[number, number]>, xs: number[], ys: number[]) {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  let area = 0;
+  let cx = 0;
+  let cy = 0;
+  for (const [i, j] of cells) {
+    const cx0 = xs[i]!;
+    const cx1 = xs[i + 1]!;
+    const cy0 = ys[j]!;
+    const cy1 = ys[j + 1]!;
+    x0 = Math.min(x0, cx0);
+    y0 = Math.min(y0, cy0);
+    x1 = Math.max(x1, cx1);
+    y1 = Math.max(y1, cy1);
+    const a = (cx1 - cx0) * (cy1 - cy0);
+    area += a;
+    cx += a * ((cx0 + cx1) / 2);
+    cy += a * ((cy0 + cy1) / 2);
+  }
+  return { x0: snap(x0), y0: snap(y0), x1: snap(x1), y1: snap(y1), area: snap(area), at: [snap(cx / area), snap(cy / area)] as Pt };
+}
 
 /**
  * Area after deducting half of every bounding wall's thickness:
