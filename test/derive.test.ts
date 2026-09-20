@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { derive } from "../src/derive.ts";
 import { doorSwing } from "../src/doors.ts";
 import { parse } from "../src/parse.ts";
+import { ownerId } from "../src/types.ts";
 import { has, rect, rulesOf, twoRooms } from "./helpers.ts";
 
 const analyze = (input: unknown) => derive(parse(input));
@@ -14,7 +15,10 @@ describe("derive: walls", () => {
     // a: 0..4×0..3, b: 4..7×0..3 → 1 shared vertical + 6 exterior runs (top a, top b, bottom a, bottom b, west a, east b)
     const shared = model.walls.filter((w) => w.kind === "partition");
     assert.equal(shared.length, 1);
-    assert.deepEqual({ axis: shared[0]!.axis, c: shared[0]!.c, from: shared[0]!.from, to: shared[0]!.to, neg: shared[0]!.neg, pos: shared[0]!.pos }, { axis: "v", c: 4, from: 0, to: 3.4, neg: "a", pos: "b" });
+    assert.deepEqual(
+      { axis: shared[0]!.axis, c: shared[0]!.c, from: shared[0]!.from, to: shared[0]!.to, neg: shared[0]!.neg, pos: shared[0]!.pos },
+      { axis: "v", c: 4, from: 0, to: 3.4, neg: { kind: "room", id: "a" }, pos: { kind: "room", id: "b" } },
+    );
     assert.equal(model.walls.filter((w) => w.kind === "exterior").length, 6);
     assert.equal(shared[0]!.thickness, 0.12);
     assert.equal(model.walls.find((w) => w.kind === "exterior")!.thickness, 0.3);
@@ -29,8 +33,8 @@ describe("derive: walls", () => {
         r3: { poly: rect(1, 3, 2, 1) },
       },
     });
-    const east = model.walls.filter((w) => w.axis === "v" && w.c === 1 && w.neg === "hall");
-    assert.deepEqual(east.map((w) => [w.pos, w.from, w.to]), [["r1", 0, 1], ["r2", 1, 3], ["r3", 3, 4]]);
+    const east = model.walls.filter((w) => w.axis === "v" && w.c === 1 && ownerId(w.neg) === "hall");
+    assert.deepEqual(east.map((w) => [ownerId(w.pos), w.from, w.to]), [["r1", 0, 1], ["r2", 1, 3], ["r3", 3, 4]]);
   });
   it("merges collinear pieces across T-junction vertices", () => {
     // room a spans 0..6; rooms b and c below it split at x=3 → a's north wall is one exterior segment
@@ -56,9 +60,10 @@ describe("derive: tiling", () => {
     };
     const { model, findings } = analyze(courtyard);
     assert.ok(!has(findings, "tiling.gap"), "a declared courtyard is not a hole");
-    assert.equal(model.walls.filter((w) => w.neg === "gap" || w.pos === "gap").length, 0);
+    assert.equal(model.walls.filter((w) => w.neg.kind === "gap" || w.pos.kind === "gap").length, 0);
     // the four walls around the courtyard are exterior walls, at exterior thickness
-    const facing = model.walls.filter((w) => w.neg === "exterior" || w.pos === "exterior");
+    const facing = model.walls.filter((w) => ownerId(w.neg) === "patio" || ownerId(w.pos) === "patio");
+    assert.equal(facing.length, 4);
     assert.ok(facing.every((w) => w.kind === "exterior"));
     const south = model.walls.find((w) => w.axis === "h" && w.c === 1 && w.from === 1 && w.to === 2)!;
     assert.equal(south.kind, "exterior");
@@ -77,7 +82,7 @@ describe("derive: tiling", () => {
     assert.ok(has(findings, "tiling.gap"));
     assert.deepEqual(findings.find((f) => f.rule === "tiling.gap")!.at, [1.5, 1.5]);
     // walls facing the hole are partitions against "gap", not exterior
-    const gapWalls = model.walls.filter((w) => w.neg === "gap" || w.pos === "gap");
+    const gapWalls = model.walls.filter((w) => w.neg.kind === "gap" || w.pos.kind === "gap");
     assert.equal(gapWalls.length, 4);
     assert.ok(gapWalls.every((w) => w.kind === "partition"));
   });
@@ -265,8 +270,8 @@ describe("derive: openings", () => {
   });
   it("builds the access graph from doors and cased openings only", () => {
     const { model } = analyze(twoRooms());
-    assert.deepEqual([...model.access.get("a")!].sort(), ["b", "exterior"]);
-    assert.deepEqual([...model.access.get("b")!], ["a"]);
+    assert.deepEqual([...model.access.get("room:a")!].sort(), ["exterior", "room:b"]);
+    assert.deepEqual([...model.access.get("room:b")!], ["room:a"]);
   });
 });
 

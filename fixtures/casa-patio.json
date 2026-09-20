@@ -24,13 +24,13 @@
   "openings": [
     { "type": "door", "between": ["exterior", "hall"], "on": { "room": "hall", "side": "west" },
       "width": 1.0, "swingInto": "hall", "entrance": true },
-    { "type": "door", "between": ["exterior", "hall"], "on": { "room": "hall", "side": "north", "near": [5.6, 7.4] },
+    { "type": "door", "between": ["patio", "hall"], "on": { "room": "hall", "side": "north", "near": [5.6, 7.4] },
       "width": 1.0, "swingInto": "hall" },
     { "type": "door", "between": ["hall", "sala"], "width": 1.0, "swingInto": "sala" },
     { "type": "door", "between": ["hall", "cozinha"], "width": 0.9, "swingInto": "cozinha" },
     { "type": "door", "between": ["hall", "quarto"], "width": 0.9, "swingInto": "quarto" },
     { "type": "door", "between": ["hall", "wc"], "width": 0.8, "swingInto": "wc" },
-    { "type": "window", "between": ["exterior", "sala"],    "on": { "room": "sala",    "side": "east", "near": [3.6, 5.4] }, "width": 2.0 },
+    { "type": "window", "between": ["patio", "sala"],       "on": { "room": "sala",    "side": "east", "near": [3.6, 5.4] }, "width": 2.0 },
     { "type": "window", "between": ["exterior", "cozinha"], "on": { "room": "cozinha", "side": "east" }, "width": 1.6 },
     { "type": "window", "between": ["exterior", "quarto"],  "on": { "room": "quarto",  "side": "south" }, "width": 1.8 },
     { "type": "window", "between": ["exterior", "wc"],      "on": { "room": "wc",      "side": "south" }, "width": 0.6 }

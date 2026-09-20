@@ -54,7 +54,7 @@ describe("rules: light", () => {
     assert.match(w.find((x) => x.rooms![0] === "b")!.message, /north\/south\/east|exterior wall/);
   });
   it("a window onto a courtyard counts as daylight", () => {
-    const plan = (outdoor: Record<string, unknown> | undefined) => ({
+    const plan = (outdoor: Record<string, unknown> | undefined, bedWindow = "exterior") => ({
       walls: { exterior: 0.3, partition: 0.12 },
       rooms: {
         hall: { kind: "hall", poly: rect(0, 0, 3, 1) },
@@ -69,12 +69,12 @@ describe("rules: light", () => {
         { type: "door", between: ["hall", "kit"], width: 0.8 },
         { type: "door", between: ["kit", "liv"], width: 0.8 },
         // bed's ONLY window faces the courtyard
-        { type: "window", between: ["exterior", "bed"], on: { room: "bed", side: "east" }, width: 0.6 },
+        { type: "window", between: [bedWindow, "bed"], on: { room: "bed", side: "east" }, width: 0.6 },
         { type: "window", between: ["exterior", "kit"], on: { room: "kit", side: "east" }, width: 0.6 },
         { type: "window", between: ["exterior", "liv"], on: { room: "liv", side: "south" }, width: 1.2 },
       ],
     });
-    const withPatio = run(plan({ patio: { poly: rect(1, 1, 1, 1) } }));
+    const withPatio = run(plan({ patio: { poly: rect(1, 1, 1, 1) } }, "patio"));
     assert.ok(!has(withPatio, "habitable.no_window"), "courtyard window lights the bedroom");
     assert.ok(!has(withPatio, "window.not_exterior"));
     assert.ok(!has(withPatio, "tiling.gap"));

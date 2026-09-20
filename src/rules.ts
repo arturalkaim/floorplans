@@ -1,6 +1,7 @@
 import { doorSwing } from "./doors.ts";
 import { boxGap, snap } from "./geometry.ts";
-import type { Finding, Model, ResolvedOpening, RoomKind } from "./types.ts";
+import type { Finding, Model, Owner, ResolvedOpening, RoomKind } from "./types.ts";
+import { EXTERIOR, isOpenSky, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
 
 export interface RuleOptions {
   /** share of interior area above which circulation is flagged (default 0.10) */
@@ -36,9 +37,14 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
   const rooms = model.rooms;
   const byId = new Map(rooms.map((m) => [m.room.id, m]));
   const kindOf = (id: string): RoomKind | undefined => byId.get(id)?.room.kind;
-  const nameOf = (id: string) => byId.get(id)?.room.name ?? id;
+  const outdoorName = new Map(model.plan.outdoor.map((o) => [o.id, o.name]));
+  const nameOf = (id: string) => byId.get(id)?.room.name ?? outdoorName.get(id) ?? id;
+  /** how one side of a wall reads in a message */
+  const sideName = (o: Owner): string => {
+    const id = ownerId(o);
+    return id !== undefined ? nameOf(id) : o.kind === "overlap" ? o.ids.join(" + ") : o.kind;
+  };
   const doors = model.openings.filter((o) => o.spec.type === "door");
-  const otherSide = (o: ResolvedOpening, id: string) => (o.wall.neg === id ? o.wall.pos : o.wall.neg);
 
   // ---- entrance ----
   const exteriorDoors = doors.filter((o) => o.wall.kind === "exterior");
@@ -49,7 +55,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     // say something true about what the plan already declares: telling an author to mark
     // the main entrance when they have marked it is advice they have to stop and check
     const marked = exteriorDoors.filter((o) => o.spec.entrance);
-    const where = (o: ResolvedOpening) => nameOf(otherSide(o, "exterior"));
+    const where = (o: ResolvedOpening) => sideName(isOpenSky(o.wall.neg) ? o.wall.pos : o.wall.neg);
     const all = exteriorDoors.map(where).join(", ");
     const tail =
       marked.length === 0
@@ -67,7 +73,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
   // ---- access & reachability ----
   const noAccess = new Set<string>();
   for (const m of rooms) {
-    if ((model.access.get(m.room.id)?.size ?? 0) === 0) {
+    if ((model.access.get(ownerKey(roomOwner(m.room.id)))?.size ?? 0) === 0) {
       noAccess.add(m.room.id);
       f.push({
         rule: "space.no_access",
@@ -79,14 +85,18 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     }
   }
   if (hasEntrance) {
-    const seen = new Set<string>(["exterior"]);
-    const queue = ["exterior"];
+    // outdoor spaces are nodes of their own now, so the walk starts from every one of
+    // them as well as from the street; which of them the street actually reaches is the
+    // next commit's business
+    const start = [ownerKey(EXTERIOR), ...model.plan.outdoor.map((o) => ownerKey(outdoorOwner(o.id)))];
+    const seen = new Set<string>(start);
+    const queue = [...start];
     while (queue.length) {
       const cur = queue.shift()!;
       for (const n of model.access.get(cur) ?? []) if (!seen.has(n)) (seen.add(n), queue.push(n));
     }
     for (const m of rooms) {
-      if (!seen.has(m.room.id) && !noAccess.has(m.room.id)) {
+      if (!seen.has(ownerKey(roomOwner(m.room.id))) && !noAccess.has(m.room.id)) {
         f.push({
           rule: "reach.unreachable",
           severity: "error",
@@ -122,7 +132,10 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
 
   // ---- adjacency semantics ----
   for (const o of doors) {
-    const [a, b] = [o.wall.neg, o.wall.pos];
+    // these all say something about two rooms; a door onto sky is not a route between them
+    const a = o.wall.neg.kind === "room" ? o.wall.neg.id : undefined;
+    const b = o.wall.pos.kind === "room" ? o.wall.pos.id : undefined;
+    if (a === undefined || b === undefined) continue;
     const ka = kindOf(a);
     const kb = kindOf(b);
     const wetToKitchen = (byId.get(a)?.room.wet && kb === "kitchen") || (byId.get(b)?.room.wet && ka === "kitchen");
@@ -181,7 +194,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
       f.push({
         rule: "door.min_width",
         severity: "warning",
-        message: `door #${o.spec.index} (${o.spec.width} m) between ${nameOf(o.wall.neg)} and ${nameOf(o.wall.pos)} is narrower than ${min} m`,
+        message: `door #${o.spec.index} (${o.spec.width} m) between ${sideName(o.wall.neg)} and ${sideName(o.wall.pos)} is narrower than ${min} m`,
         at: o.center,
         opening: o.spec.index,
       });
@@ -215,8 +228,8 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
         f.push({
           rule: "door.swing_collision",
           severity: "info",
-          message: `doors #${a.o.spec.index} and #${b.o.spec.index} swing into the same corner of ${nameOf(a.o.swingRoom as string)}`,
-          rooms: [a.o.swingRoom as string],
+          message: `doors #${a.o.spec.index} and #${b.o.spec.index} swing into the same corner of ${nameOf(a.o.swingRoom!)}`,
+          rooms: [a.o.swingRoom!],
           at: a.s!.hinge,
         });
       }

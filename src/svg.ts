@@ -1,6 +1,7 @@
 import { doorSwing } from "./doors.ts";
 import { snap } from "./geometry.ts";
-import type { Finding, Model, Pt, ResolvedOpening, WallSegment } from "./types.ts";
+import type { Finding, Model, Owner, Pt, ResolvedOpening, WallSegment } from "./types.ts";
+import { isStreet } from "./types.ts";
 
 export interface RenderOptions {
   /** pixels per metre (default 40) */
@@ -185,6 +186,10 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   }
 
   // ---- openings ----
+  const street = (o: Owner) => isStreet(o, model.streetOutdoor);
+  const streetDoors = model.openings.filter(
+    (d) => d.spec.type === "door" && (street(d.wall.neg) || street(d.wall.pos)),
+  ).length;
   for (const o of model.openings) {
     const w = o.wall;
     const t = L(w.thickness);
@@ -204,9 +209,12 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
       const r = L(o.to - o.from);
       body += `<g class="door"><path d="M${px(X(s.closed[0]))} ${px(Y(s.closed[1]))} A${px(r)} ${px(r)} 0 0 ${s.sweep} ${px(X(s.open[0]))} ${px(Y(s.open[1]))}" fill="none" stroke="var(--muted)" stroke-width="1"/>`;
       body += `<line x1="${px(X(s.hinge[0]))}" y1="${px(Y(s.hinge[1]))}" x2="${px(X(s.open[0]))}" y2="${px(Y(s.open[1]))}" stroke="var(--wall)" stroke-width="2"/></g>`;
-      if (o.spec.entrance || (w.kind === "exterior" && model.openings.filter((d) => d.spec.type === "door" && d.wall.kind === "exterior").length === 1)) {
+      // only a door to the street is an entrance: one onto an enclosed courtyard is an
+      // exterior door that leads nowhere, so it gets no tag
+      const toStreet = street(w.neg) || street(w.pos);
+      if (toStreet && (o.spec.entrance || streetDoors === 1)) {
         const c = o.center;
-        const out: Pt = w.axis === "h" ? [0, w.neg === "exterior" ? -1 : 1] : [w.neg === "exterior" ? -1 : 1, 0];
+        const out: Pt = w.axis === "h" ? [0, street(w.neg) ? -1 : 1] : [street(w.neg) ? -1 : 1, 0];
         const lx = X(c[0]) + out[0] * (t / 2 + 14);
         const ly = Y(c[1]) + out[1] * (t / 2 + 14);
         const rot = w.axis === "v" ? ` transform="rotate(-90 ${px(lx)} ${px(ly)})"` : "";

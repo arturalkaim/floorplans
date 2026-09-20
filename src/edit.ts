@@ -4,6 +4,7 @@
 import { metres, spliceAll } from "./jsonpos.ts";
 import type { JsonPath } from "./jsonpos.ts";
 import type { Model, Pt, WallSegment } from "./types.ts";
+import { ownerId } from "./types.ts";
 
 /** Rooms and tracks may not be dragged below this, in metres. */
 const MIN_TRACK = 0.4;
@@ -165,7 +166,7 @@ function fromPolys(doc: Doc, wall: WallSegment): Draggable | undefined {
   // only the two spaces this wall separates move. Scanning every space that happens to
   // have a vertex on the same line would drag unrelated rooms along with it — and would
   // refuse an exterior wall outright, because some far-off room shares its coordinate.
-  const owners = new Set([wall.neg, wall.pos].filter((o) => o !== "exterior" && o !== "gap"));
+  const owners = new Set([wall.neg, wall.pos].map(ownerId).filter((id) => id !== undefined));
   if (owners.size === 0) return undefined;
 
   for (const kind of ["rooms", "outdoor"] as const) {

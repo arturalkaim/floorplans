@@ -41,12 +41,12 @@
     { "type": "door", "between": ["hall", "cozinha"], "width": 0.9, "swingInto": "cozinha" },
     { "type": "door", "between": ["hall", "wc"], "width": 0.8, "swingInto": "hall" },
     { "type": "door", "between": ["cozinha", "sala"], "width": 1.2, "swingInto": "sala" },
-    { "type": "door", "between": ["exterior", "sala"], "on": { "room": "sala", "side": "south" },
+    { "type": "door", "between": ["deck", "sala"], "on": { "room": "sala", "side": "south" },
       "width": 1.2, "swingInto": "sala" },
 
     { "type": "window", "between": ["exterior", "spa"],     "on": { "room": "spa",     "side": "west" }, "width": 3.0 },
     { "type": "window", "between": ["exterior", "cozinha"], "on": { "room": "cozinha", "side": "east" }, "width": 1.6 },
     { "type": "window", "between": ["exterior", "sala"],    "on": { "room": "sala",    "side": "east" }, "width": 1.8 },
-    { "type": "window", "between": ["exterior", "wc"],      "on": { "room": "wc",      "side": "south" }, "width": 0.6 }
+    { "type": "window", "between": ["deck", "wc"],          "on": { "room": "wc",      "side": "south" }, "width": 0.6 }
   ]
 }
