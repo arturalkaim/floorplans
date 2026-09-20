@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { formatPlan, formatText } from "../src/format.ts";
 import { parseWithPositions, spliceAt } from "../src/jsonpos.ts";
+import { parse } from "../src/parse.ts";
 
 const FIXTURES = ["casa-t3", "casa-piscina", "quinta", "cabin", "broken", "apartment-t2", "casa-patio"];
 const load = (n: string) => readFileSync(new URL(`../fixtures/${n}.json`, import.meta.url), "utf8");
@@ -18,32 +19,103 @@ describe("format: the document keeps its meaning", () => {
       assert.equal(formatText(once), once, n);
     }
   });
-  it("keeps every line inside the width", () => {
+  it("parses to the same plan before and after formatting", () => {
     for (const n of FIXTURES)
-      for (const line of formatText(load(n)).split("\n"))
-        assert.ok(line.length <= 140, `${n}: ${line.length} chars`);
+      assert.deepEqual(parse(JSON.parse(formatText(load(n)))), parse(JSON.parse(load(n))), n);
   });
 });
 
-describe("format: coordinates read as rows", () => {
-  it("keeps a point and a ring on one line", () => {
-    const out = formatPlan({ poly: [[0, 0], [4.6, 0], [4.6, 4.4], [0, 4.4]] });
-    assert.equal(out.trim(), '{ "poly": [[0, 0], [4.6, 0], [4.6, 4.4], [0, 4.4]] }');
-  });
-  it("breaks a long ring one point per line, never one number per line", () => {
-    const ring = Array.from({ length: 24 }, (_, i) => [i * 1.125, i * 2.375]);
-    const lines = formatPlan({ poly: ring }).split("\n");
-    const points = lines.filter((l) => l.trim().startsWith("["));
-    assert.equal(points.length, ring.length, "one line per point");
-    for (const l of points) assert.match(l.trim(), /^\[-?[\d.]+, -?[\d.]+\],?$/);
-  });
-  it("keeps a room and an opening with nested on/position on one line", () => {
-    const out = formatPlan({
-      openings: [
-        { type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "north" }, width: 1 },
-      ],
+describe("format: every fixture is already in canonical form", () => {
+  // the anti-drift gate: a fixture edited by hand into some other shape fails here rather
+  // than quietly making the shipped examples disagree with the form the README teaches
+  for (const n of FIXTURES)
+    it(`${n} is byte-identical to its own canonical form`, () => {
+      const text = load(n);
+      assert.equal(formatText(text), text);
     });
-    assert.equal(out.split("\n").filter((l) => l.includes('"door"')).length, 1);
+});
+
+describe("format: one entity per line, compact inside", () => {
+  it("never wraps an entity, however long", () => {
+    // casa-t3's longest opening is well past any sensible print width
+    const lines = formatText(load("casa-t3")).split("\n");
+    const openings = lines.filter((l) => l.trim().startsWith('{"type":'));
+    assert.equal(openings.length, 23, "one line per opening");
+    assert.ok(Math.max(...openings.map((l) => l.length)) > 140, "and no width cut them short");
+    for (const l of openings) assert.match(l, /^ {4}\{"type":.*\},?$/);
+  });
+
+  it("spends separators on structure and nothing else", () => {
+    const out = formatPlan({ rooms: { a: { name: "A", rect: [0, 0, 4, 3] } } });
+    assert.equal(out, '{\n  "rooms": {\n    "a": {"name":"A","rect":[0,0,4,3]}\n  }\n}\n');
+  });
+
+  it("keeps a short top-level value on its own line rather than exploding it", () => {
+    const out = formatPlan({ walls: { exterior: 0.3, partition: 0.12 } });
+    assert.equal(out, '{\n  "walls": {"exterior":0.3,"partition":0.12}\n}\n');
+  });
+
+  it("keeps points inline and prints numbers shortest-round-trip", () => {
+    const out = formatPlan({ rooms: { l: { poly: [[0, 0], [4.6, 0], [4.6, 4.4], [0, 4.4]] } } });
+    assert.ok(out.includes('"l": {"poly":[[0,0],[4.6,0],[4.6,4.4],[0,4.4]]}'), out);
+    assert.ok(!out.includes("4.60"));
+  });
+
+  it("keeps the layout grid as a picture, one row per line", () => {
+    const lines = formatText(load("apartment-t2")).split("\n");
+    const rows = lines.filter((l) => l.trim().startsWith('"quarto1 ') || l.trim().startsWith('"sala '));
+    assert.equal(rows.length, 4, "the areas grid still reads as a grid");
+    for (const l of rows) assert.match(l, /^ {6}"/);
+  });
+
+  it("is a block whenever it holds entities, however deeply nested", () => {
+    // the container/entity decision is a function of shape, not of depth: a schema that
+    // grows a `levels` map must format as blocks of one-entity lines, never as one
+    // enormous line per level. Nothing in the formatter knows the word "levels".
+    const doc = {
+      title: "Two storeys",
+      walls: { exterior: 0.3, partition: 0.12 },
+      levels: {
+        ground: {
+          rooms: { hall: { kind: "hall", poly: [[0, 0], [4, 0], [4, 3], [0, 3]] } },
+          openings: [{ type: "door", between: ["exterior", "hall"], width: 0.9 }],
+        },
+        first: { rooms: { suite: { kind: "bedroom", poly: [[0, 0], [9, 0], [9, 3], [0, 3]] } }, openings: [] },
+      },
+    };
+    assert.equal(
+      formatPlan(doc),
+      [
+        "{",
+        '  "title": "Two storeys",',
+        '  "walls": {"exterior":0.3,"partition":0.12},',
+        '  "levels": {',
+        '    "ground": {',
+        '      "rooms": {',
+        '        "hall": {"kind":"hall","poly":[[0,0],[4,0],[4,3],[0,3]]}',
+        "      },",
+        '      "openings": [',
+        '        {"type":"door","between":["exterior","hall"],"width":0.9}',
+        "      ]",
+        "    },",
+        '    "first": {',
+        '      "rooms": {',
+        '        "suite": {"kind":"bedroom","poly":[[0,0],[9,0],[9,3],[0,3]]}',
+        "      },",
+        '      "openings": []',
+        "    }",
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("has no column alignment to maintain", () => {
+    // padding to line values up was measured at 4 % of the document; entity lines carry none
+    for (const n of FIXTURES)
+      for (const line of formatText(load(n)).split("\n"))
+        if (line.trim().startsWith("{")) assert.ok(!/ {2}/.test(line.trim()), `${n}: ${line}`);
   });
 });
 
@@ -59,6 +131,12 @@ describe("format + splice: a drag only rewrites numbers", () => {
     const r = spliceAt(text, ["layout", "cols", 1], "3.85");
     assert.equal(r.text.slice(0, r.start), text.slice(0, r.start));
     assert.equal(r.text.slice(r.start + r.inserted), text.slice(r.start + r.removed));
+  });
+  it("splices a number inside a rect the same way", () => {
+    const text = formatText(load("cabin"));
+    const after = spliceAt(text, ["rooms", "sala", "rect", 2], "5.4").text;
+    assert.equal(formatText(after), after);
+    assert.deepEqual(JSON.parse(after).rooms.sala.rect, [0, 0, 5.4, 4]);
   });
   it("positions still resolve after formatting", () => {
     for (const n of FIXTURES) {

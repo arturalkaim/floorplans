@@ -117,6 +117,69 @@ describe("parse: schema errors carry paths", () => {
   });
 });
 
+describe("parse: rect shorthand", () => {
+  it("expands a room rect to the same polygon the four points would give", () => {
+    const viaRect = parse({ rooms: { a: { kind: "living", rect: [0, 0, 4.6, 4.4] } } });
+    const viaPoly = parse({ rooms: { a: { kind: "living", poly: rect(0, 0, 4.6, 4.4) } } });
+    assert.deepEqual(viaRect.rooms[0]!.poly, viaPoly.rooms[0]!.poly);
+    assert.deepEqual(viaRect, viaPoly, "the Plan is identical: rect is authoring sugar only");
+  });
+
+  it("expands an outdoor rect too", () => {
+    const plan = parse(twoRooms({ outdoor: { deck: { name: "Deck", rect: [0, 4, 6, 3] } } }));
+    assert.deepEqual(plan.outdoor[0]!.poly, rect(0, 4, 6, 3));
+  });
+
+  it("snaps to the millimetre like every other coordinate", () => {
+    const plan = parse({ rooms: { a: { rect: [0.00049, 0, 4.0004, 3] } } });
+    assert.deepEqual(plan.rooms[0]!.poly, [[0, 0], [4.001, 0], [4.001, 3], [0, 3]]);
+  });
+
+  it("rejects a rect that is not four numbers, or has a non-positive side", () => {
+    assert.deepEqual(issuesOf({ rooms: { a: { rect: [0, 0, 4] } } }), ["rooms.a.rect"]);
+    assert.deepEqual(issuesOf({ rooms: { a: { rect: "4x3" } } }), ["rooms.a.rect"]);
+    assert.deepEqual(issuesOf({ rooms: { a: { rect: [0, 0, 4, 0] } } }), ["rooms.a.rect"]);
+    assert.deepEqual(issuesOf({ rooms: { a: { rect: [0, 0, -4, 3] } } }), ["rooms.a.rect"]);
+    assert.match(
+      issueListOf({ rooms: { a: { rect: [0, 0, 4, 0] } } })[0]!.message,
+      /width and height must both be > 0/,
+    );
+  });
+
+  it("rejects poly and rect together, the way a fixture rejects poly and at/size", () => {
+    const issues = issueListOf({ rooms: { a: { poly: rect(0, 0, 2, 2), rect: [0, 0, 2, 2] } } });
+    assert.deepEqual(issues.map((i) => i.path), ["rooms.a"]);
+    assert.equal(issues[0]!.message, "has both a poly and a rect; use one");
+    assert.deepEqual(
+      issueListOf({
+        rooms: { a: { rect: [0, 0, 2, 2] } },
+        outdoor: { p: { poly: rect(0, 4, 2, 2), rect: [0, 4, 2, 2] } },
+      }).map((i) => i.message),
+      ["has both a poly and a rect; use one"],
+    );
+  });
+
+  it("names rect when a rect-authored space is also placed in the grid", () => {
+    const issues = issueListOf({
+      layout: { cols: [3], rows: [3], areas: ["a"] },
+      rooms: { a: { kind: "hall", rect: [0, 0, 3, 3] } },
+    });
+    assert.deepEqual(issues, [{ path: "rooms.a", message: "has both a rect and cells in layout.areas; use one" }]);
+  });
+
+  it("offers rect in the has-no-geometry message and accepts it as a known key", () => {
+    assert.match(issueListOf({ rooms: { a: { name: "A" } } })[0]!.message, /give a poly or a rect/);
+    assert.deepEqual(issuesOf({ rooms: { a: { rect: [0, 0, 2, 2] }, b: { rekt: [2, 0, 2, 2] } } }), [
+      "rooms.b.rekt",
+      "rooms.b",
+    ]);
+  });
+
+  it("reports a bad rect once, not also as missing geometry", () => {
+    assert.deepEqual(issuesOf({ rooms: { a: { rect: [0, 0, 0, 2] } } }), ["rooms.a.rect"]);
+  });
+});
+
 describe("parse: fixtures", () => {
   const withFix = (fixtures: unknown[]) => twoRooms({ fixtures });
 

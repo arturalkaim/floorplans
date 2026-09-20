@@ -39,6 +39,81 @@ const safeParse = (text: string): unknown => {
   }
 };
 
+/**
+ * A room or outdoor space is authored either as a `poly` or as a `rect: [x, y, w, h]`, and
+ * an edit has to be written back in whichever form the source uses — rewriting one into the
+ * other would reformat a document the author is still typing in. This is the same contract
+ * `fixtureWriter` keeps for a fixture's `poly` versus its `at` + `size`.
+ */
+interface SpaceForm {
+  /** the ring's corners, in the order the document has them */
+  vertices: Pt[];
+  /** move every corner whose `axis` coordinate is `from` onto `to` */
+  edge: (axis: 0 | 1, from: number, to: number) => Array<{ path: JsonPath; literal: string }>;
+  /** move the corners at these indices into `vertices`, along `axis`, onto `to` */
+  corners: (indices: number[], axis: 0 | 1, to: number) => Array<{ path: JsonPath; literal: string }>;
+}
+
+/**
+ * The write-back form for one space. `undefined` means nothing is authored here — a
+ * grid-placed space moves when its tracks do. `null` means geometry is there but is not
+ * readable, and the caller must decline the edit rather than write half of it.
+ */
+function spaceForm(doc: Doc, kind: "rooms" | "outdoor", id: string): SpaceForm | null | undefined {
+  const entry = asObj(asObj(doc[kind])?.[id]);
+  if (!entry) return undefined;
+
+  const poly = entry["poly"];
+  if (poly !== undefined) {
+    if (!Array.isArray(poly)) return null;
+    const pts: Pt[] = [];
+    for (const p of poly) {
+      if (!Array.isArray(p) || p.length !== 2 || p.some((n) => typeof n !== "number")) return null;
+      pts.push([p[0] as number, p[1] as number]);
+    }
+    const write = (v: number, axis: 0 | 1, to: number) => ({
+      path: [kind, id, "poly", v, axis] as JsonPath,
+      literal: metres(to),
+    });
+    return {
+      vertices: pts,
+      edge: (axis, from, to) => pts.flatMap((p, v) => (near(p[axis], from) ? [write(v, axis, to)] : [])),
+      corners: (indices, axis, to) => indices.map((v) => write(v, axis, to)),
+    };
+  }
+
+  const r = entry["rect"];
+  if (r === undefined) return undefined;
+  if (!Array.isArray(r) || r.length !== 4 || r.some((n) => typeof n !== "number")) return null;
+  const [x, y, w, h] = r as [number, number, number, number];
+  // the corner order `readRect` expands to, so an index into `vertices` names the same
+  // corner here as it does in the parsed polygon
+  const vertices: Pt[] = [
+    [x, y],
+    [x + w, y],
+    [x + w, y + h],
+    [x, y + h],
+  ];
+  const edge = (axis: 0 | 1, from: number, to: number) => {
+    const origin = axis === 0 ? x : y;
+    const size = axis === 0 ? w : h;
+    // the near side moves the origin and keeps the far side still; the far side resizes
+    if (near(origin, from))
+      return [
+        { path: [kind, id, "rect", axis] as JsonPath, literal: metres(to) },
+        { path: [kind, id, "rect", axis + 2] as JsonPath, literal: metres(size + (origin - to)) },
+      ];
+    if (near(origin + size, from))
+      return [{ path: [kind, id, "rect", axis + 2] as JsonPath, literal: metres(size + (to - from)) }];
+    return [];
+  };
+  return {
+    vertices,
+    edge,
+    corners: (indices, axis, to) => (indices.length === 0 ? [] : edge(axis, vertices[indices[0]!]![axis], to)),
+  };
+}
+
 /** Cumulative track boundaries, matching the grid compiler: starts at 0. */
 function boundaries(tracks: number[]): number[] {
   const out = [0];
@@ -83,30 +158,28 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
    * with an absolute poly — casa-patio's courtyard is. Those coordinates are anchored to
    * the boundary, so they have to travel with it or the plan tears open behind them.
    */
-  const anchored: JsonPath[] = [];
+  const anchored: Array<{ form: SpaceForm; indices: number[] }> = [];
   for (const kind of ["rooms", "outdoor"] as const) {
     const group = asObj(doc[kind]);
     if (!group) continue;
     for (const id of Object.keys(group)) {
-      const poly = asObj(group[id])?.["poly"];
-      if (!Array.isArray(poly)) continue;
-      const n = poly.length;
+      const form = spaceForm(doc, kind, id);
+      if (!form) continue;
+      const pts = form.vertices;
+      const n = pts.length;
       const carried = new Set<number>();
       for (let v = 0; v < n; v++) {
-        const p0 = poly[v];
-        const p1 = poly[(v + 1) % n];
-        if (!Array.isArray(p0) || !Array.isArray(p1)) continue;
-        if (typeof p0[axis] !== "number" || typeof p1[axis] !== "number") continue;
-        if (typeof p0[along] !== "number" || typeof p1[along] !== "number") continue;
-        if (!near(p0[axis] as number, wall.c) || !near(p1[axis] as number, wall.c)) continue;
-        if (!onBoundary(p0[along] as number) && !onBoundary(p1[along] as number)) continue;
+        const p0 = pts[v]!;
+        const p1 = pts[(v + 1) % n]!;
+        if (!near(p0[axis as 0 | 1], wall.c) || !near(p1[axis as 0 | 1], wall.c)) continue;
+        if (!onBoundary(p0[along as 0 | 1]) && !onBoundary(p1[along as 0 | 1])) continue;
         carried.add(v);
         carried.add((v + 1) % n);
       }
-      for (const v of carried) anchored.push([kind, id, "poly", v, axis]);
+      if (carried.size) anchored.push({ form, indices: [...carried] });
     }
   }
-  const carry = (next: number) => anchored.map((path) => ({ path, literal: metres(next) }));
+  const carry = (next: number) => anchored.flatMap((a) => a.form.corners(a.indices, axis as 0 | 1, next));
   const i = bounds.findIndex((b) => near(b, wall.c));
   // the grid is anchored at 0, so the near edge cannot move without shifting every
   // coordinate in the document — a different operation than resizing a track
@@ -156,9 +229,8 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
  * edge split and new vertices inserted, which is a different operation than a drag.
  */
 function fromPolys(doc: Doc, wall: WallSegment): Draggable | undefined {
-  const axis = wall.axis === "v" ? 0 : 1;
+  const axis: 0 | 1 = wall.axis === "v" ? 0 : 1;
   const along = 1 - axis;
-  const edits: Array<{ path: JsonPath; literal: string }> = [];
   let lower = -Infinity;
   let upper = Infinity;
 
@@ -168,39 +240,37 @@ function fromPolys(doc: Doc, wall: WallSegment): Draggable | undefined {
   const owners = new Set([wall.neg, wall.pos].filter((o) => o !== "exterior" && o !== "gap"));
   if (owners.size === 0) return undefined;
 
+  const movers: Array<{ id: string; form: SpaceForm }> = [];
   for (const kind of ["rooms", "outdoor"] as const) {
     const group = asObj(doc[kind]);
     if (!group) continue;
     for (const id of Object.keys(group)) {
       if (!owners.has(id)) continue;
-      const poly: unknown = asObj(group[id])?.["poly"];
-      if (!Array.isArray(poly)) continue;
-      for (let v = 0; v < poly.length; v++) {
-        const pt = poly[v];
-        if (!Array.isArray(pt) || pt.length !== 2 || pt.some((n) => typeof n !== "number")) return undefined;
-        if (near(pt[axis] as number, wall.c)) {
+      const form = spaceForm(doc, kind, id);
+      if (form === null) return undefined;
+      if (!form) continue;
+      for (const pt of form.vertices) {
+        if (near(pt[axis], wall.c)) {
           // a vertex on this line but off the wall's run would need the edge split
-          if ((pt[along] as number) < wall.from - 1e-6 || (pt[along] as number) > wall.to + 1e-6) return undefined;
-          edits.push({ path: [kind, id, "poly", v, axis], literal: "" });
-        } else {
-          const v = pt[axis] as number;
-          if (v < wall.c) lower = Math.max(lower, v);
-          else upper = Math.min(upper, v);
-        }
+          if (pt[along]! < wall.from - 1e-6 || pt[along]! > wall.to + 1e-6) return undefined;
+        } else if (pt[axis] < wall.c) lower = Math.max(lower, pt[axis]);
+        else upper = Math.min(upper, pt[axis]);
       }
+      if (form.vertices.some((p) => near(p[axis], wall.c))) movers.push({ id, form });
     }
   }
-  if (edits.length === 0) return undefined;
+  // how many numbers the drag rewrites, counted in the form each space is authored in
+  const count = movers.flatMap(({ form }) => form.edge(axis, wall.c, wall.c)).length;
+  if (count === 0) return undefined;
 
-  const rooms = new Set(edits.map((e) => String(e.path[1])));
   return {
     wallId: wall.id,
     axis: wall.axis,
     c: wall.c,
     min: lower === -Infinity ? wall.c - 20 : lower + MIN_TRACK,
     max: upper === Infinity ? wall.c + 20 : upper - MIN_TRACK,
-    writes: `${edits.length} coordinates in ${[...rooms].join(", ")}`,
-    edits: (next) => edits.map((e) => ({ path: e.path, literal: metres(next) })),
+    writes: `${count} coordinates in ${movers.map((m) => m.id).join(", ")}`,
+    edits: (next) => movers.flatMap(({ form }) => form.edge(axis, wall.c, next)),
   };
 }
 
@@ -235,10 +305,10 @@ export function draggableOutdoorEdges(text: string, model: Model): Map<string, D
   if (!doc) return out;
 
   for (const space of model.plan.outdoor) {
-    // only an outdoor space authored with a poly can be edited this way; one placed by
-    // the track grid moves when its tracks do
-    const poly = asObj(asObj(doc["outdoor"])?.[space.id])?.["poly"];
-    if (!Array.isArray(poly) || poly.length !== space.poly.length) continue;
+    // only an outdoor space that authored its own geometry can be edited this way; one
+    // placed by the track grid moves when its tracks do
+    const form = spaceForm(doc, "outdoor", space.id);
+    if (!form || form.vertices.length !== space.poly.length) continue;
 
     const xs = space.poly.map((p) => p[0]);
     const ys = space.poly.map((p) => p[1]);
@@ -265,11 +335,7 @@ export function draggableOutdoorEdges(text: string, model: Model): Map<string, D
         writes: `${space.name}'s ${
           axis === 0 ? (near(c, extent.x0) ? "west" : "east") : near(c, extent.y0) ? "north" : "south"
         } edge`,
-        edits: (next) =>
-          [k, (k + 1) % space.poly.length].map((v) => ({
-            path: ["outdoor", space.id, "poly", v, axis] as JsonPath,
-            literal: metres(next),
-          })),
+        edits: (next) => form.corners([k, (k + 1) % space.poly.length], axis as 0 | 1, next),
       });
     });
   }

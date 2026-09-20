@@ -138,6 +138,8 @@ export function parse(input: unknown): Plan {
   if (doc["outdoor"] !== undefined && !isObj(doc["outdoor"])) bad("outdoor", "must be an object keyed by id");
 
   const polys = new Map<string, Pt[]>();
+  /** which form a space's geometry was authored in, so later messages name what was written */
+  const geometry = new Map<string, "poly" | "rect">();
   const readPoly = (path: string, v: unknown): Pt[] | undefined => {
     if (!Array.isArray(v) || !v.every((p) => Array.isArray(p) && p.length === 2 && isNum(p[0]) && isNum(p[1]))) {
       bad(path, "must be an array of [x, y] number pairs");
@@ -160,6 +162,47 @@ export function parse(input: unknown): Plan {
     return res.poly;
   };
 
+  /** `rect: [x, y, w, h]` — the same convenience a fixture spells `at` + `size`. */
+  const readRect = (path: string, v: unknown): Pt[] | undefined => {
+    if (!Array.isArray(v) || v.length !== 4 || !v.every(isNum)) {
+      bad(path, "must be [x, y, width, height] numbers");
+      return undefined;
+    }
+    const [x, y, w, h] = v as [number, number, number, number];
+    if (!(w > 0) || !(h > 0)) {
+      bad(path, "width and height must both be > 0");
+      return undefined;
+    }
+    return [
+      [snap(x), snap(y)],
+      [snap(x + w), snap(y)],
+      [snap(x + w), snap(y + h)],
+      [snap(x), snap(y + h)],
+    ];
+  };
+
+  /**
+   * A space's geometry: an explicit `poly`, or a `rect` as a convenience rectangle —
+   * one or the other, never both, exactly as a fixture takes `poly` or `at` + `size`.
+   */
+  const readGeometry = (path: string, id: string, v: J): void => {
+    const hasPoly = v["poly"] !== undefined;
+    const hasRect = v["rect"] !== undefined;
+    if (hasPoly && hasRect) {
+      bad(path, "has both a poly and a rect; use one");
+      badPoly.add(id);
+      return;
+    }
+    if (!hasPoly && !hasRect) return;
+    const p = hasPoly ? readPoly(`${path}.poly`, v["poly"]) : readRect(`${path}.rect`, v["rect"]);
+    if (!p) {
+      badPoly.add(id);
+      return;
+    }
+    polys.set(id, p);
+    geometry.set(id, hasPoly ? "poly" : "rect");
+  };
+
   for (const [id, v] of Object.entries(roomsIn)) {
     if (!ID_RE.test(id)) bad(`rooms.${id}`, "id must match ^[a-z][a-z0-9_]*$");
     if (id === "exterior" || id === "gap") bad(`rooms.${id}`, "reserved id");
@@ -167,12 +210,8 @@ export function parse(input: unknown): Plan {
       bad(`rooms.${id}`, "must be an object");
       continue;
     }
-    checkKeys(`rooms.${id}`, v, ["poly", "kind", "name", "zone", "habitable", "wet", "circulation"], bad);
-    if (v["poly"] !== undefined) {
-      const p = readPoly(`rooms.${id}.poly`, v["poly"]);
-      if (p) polys.set(id, p);
-      else badPoly.add(id);
-    }
+    checkKeys(`rooms.${id}`, v, ["poly", "rect", "kind", "name", "zone", "habitable", "wet", "circulation"], bad);
+    readGeometry(`rooms.${id}`, id, v);
   }
   for (const [id, v] of Object.entries(outdoorIn)) {
     if (!ID_RE.test(id)) bad(`outdoor.${id}`, "id must match ^[a-z][a-z0-9_]*$");
@@ -181,17 +220,13 @@ export function parse(input: unknown): Plan {
       bad(`outdoor.${id}`, "must be an object");
       continue;
     }
-    checkKeys(`outdoor.${id}`, v, ["poly", "name", "covered"], bad);
-    if (v["poly"] !== undefined) {
-      const p = readPoly(`outdoor.${id}.poly`, v["poly"]);
-      if (p) polys.set(id, p);
-      else badPoly.add(id);
-    }
+    checkKeys(`outdoor.${id}`, v, ["poly", "rect", "name", "covered"], bad);
+    readGeometry(`outdoor.${id}`, id, v);
   }
 
   // ---- optional track-grid layout, compiled to polygons ----
   if (doc["layout"] !== undefined) {
-    compileLayout(doc["layout"], roomsIn, outdoorIn, polys, bad);
+    compileLayout(doc["layout"], roomsIn, outdoorIn, polys, geometry, bad);
   }
 
   const rooms: Room[] = [];
@@ -199,7 +234,7 @@ export function parse(input: unknown): Plan {
     if (!isObj(v)) continue;
     const poly = polys.get(id);
     if (!poly) {
-      if (!badPoly.has(id)) bad(`rooms.${id}`, "has no geometry: give a poly or place it in layout.areas");
+      if (!badPoly.has(id)) bad(`rooms.${id}`, "has no geometry: give a poly or a rect, or place it in layout.areas");
       continue;
     }
     const kindRaw = v["kind"] ?? "other";
@@ -230,7 +265,7 @@ export function parse(input: unknown): Plan {
     if (!isObj(v)) continue;
     const poly = polys.get(id);
     if (!poly) {
-      if (!badPoly.has(id)) bad(`outdoor.${id}`, "has no geometry: give a poly or place it in layout.areas");
+      if (!badPoly.has(id)) bad(`outdoor.${id}`, "has no geometry: give a poly or a rect, or place it in layout.areas");
       continue;
     }
     outdoor.push({ id, name: typeof v["name"] === "string" ? v["name"] : id, poly, covered: v["covered"] === true });
@@ -424,6 +459,7 @@ function compileLayout(
   roomsIn: J,
   outdoorIn: J,
   polys: Map<string, Pt[]>,
+  geometry: Map<string, "poly" | "rect">,
   bad: (path: string, message: string) => void,
 ): void {
   if (!isObj(layout)) {
@@ -483,7 +519,7 @@ function compileLayout(
   for (const [id, cells] of cellsById) {
     const path = `${id in roomsIn ? "rooms" : "outdoor"}.${id}`;
     if (polys.has(id)) {
-      bad(path, "has both a poly and cells in layout.areas; use one");
+      bad(path, `has both a ${geometry.get(id) ?? "poly"} and cells in layout.areas; use one`);
       continue;
     }
     const loops = cellsToPolygons(cells, xs, ys);

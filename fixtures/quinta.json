@@ -1,11 +1,11 @@
 {
   "title": "Quinta com Jardim Interior",
   "units": "m",
-  "walls": { "exterior": 0.30, "partition": 0.12 },
+  "walls": {"exterior":0.3,"partition":0.12},
   "north": 0,
   "layout": {
-    "cols": [3.4, 3.2, 3.6],
-    "rows": [3.4, 3.2, 1.8, 3.6],
+    "cols": [3.4,3.2,3.6],
+    "rows": [3.4,3.2,1.8,3.6],
     "areas": [
       "quarto corredor cozinha",
       "quarto jardim   cozinha",
@@ -14,36 +14,31 @@
     ]
   },
   "rooms": {
-    "quarto":   { "name": "Quarto",   "kind": "bedroom",  "zone": "night" },
-    "wc":       { "name": "WC",       "kind": "bath",     "zone": "night" },
-    "corredor": { "name": "Corredor", "kind": "corridor", "zone": "day" },
-    "cozinha":  { "name": "Cozinha",  "kind": "kitchen",  "zone": "day" },
-    "sala":     { "name": "Sala",     "kind": "living",   "zone": "day" },
-    "arrecadacao": { "name": "Arrecadação", "kind": "storage", "zone": "anexo",
-                     "poly": [[7.0,13.0],[10.2,13.0],[10.2,15.6],[7.0,15.6]] }
+    "quarto": {"name":"Quarto","kind":"bedroom","zone":"night"},
+    "wc": {"name":"WC","kind":"bath","zone":"night"},
+    "corredor": {"name":"Corredor","kind":"corridor","zone":"day"},
+    "cozinha": {"name":"Cozinha","kind":"kitchen","zone":"day"},
+    "sala": {"name":"Sala","kind":"living","zone":"day"},
+    "arrecadacao": {"name":"Arrecadação","kind":"storage","zone":"anexo","rect":[7,13,3.2,2.6]}
   },
   "outdoor": {
-    "jardim":  { "name": "Jardim interior", "covered": false },
-    "terraco": { "name": "Terraço",         "poly": [[0.2,12.6],[6.0,12.6],[6.0,16.4],[0.2,16.4]], "covered": false }
+    "jardim": {"name":"Jardim interior","covered":false},
+    "terraco": {"name":"Terraço","covered":false,"rect":[0.2,12.6,5.8,3.8]}
   },
   "fixtures": [
-    { "type": "pool", "in": "terraco", "name": "Piscina", "at": [0.6, 13.0], "size": [5.0, 3.0], "depth": 1.5 }
+    {"type":"pool","in":"terraco","name":"Piscina","at":[0.6,13],"size":[5,3],"depth":1.5}
   ],
   "openings": [
-    { "type": "door", "between": ["exterior", "corredor"], "on": { "room": "corredor", "side": "north" },
-      "width": 1.0, "swingInto": "corredor", "entrance": true },
-    { "type": "door", "between": ["corredor", "quarto"], "width": 0.9, "swingInto": "quarto" },
-    { "type": "door", "between": ["corredor", "cozinha"], "width": 0.9, "swingInto": "cozinha" },
-    { "type": "door", "between": ["cozinha", "sala"], "width": 1.2, "swingInto": "sala" },
-    { "type": "door", "between": ["sala", "wc"], "width": 0.9, "swingInto": "wc" },
-    { "type": "door", "between": ["exterior", "sala"], "on": { "room": "sala", "side": "south" },
-      "width": 1.2, "swingInto": "sala" },
-    { "type": "door", "between": ["exterior", "arrecadacao"], "on": { "room": "arrecadacao", "side": "north" },
-      "width": 0.9, "swingInto": "arrecadacao" },
-
-    { "type": "window", "between": ["exterior", "quarto"],  "on": { "room": "quarto",  "side": "east" }, "width": 1.8 },
-    { "type": "window", "between": ["exterior", "wc"],      "on": { "room": "wc",      "side": "east" }, "width": 0.6 },
-    { "type": "window", "between": ["exterior", "cozinha"], "on": { "room": "cozinha", "side": "west" }, "width": 1.6 },
-    { "type": "window", "between": ["exterior", "sala"],    "on": { "room": "sala",    "side": "north", "near": [5.0, 8.4] }, "width": 2.0 }
+    {"type":"door","between":["exterior","corredor"],"on":{"room":"corredor","side":"north"},"width":1,"swingInto":"corredor","entrance":true},
+    {"type":"door","between":["corredor","quarto"],"width":0.9,"swingInto":"quarto"},
+    {"type":"door","between":["corredor","cozinha"],"width":0.9,"swingInto":"cozinha"},
+    {"type":"door","between":["cozinha","sala"],"width":1.2,"swingInto":"sala"},
+    {"type":"door","between":["sala","wc"],"width":0.9,"swingInto":"wc"},
+    {"type":"door","between":["exterior","sala"],"on":{"room":"sala","side":"south"},"width":1.2,"swingInto":"sala"},
+    {"type":"door","between":["exterior","arrecadacao"],"on":{"room":"arrecadacao","side":"north"},"width":0.9,"swingInto":"arrecadacao"},
+    {"type":"window","between":["exterior","quarto"],"on":{"room":"quarto","side":"east"},"width":1.8},
+    {"type":"window","between":["exterior","wc"],"on":{"room":"wc","side":"east"},"width":0.6},
+    {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"west"},"width":1.6},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"north","near":[5,8.4]},"width":2}
   ]
 }
