@@ -99,6 +99,17 @@ describe("fixture: broken (one of every error)", () => {
       assert.ok(rules.has(expected), `expected ${expected} in ${[...rules].join(", ")}`);
     assert.ok(r.svg.includes('class="finding"'));
   });
+
+  it("reports its one hole once, not once per arrangement-grid cell it spans", () => {
+    // the hole is a single 2 x 3 m area, but the grid line at y = 4 (from store/tiny)
+    // cuts it into two cells; without flood-fill merging that is two findings
+    const r = floorplan(load("broken"));
+    const gaps = r.findings.filter((f) => f.rule === "tiling.gap");
+    assert.equal(gaps.length, 1, `expected one tiling.gap, got ${gaps.length}: ${gaps.map((f) => f.message).join(" | ")}`);
+    assert.equal(gaps[0]!.at![0], 5);
+    assert.equal(gaps[0]!.at![1], 3.5);
+    assert.match(gaps[0]!.message, /6 m²/);
+  });
 });
 
 describe("fixture: casa-patio (courtyard)", () => {

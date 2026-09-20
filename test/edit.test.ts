@@ -87,6 +87,22 @@ describe("edit: moving a wall rewrites the source and nothing else", () => {
     assert.deepEqual(tiling, [], "a drag must not tear the tiling");
   });
 
+  it("does not carry a detached polygon that only coincidentally shares the coordinate", () => {
+    // quinta's grid east edge is x = 10.2; the detached shack arrecadacao (poly-authored,
+    // 1 m south of the house) also has two vertices at x = 10.2, purely by coincidence —
+    // it shares no track with the grid on the other axis. Dragging the house's east wall
+    // must resize the grid column and leave the shack's polygon untouched.
+    const text = load("quinta");
+    const model = modelOf(text);
+    const east = model.walls.find((w) => w.axis === "v" && w.pos === "exterior" && w.neg === "cozinha")!;
+    const d = draggableWalls(text, model).get(east.id)!;
+    assert.match(d.writes, /^layout\.cols\[\d+\]/);
+    const before = JSON.parse(text);
+    const after = JSON.parse(applyDrag(text, d, 10.7));
+    assert.deepEqual(after.rooms.arrecadacao.poly, before.rooms.arrecadacao.poly, "the shack must not stretch with the house");
+    assert.notDeepEqual(after.layout.cols, before.layout.cols, "the grid column still resizes");
+  });
+
   it("clamps rather than letting a track collapse", () => {
     const text = load("casa-patio");
     const model = modelOf(text);
