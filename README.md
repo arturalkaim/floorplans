@@ -89,6 +89,9 @@ floorplan <plan.json> [--out plan.svg] [--lint] [--json] [--scale N]
 
 Exit codes: `0` clean or info only, `1` findings at warning or above, `2` usage or schema error.
 
+On a schema error (exit `2`), `--json` prints `{"error":{"issues":[{"path","message"}]}}`
+to stdout instead of the text form on stderr; without `--json` the text form is unchanged.
+
 ## Library
 
 ```ts

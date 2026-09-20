@@ -46,7 +46,8 @@ export function run(argv: string[], io: CliIo): number {
     result = floorplan(raw, args.mark === undefined ? { render } : { render, markFindings: args.mark });
   } catch (e) {
     if (e instanceof PlanError) {
-      io.stderr(`${e.message}\n`);
+      if (args.json) io.stdout(`${JSON.stringify({ error: { issues: e.issues } }, null, 2)}\n`);
+      else io.stderr(`${e.message}\n`);
       return 2;
     }
     throw e;

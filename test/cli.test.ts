@@ -44,6 +44,16 @@ describe("cli", () => {
     const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [1, 1], [0, 1]] } } }) });
     assert.equal(run(["plan.json"], t.io), 2);
     assert.match(t.err(), /rooms\.a\.poly/);
+    assert.equal(t.out(), "", "text form belongs on stderr only; stdout must stay empty");
+  });
+  it("--json emits a JSON error envelope on stdout on a schema error, not text on stderr", () => {
+    const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [1, 1], [0, 1]] } } }) });
+    assert.equal(run(["plan.json", "--json"], t.io), 2);
+    assert.equal(t.err(), "", "schema errors under --json must not also print text to stderr");
+    const parsed = JSON.parse(t.out());
+    assert.ok(Array.isArray(parsed.error.issues) && parsed.error.issues.length > 0);
+    assert.match(parsed.error.issues[0].path, /rooms\.a\.poly/);
+    assert.equal(typeof parsed.error.issues[0].message, "string");
   });
   it("writes SVG to stdout by default and exits 0 when clean", () => {
     const t = fakeIo({ "plan.json": clean });
