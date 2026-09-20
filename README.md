@@ -283,7 +283,12 @@ floorplan set plan.json "$(floorplan plan.json --json | jq -r '.findings[0].path
 floorplan set plan.json openings[3].position 2.1
 floorplan set plan.json rooms.sala.name Sala        # not valid JSON → treated as the string "Sala"
 floorplan set plan.json openings[3].position 2.1 --dry-run   # preview the new text, don't write
+floorplan set plan.json rooms.suite.poly[1][0] -1   # a negative value is still a value, not an option
 ```
+
+A negative number is recognised as `<value>` even though it starts with `-`, once
+`<plan>` and `<path>` are already filled — `set`, `patch` and `fmt` all also accept `--`
+to end option parsing outright, for the rare file whose name itself starts with `-`.
 
 `patch` applies several operations at once, all-or-nothing — if any op fails, nothing is
 written and the CLI reports which one and why:

@@ -240,6 +240,13 @@ describe("floorplan fmt", () => {
     assert.equal(run(["fmt", "a", "b"], fakeIo({}).io), 2);
     assert.equal(run(["fmt"], fakeIo({}).io), 2);
   });
+
+  it("-- ends option parsing, so a dash-led filename after it is a positional, not an option", () => {
+    const t = fakeIo({ "-cabin.dsl": load("cabin", "dsl") });
+    const status = run(["fmt", "--to", "json", "--stdout", "--", "-cabin.dsl"], t.io);
+    assert.doesNotMatch(t.err(), /unknown option/);
+    assert.notEqual(status, 2, t.err());
+  });
 });
 
 describe("the main command reads a DSL file with no extra flags", () => {

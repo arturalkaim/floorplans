@@ -354,6 +354,13 @@ function finish(text: string, planPath: string, io: CliIo, opts: { json: boolean
   return worst === "error" || worst === "warning" ? 1 : 0;
 }
 
+/**
+ * A JSON number literal, exactly what `JSON.parse` would accept as a bare number. `set`
+ * uses this to tell a negative value (`-1`, `-1.5`) from an unrecognised option — a `-`
+ * prefix alone is not enough, since `-x` could be either.
+ */
+const NUMBER_LITERAL_RE = /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/;
+
 const FMT_USAGE = `usage: floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
 
 Canonicalises a plan, and converts it between the two syntaxes. Without --to the
@@ -373,18 +380,21 @@ function runFmt(argv: string[], io: CliIo): number {
   let to: "json" | "dsl" | undefined;
   let out: string | undefined;
   let print = false;
+  let noMoreOptions = false;
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i]!;
-    if (t === "--to") {
+    if (!noMoreOptions && t === "--") {
+      noMoreOptions = true;
+    } else if (!noMoreOptions && t === "--to") {
       const v = argv[++i];
       if (v !== "json" && v !== "dsl") {
         io.stderr(`--to must be json or dsl\n${FMT_USAGE}\n`);
         return 2;
       }
       to = v;
-    } else if (t === "--out") out = argv[++i];
-    else if (t === "--stdout" || t === "--dry-run") print = true;
-    else if (t.startsWith("-")) {
+    } else if (!noMoreOptions && t === "--out") out = argv[++i];
+    else if (!noMoreOptions && (t === "--stdout" || t === "--dry-run")) print = true;
+    else if (!noMoreOptions && t.startsWith("-") && t !== "-") {
       io.stderr(`unknown option ${t}\n${FMT_USAGE}\n`);
       return 2;
     } else positional.push(t);
@@ -426,10 +436,21 @@ function runSet(argv: string[], io: CliIo): number {
   const positional: string[] = [];
   let json = false;
   let dryRun = false;
+  let noMoreOptions = false;
   for (const t of argv) {
-    if (t === "--json") json = true;
-    else if (t === "--dry-run") dryRun = true;
-    else if (t.startsWith("-")) {
+    if (!noMoreOptions && t === "--") noMoreOptions = true;
+    else if (!noMoreOptions && t === "--json") json = true;
+    else if (!noMoreOptions && t === "--dry-run") dryRun = true;
+    else if (
+      !noMoreOptions &&
+      t.startsWith("-") &&
+      t !== "-" &&
+      // <plan> and <path> are never negative numbers, so a "-" there is still an
+      // option; once both are filled, or when the token is itself a JSON number, it
+      // is <value> — a negative coordinate, not a flag (docs/reviews/gpt-5.5.md §2.3).
+      positional.length < 2 &&
+      !NUMBER_LITERAL_RE.test(t)
+    ) {
       io.stderr(`unknown option ${t}\n${SET_USAGE}\n`);
       return 2;
     } else positional.push(t);
@@ -531,12 +552,15 @@ function runPatch(argv: string[], io: CliIo): number {
   let json = false;
   let dryRun = false;
   let patchArg: string | undefined;
+  let noMoreOptions = false;
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i]!;
-    if (t === "--patch") patchArg = argv[++i];
-    else if (t === "--json") json = true;
-    else if (t === "--dry-run") dryRun = true;
-    else if (t.startsWith("-")) {
+    if (!noMoreOptions && t === "--") noMoreOptions = true;
+    else if (!noMoreOptions && t === "--patch") patchArg = argv[++i];
+    else if (!noMoreOptions && t === "--json") json = true;
+    else if (!noMoreOptions && t === "--dry-run") dryRun = true;
+    // a bare "-" is the documented stdin sentinel for <patch.json|->, never an option
+    else if (!noMoreOptions && t.startsWith("-") && t !== "-") {
       io.stderr(`unknown option ${t}\n${PATCH_USAGE}\n`);
       return 2;
     } else positional.push(t);
