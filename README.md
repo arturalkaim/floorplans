@@ -1164,6 +1164,7 @@ fixtures/         casa-t3 (seed house), apartment-t2 (grid), cabin,
                   casa-piscina (fixtures), broken,
                   casa-angulo (a 45° wing and a canted bay),
                   casa-redonda (two wings joined by a round hall, in arcs),
+                  casa-v (two wings splayed 60° off the living bar, pool between),
                   broken-geometria (an overlap, a wedge, a corner too sharp),
                   moradia-2-pisos (two storeys, shared grid, void, stair),
                   broken-levels (one of every cross-level finding)

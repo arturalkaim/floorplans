@@ -2410,5 +2410,1395 @@
     ]
    ]
   }
+ ],
+ "casa-v": [
+  {
+   "id": "ground",
+   "rooms": [
+    {
+     "id": "sala",
+     "corners": 5,
+     "area": 35.544,
+     "clearArea": 32.854,
+     "minDimension": 4.664,
+     "largestRect": {
+      "x0": 3.651,
+      "y0": 12.7,
+      "x1": 11,
+      "y1": 17
+     },
+     "clearRect": {
+      "x0": 3.651,
+      "y0": 12.7,
+      "x1": 10.94,
+      "y1": 16.85,
+      "w": 7.289,
+      "h": 4.15
+     },
+     "labelAt": [
+      7.326,
+      14.85
+     ],
+     "fixtureArea": 0,
+     "usableArea": 32.854,
+     "exteriorFaces": [
+      "east",
+      "north",
+      "south"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "cozinha",
+     "corners": 5,
+     "area": 35.544,
+     "clearArea": 32.854,
+     "minDimension": 4.7,
+     "largestRect": {
+      "x0": 11,
+      "y0": 12.7,
+      "x1": 18.2,
+      "y1": 17
+     },
+     "clearRect": {
+      "x0": 11.06,
+      "y0": 12.7,
+      "x1": 18.2,
+      "y1": 16.85,
+      "w": 7.14,
+      "h": 4.15
+     },
+     "labelAt": [
+      14.6,
+      14.85
+     ],
+     "fixtureArea": 0,
+     "usableArea": 32.854,
+     "exteriorFaces": [
+      "north",
+      "south",
+      "west"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "corr_w",
+     "corners": 4,
+     "area": 13.157,
+     "clearArea": 11.04,
+     "minDimension": 1.19,
+     "largestRect": {
+      "x0": 4.492,
+      "y0": -0.062,
+      "x1": 13.892,
+      "y1": 1.337
+     },
+     "clearRect": {
+      "x0": 4.492,
+      "y0": -0.062,
+      "x1": 13.892,
+      "y1": 1.337,
+      "w": 9.4,
+      "h": 1.399
+     },
+     "labelAt": [
+      4.043,
+      8.28
+     ],
+     "fixtureArea": 0,
+     "usableArea": 11.04,
+     "exteriorFaces": [
+      "west"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "wc_w",
+     "corners": 4,
+     "area": 9.6,
+     "clearArea": 8.641,
+     "minDimension": 2.28,
+     "largestRect": {
+      "x0": 11.493,
+      "y0": 1.337,
+      "x1": 13.893,
+      "y1": 5.337
+     },
+     "clearRect": {
+      "x0": 11.493,
+      "y0": 1.337,
+      "x1": 13.893,
+      "y1": 5.337,
+      "w": 2.4,
+      "h": 4
+     },
+     "labelAt": [
+      3.455,
+      12.661
+     ],
+     "fixtureArea": 0,
+     "usableArea": 8.641,
+     "exteriorFaces": [
+      "east"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "quarto1",
+     "corners": 4,
+     "area": 14.404,
+     "clearArea": 13.193,
+     "minDimension": 3.48,
+     "largestRect": {
+      "x0": 7.893,
+      "y0": 1.337,
+      "x1": 11.493,
+      "y1": 5.337
+     },
+     "clearRect": {
+      "x0": 7.893,
+      "y0": 1.337,
+      "x1": 11.493,
+      "y1": 5.337,
+      "w": 3.6,
+      "h": 4
+     },
+     "labelAt": [
+      1.956,
+      10.063
+     ],
+     "fixtureArea": 0,
+     "usableArea": 13.193,
+     "exteriorFaces": [
+      "east"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "quarto2",
+     "corners": 4,
+     "area": 13.604,
+     "clearArea": 12.435,
+     "minDimension": 3.28,
+     "largestRect": {
+      "x0": 4.492,
+      "y0": 1.337,
+      "x1": 7.893,
+      "y1": 5.338
+     },
+     "clearRect": {
+      "x0": 4.492,
+      "y0": 1.337,
+      "x1": 7.893,
+      "y1": 5.338,
+      "w": 3.401,
+      "h": 4.001
+     },
+     "labelAt": [
+      0.205,
+      7.032
+     ],
+     "fixtureArea": 0,
+     "usableArea": 12.435,
+     "exteriorFaces": [
+      "east"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "suite",
+     "corners": 4,
+     "area": 22.68,
+     "clearArea": 20.349,
+     "minDimension": 3.99,
+     "largestRect": {
+      "x0": 0.292,
+      "y0": -0.062,
+      "x1": 4.492,
+      "y1": 5.338
+     },
+     "clearRect": {
+      "x0": 0.292,
+      "y0": -0.062,
+      "x1": 4.492,
+      "y1": 5.338,
+      "w": 4.2,
+      "h": 5.4
+     },
+     "labelAt": [
+      -1.089,
+      3.39
+     ],
+     "fixtureArea": 0,
+     "usableArea": 20.349,
+     "exteriorFaces": [
+      "east",
+      "south",
+      "west"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "corr_e",
+     "corners": 4,
+     "area": 8.958,
+     "clearArea": 7.471,
+     "minDimension": 1.19,
+     "largestRect": {
+      "x0": 18.99,
+      "y0": -3.507,
+      "x1": 20.39,
+      "y1": 2.893
+     },
+     "clearRect": {
+      "x0": 18.99,
+      "y0": -3.507,
+      "x1": 20.39,
+      "y1": 2.893,
+      "w": 1.4,
+      "h": 6.4
+     },
+     "labelAt": [
+      17.206,
+      9.579
+     ],
+     "fixtureArea": 0,
+     "usableArea": 7.471,
+     "exteriorFaces": [
+      "east"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "lavandaria",
+     "corners": 4,
+     "area": 9.6,
+     "clearArea": 8.641,
+     "minDimension": 2.28,
+     "largestRect": {
+      "x0": 20.39,
+      "y0": 0.495,
+      "x1": 24.39,
+      "y1": 2.895
+     },
+     "clearRect": {
+      "x0": 20.39,
+      "y0": 0.495,
+      "x1": 24.39,
+      "y1": 2.895,
+      "w": 4,
+      "h": 2.4
+     },
+     "labelAt": [
+      18.544,
+      12.661
+     ],
+     "fixtureArea": 0,
+     "usableArea": 8.641,
+     "exteriorFaces": [
+      "west"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "escritorio",
+     "corners": 4,
+     "area": 16.006,
+     "clearArea": 14.711,
+     "minDimension": 3.791,
+     "largestRect": {
+      "x0": 20.39,
+      "y0": -3.506,
+      "x1": 24.391,
+      "y1": 0.495
+     },
+     "clearRect": {
+      "x0": 20.39,
+      "y0": -3.506,
+      "x1": 24.391,
+      "y1": 0.495,
+      "w": 4.001,
+      "h": 4.001
+     },
+     "labelAt": [
+      20.145,
+      9.89
+     ],
+     "fixtureArea": 0,
+     "usableArea": 14.711,
+     "exteriorFaces": [
+      "west"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "brincar",
+     "corners": 4,
+     "area": 30.239,
+     "clearArea": 27.488,
+     "minDimension": 5.1,
+     "largestRect": {
+      "x0": 18.99,
+      "y0": -9.109,
+      "x1": 24.39,
+      "y1": -3.51
+     },
+     "clearRect": {
+      "x0": 18.99,
+      "y0": -9.109,
+      "x1": 24.39,
+      "y1": -3.51,
+      "w": 5.4,
+      "h": 5.599
+     },
+     "labelAt": [
+      21.938,
+      5.383
+     ],
+     "fixtureArea": 0,
+     "usableArea": 27.488,
+     "exteriorFaces": [
+      "east",
+      "south",
+      "west"
+     ],
+     "exteriorWindow": true
+    }
+   ],
+   "walls": [
+    {
+     "id": "w1",
+     "axis": "h",
+     "c": 12,
+     "from": 7,
+     "to": 11,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "patio"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w2",
+     "axis": "h",
+     "c": 12,
+     "from": 11,
+     "to": 15,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "patio"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    },
+    {
+     "id": "w3",
+     "axis": "h",
+     "c": 17,
+     "from": 3.651,
+     "to": 11,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w4",
+     "axis": "h",
+     "c": 17,
+     "from": 11,
+     "to": 18.349,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "cozinha"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w5",
+     "axis": "v",
+     "c": 11,
+     "from": 12,
+     "to": 17,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    },
+    {
+     "id": "w6",
+     "from": 0,
+     "to": 4.2,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "suite"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w7",
+     "from": 0,
+     "to": 5.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "suite"
+     }
+    },
+    {
+     "id": "w8",
+     "from": 0,
+     "to": 3.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "quarto2"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w9",
+     "from": 0,
+     "to": 4.001,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "suite"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "quarto2"
+     }
+    },
+    {
+     "id": "w10",
+     "from": 0,
+     "to": 3.6,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "quarto1"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w11",
+     "from": 0,
+     "to": 4.001,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "quarto2"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "quarto1"
+     }
+    },
+    {
+     "id": "w12",
+     "from": 0,
+     "to": 4.2,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "patio"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "suite"
+     }
+    },
+    {
+     "id": "w13",
+     "from": 0,
+     "to": 1.4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "suite"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "corr_w"
+     }
+    },
+    {
+     "id": "w14",
+     "from": 0,
+     "to": 3.4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "corr_w"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "quarto2"
+     }
+    },
+    {
+     "id": "w15",
+     "from": 0,
+     "to": 2.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "wc_w"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w16",
+     "from": 0,
+     "to": 4.001,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "quarto1"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "wc_w"
+     }
+    },
+    {
+     "id": "w17",
+     "from": 0,
+     "to": 9.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "patio"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "corr_w"
+     }
+    },
+    {
+     "id": "w18",
+     "from": 0,
+     "to": 2.656,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w19",
+     "from": 0,
+     "to": 4.001,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "wc_w"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w20",
+     "from": 0,
+     "to": 3.6,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "corr_w"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "quarto1"
+     }
+    },
+    {
+     "id": "w21",
+     "from": 0,
+     "to": 2.4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "corr_w"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "wc_w"
+     }
+    },
+    {
+     "id": "w22",
+     "from": 0,
+     "to": 1.4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "corr_w"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w23",
+     "from": 0,
+     "to": 1.4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "corr_e"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    },
+    {
+     "id": "w24",
+     "from": 0,
+     "to": 6.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "patio"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "corr_e"
+     }
+    },
+    {
+     "id": "w25",
+     "from": 0,
+     "to": 2.4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "corr_e"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "lavandaria"
+     }
+    },
+    {
+     "id": "w26",
+     "from": 0,
+     "to": 4.001,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "lavandaria"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "cozinha"
+     }
+    },
+    {
+     "id": "w27",
+     "from": 0,
+     "to": 4.001,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "corr_e"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "escritorio"
+     }
+    },
+    {
+     "id": "w28",
+     "from": 0,
+     "to": 4.001,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "escritorio"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "lavandaria"
+     }
+    },
+    {
+     "id": "w29",
+     "from": 0,
+     "to": 1.4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "brincar"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "corr_e"
+     }
+    },
+    {
+     "id": "w30",
+     "from": 0,
+     "to": 5.599,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "patio"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "brincar"
+     }
+    },
+    {
+     "id": "w31",
+     "from": 0,
+     "to": 2.656,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "cozinha"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w32",
+     "from": 0,
+     "to": 4.001,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "brincar"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "escritorio"
+     }
+    },
+    {
+     "id": "w33",
+     "from": 0,
+     "to": 2.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "lavandaria"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w34",
+     "from": 0,
+     "to": 4.001,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "escritorio"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w35",
+     "from": 0,
+     "to": 5.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "brincar"
+     }
+    },
+    {
+     "id": "w36",
+     "from": 0,
+     "to": 5.599,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "brincar"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    }
+   ],
+   "openings": [
+    {
+     "index": 0,
+     "wall": "w3",
+     "from": 8.5,
+     "to": 9.5,
+     "center": [
+      9,
+      17
+     ],
+     "hinge": [
+      8.5,
+      17
+     ],
+     "swingRoom": "sala"
+    },
+    {
+     "index": 1,
+     "wall": "w5",
+     "from": 13.7,
+     "to": 15.3,
+     "center": [
+      11,
+      14.5
+     ]
+    },
+    {
+     "index": 2,
+     "wall": "w2",
+     "from": 12.4,
+     "to": 13.6,
+     "center": [
+      13,
+      12
+     ],
+     "hinge": [
+      12.4,
+      12
+     ],
+     "swingRoom": "patio"
+    },
+    {
+     "index": 3,
+     "wall": "w22",
+     "from": 0.25,
+     "to": 1.15,
+     "center": [
+      6.394,
+      12.35
+     ],
+     "hinge": [
+      6.004,
+      12.575
+     ],
+     "swingRoom": "corr_w"
+    },
+    {
+     "index": 4,
+     "wall": "w23",
+     "from": 0.25,
+     "to": 1.15,
+     "center": [
+      15.606,
+      12.35
+     ],
+     "hinge": [
+      15.216,
+      12.125
+     ],
+     "swingRoom": "corr_e"
+    },
+    {
+     "index": 5,
+     "wall": "w21",
+     "from": 0.8,
+     "to": 1.6,
+     "center": [
+      5.188,
+      11.661
+     ],
+     "hinge": [
+      4.988,
+      11.315
+     ],
+     "swingRoom": "wc_w"
+    },
+    {
+     "index": 6,
+     "wall": "w20",
+     "from": 1.35,
+     "to": 2.25,
+     "center": [
+      3.688,
+      9.063
+     ],
+     "hinge": [
+      3.463,
+      8.673
+     ],
+     "swingRoom": "quarto1"
+    },
+    {
+     "index": 7,
+     "wall": "w14",
+     "from": 1.251,
+     "to": 2.151,
+     "center": [
+      1.938,
+      6.032
+     ],
+     "hinge": [
+      1.713,
+      5.642
+     ],
+     "swingRoom": "quarto2"
+    },
+    {
+     "index": 8,
+     "wall": "w13",
+     "from": 0.25,
+     "to": 1.15,
+     "center": [
+      1.694,
+      4.209
+     ],
+     "hinge": [
+      1.304,
+      4.434
+     ],
+     "swingRoom": "suite"
+    },
+    {
+     "index": 9,
+     "wall": "w17",
+     "from": 3.9,
+     "to": 4.9,
+     "center": [
+      4.5,
+      7.67
+     ],
+     "hinge": [
+      4.25,
+      7.237
+     ],
+     "swingRoom": "patio"
+    },
+    {
+     "index": 10,
+     "wall": "w25",
+     "from": 0.8,
+     "to": 1.6,
+     "center": [
+      16.812,
+      11.661
+     ],
+     "hinge": [
+      16.612,
+      12.007
+     ],
+     "swingRoom": "lavandaria"
+    },
+    {
+     "index": 11,
+     "wall": "w27",
+     "from": 1.551,
+     "to": 2.451,
+     "center": [
+      18.412,
+      8.889
+     ],
+     "hinge": [
+      18.187,
+      9.279
+     ],
+     "swingRoom": "escritorio"
+    },
+    {
+     "index": 12,
+     "wall": "w29",
+     "from": 0.2,
+     "to": 1.2,
+     "center": [
+      18.806,
+      6.807
+     ],
+     "hinge": [
+      18.373,
+      6.557
+     ],
+     "swingRoom": "brincar"
+    },
+    {
+     "index": 13,
+     "wall": "w24",
+     "from": 3.5,
+     "to": 4.5,
+     "center": [
+      17,
+      8.536
+     ],
+     "hinge": [
+      16.75,
+      8.969
+     ],
+     "swingRoom": "patio"
+    },
+    {
+     "index": 14,
+     "wall": "w3",
+     "from": 5.6,
+     "to": 7.4,
+     "center": [
+      6.5,
+      17
+     ]
+    },
+    {
+     "index": 15,
+     "wall": "w4",
+     "from": 13.8,
+     "to": 15.2,
+     "center": [
+      14.5,
+      17
+     ]
+    },
+    {
+     "index": 16,
+     "wall": "w15",
+     "from": 0.9,
+     "to": 1.5,
+     "center": [
+      1.723,
+      13.661
+     ]
+    },
+    {
+     "index": 17,
+     "wall": "w10",
+     "from": 1.2,
+     "to": 2.4,
+     "center": [
+      0.223,
+      11.063
+     ]
+    },
+    {
+     "index": 18,
+     "wall": "w8",
+     "from": 1.101,
+     "to": 2.301,
+     "center": [
+      -1.527,
+      8.032
+     ]
+    },
+    {
+     "index": 19,
+     "wall": "w6",
+     "from": 1.3,
+     "to": 2.9,
+     "center": [
+      -3.427,
+      4.741
+     ]
+    },
+    {
+     "index": 20,
+     "wall": "w7",
+     "from": 2.101,
+     "to": 3.301,
+     "center": [
+      -2.138,
+      1.572
+     ]
+    },
+    {
+     "index": 21,
+     "wall": "w33",
+     "from": 0.9,
+     "to": 1.5,
+     "center": [
+      20.277,
+      13.661
+     ]
+    },
+    {
+     "index": 22,
+     "wall": "w34",
+     "from": 1.301,
+     "to": 2.701,
+     "center": [
+      21.877,
+      10.889
+     ]
+    },
+    {
+     "index": 23,
+     "wall": "w36",
+     "from": 1.999,
+     "to": 3.599,
+     "center": [
+      24.277,
+      6.733
+     ]
+    },
+    {
+     "index": 24,
+     "wall": "w35",
+     "from": 2,
+     "to": 3.4,
+     "center": [
+      23.338,
+      2.958
+     ]
+    }
+   ],
+   "envelope": {
+    "x0": -4.477,
+    "y0": 0.222,
+    "x1": 25.677,
+    "y1": 17,
+    "area": 209.339,
+    "outline": [
+     [
+      [
+       -4.477,
+       2.922
+      ],
+      [
+       0.2,
+       0.222
+      ],
+      [
+       2.3,
+       3.859
+      ],
+      [
+       7,
+       12
+      ],
+      [
+       15,
+       12
+      ],
+      [
+       18.2,
+       6.457
+      ],
+      [
+       21,
+       1.608
+      ],
+      [
+       25.677,
+       4.308
+      ],
+      [
+       22.877,
+       9.157
+      ],
+      [
+       20.877,
+       12.622
+      ],
+      [
+       19.677,
+       14.7
+      ],
+      [
+       18.349,
+       17
+      ],
+      [
+       3.651,
+       17
+      ],
+      [
+       2.323,
+       14.7
+      ],
+      [
+       1.123,
+       12.622
+      ],
+      [
+       -0.677,
+       9.504
+      ],
+      [
+       -2.377,
+       6.559
+      ]
+     ]
+    ]
+   },
+   "interiorArea": 209.336,
+   "streetOutdoor": [
+    "patio"
+   ],
+   "access": [
+    [
+     "exterior",
+     [
+      "room:sala"
+     ]
+    ],
+    [
+     "outdoor:patio",
+     [
+      "room:corr_e",
+      "room:corr_w",
+      "room:cozinha"
+     ]
+    ],
+    [
+     "room:brincar",
+     [
+      "room:corr_e"
+     ]
+    ],
+    [
+     "room:corr_e",
+     [
+      "outdoor:patio",
+      "room:brincar",
+      "room:cozinha",
+      "room:escritorio",
+      "room:lavandaria"
+     ]
+    ],
+    [
+     "room:corr_w",
+     [
+      "outdoor:patio",
+      "room:quarto1",
+      "room:quarto2",
+      "room:sala",
+      "room:suite",
+      "room:wc_w"
+     ]
+    ],
+    [
+     "room:cozinha",
+     [
+      "outdoor:patio",
+      "room:corr_e",
+      "room:sala"
+     ]
+    ],
+    [
+     "room:escritorio",
+     [
+      "room:corr_e"
+     ]
+    ],
+    [
+     "room:lavandaria",
+     [
+      "room:corr_e"
+     ]
+    ],
+    [
+     "room:quarto1",
+     [
+      "room:corr_w"
+     ]
+    ],
+    [
+     "room:quarto2",
+     [
+      "room:corr_w"
+     ]
+    ],
+    [
+     "room:sala",
+     [
+      "exterior",
+      "room:corr_w",
+      "room:cozinha"
+     ]
+    ],
+    [
+     "room:suite",
+     [
+      "room:corr_w"
+     ]
+    ],
+    [
+     "room:wc_w",
+     [
+      "room:corr_w"
+     ]
+    ]
+   ]
+  }
  ]
 }

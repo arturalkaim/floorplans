@@ -8,7 +8,7 @@ import { floorplan, parseDsl, schedule, toDsl } from "../src/index.ts";
  * guard that the two stay the same building: same findings, same schedule, same SVG — the
  * only difference being the `line` a DSL finding carries and a JSON one does not.
  */
-const TWINS = ["casa-t3", "moradia-2-pisos", "cabin"];
+const TWINS = ["casa-t3", "moradia-2-pisos", "cabin", "casa-v"];
 const load = (name: string, ext: "json" | "dsl") => readFileSync(new URL(`../fixtures/${name}.${ext}`, import.meta.url), "utf8");
 
 describe("the .dsl fixtures are canonical and mean their .json twins", () => {

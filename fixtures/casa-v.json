@@ -1,0 +1,52 @@
+{
+  "title": "Casa em V",
+  "units": "m",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "north": 0,
+  "rooms": {
+    "sala": {"name":"Sala","kind":"living","zone":"day","poly":[[7,12],[11,12],[11,17],[3.651,17],[2.323,14.7]]},
+    "cozinha": {"name":"Cozinha","kind":"kitchen","zone":"day","poly":[[11,12],[15,12],[19.677,14.7],[18.349,17],[11,17]]},
+    "corr_w": {"name":"Corredor poente","kind":"corridor","zone":"night","poly":[[7,12],[2.3,3.859],[1.088,4.559],[5.788,12.7]]},
+    "wc_w": {"name":"Casa de banho","kind":"bath","zone":"night","poly":[[5.788,12.7],[4.588,10.622],[1.123,12.622],[2.323,14.7]]},
+    "quarto1": {"name":"Quarto 1","kind":"bedroom","zone":"night","poly":[[4.588,10.622],[2.788,7.504],[-0.677,9.504],[1.123,12.622]]},
+    "quarto2": {"name":"Quarto 2","kind":"bedroom","zone":"night","poly":[[2.788,7.504],[1.088,4.559],[-2.377,6.559],[-0.677,9.504]]},
+    "suite": {"name":"Suite","kind":"bedroom","zone":"night","poly":[[2.3,3.859],[0.2,0.222],[-4.477,2.922],[-2.377,6.559]]},
+    "corr_e": {"name":"Corredor nascente","kind":"corridor","zone":"work","poly":[[15,12],[18.2,6.457],[19.412,7.157],[16.212,12.7]]},
+    "lavandaria": {"name":"Lavandaria","kind":"utility","zone":"work","poly":[[16.212,12.7],[17.412,10.622],[20.877,12.622],[19.677,14.7]]},
+    "escritorio": {"name":"Escritório","kind":"office","zone":"work","poly":[[17.412,10.622],[19.412,7.157],[22.877,9.157],[20.877,12.622]]},
+    "brincar": {"name":"Sala de brincar","kind":"living","zone":"work","poly":[[18.2,6.457],[21,1.608],[25.677,4.308],[22.877,9.157]]}
+  },
+  "outdoor": {
+    "patio": {"name":"Pátio da piscina","poly":[[0.2,0.222],[7,12],[15,12],[21,1.608]]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","sala"],"at":[9,17],"width":1,"swingInto":"sala","entrance":true},
+    {"type":"cased","between":["sala","cozinha"],"at":[11,14.5],"width":1.6},
+    {"type":"door","between":["cozinha","patio"],"at":[13,12],"width":1.2,"swingInto":"patio","glazed":true},
+    {"type":"door","between":["sala","corr_w"],"at":[6.394,12.35],"width":0.9,"swingInto":"corr_w"},
+    {"type":"door","between":["cozinha","corr_e"],"at":[15.606,12.35],"width":0.9,"swingInto":"corr_e"},
+    {"type":"door","between":["corr_w","wc_w"],"at":[5.188,11.661],"width":0.8,"swingInto":"wc_w"},
+    {"type":"door","between":["corr_w","quarto1"],"at":[3.688,9.063],"width":0.9,"swingInto":"quarto1"},
+    {"type":"door","between":["corr_w","quarto2"],"at":[1.938,6.032],"width":0.9,"swingInto":"quarto2"},
+    {"type":"door","between":["corr_w","suite"],"at":[1.694,4.209],"width":0.9,"swingInto":"suite"},
+    {"type":"door","between":["corr_w","patio"],"at":[4.5,7.67],"width":1,"swingInto":"patio","glazed":true},
+    {"type":"door","between":["corr_e","lavandaria"],"at":[16.812,11.661],"width":0.8,"swingInto":"lavandaria"},
+    {"type":"door","between":["corr_e","escritorio"],"at":[18.412,8.889],"width":0.9,"swingInto":"escritorio"},
+    {"type":"door","between":["corr_e","brincar"],"at":[18.806,6.807],"width":1,"swingInto":"brincar"},
+    {"type":"door","between":["corr_e","patio"],"at":[17,8.536],"width":1,"swingInto":"patio","glazed":true},
+    {"type":"window","between":["exterior","sala"],"at":[6.5,17],"width":1.8},
+    {"type":"window","between":["exterior","cozinha"],"at":[14.5,17],"width":1.4},
+    {"type":"window","between":["exterior","wc_w"],"at":[1.723,13.661],"width":0.6},
+    {"type":"window","between":["exterior","quarto1"],"at":[0.223,11.063],"width":1.2},
+    {"type":"window","between":["exterior","quarto2"],"at":[-1.527,8.032],"width":1.2},
+    {"type":"window","between":["exterior","suite"],"at":[-3.427,4.741],"width":1.6},
+    {"type":"window","between":["exterior","suite"],"at":[-2.138,1.572],"width":1.2},
+    {"type":"window","between":["exterior","lavandaria"],"at":[20.277,13.661],"width":0.6},
+    {"type":"window","between":["exterior","escritorio"],"at":[21.877,10.889],"width":1.4},
+    {"type":"window","between":["exterior","brincar"],"at":[24.277,6.733],"width":1.6},
+    {"type":"window","between":["exterior","brincar"],"at":[23.338,2.958],"width":1.4}
+  ],
+  "fixtures": [
+    {"type":"pool","in":"patio","at":[8,6],"size":[6,3]}
+  ]
+}

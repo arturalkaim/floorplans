@@ -5,7 +5,7 @@ import { formatPlan, formatText } from "../src/format.ts";
 import { parseWithPositions, spliceAt } from "../src/jsonpos.ts";
 import { parse } from "../src/parse.ts";
 
-const FIXTURES = ["casa-t3", "casa-piscina", "quinta", "cabin", "broken", "apartment-t2", "casa-patio", "moradia-2-pisos", "broken-levels", "casa-angulo", "casa-redonda", "broken-geometria"];
+const FIXTURES = ["casa-t3", "casa-piscina", "quinta", "cabin", "broken", "apartment-t2", "casa-patio", "moradia-2-pisos", "broken-levels", "casa-angulo", "casa-redonda", "broken-geometria", "casa-v"];
 const load = (n: string) => readFileSync(new URL(`../fixtures/${n}.json`, import.meta.url), "utf8");
 
 describe("format: the document keeps its meaning", () => {
