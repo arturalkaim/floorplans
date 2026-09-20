@@ -1,0 +1,7 @@
+{
+  "error": {
+    "issues": [
+      {"path":"levels","message":"must be an object keyed by level id","kind":"type"}
+    ]
+  }
+}

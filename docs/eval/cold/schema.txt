@@ -1,0 +1,17 @@
+plan { title?: str ; units?: str ; walls?: walls ; north?: num ; stack?: str[] ; levels?: level ; vertical?: vertical ; grid?: grid }
+walls { exterior?: num ; partition?: num }
+grid { cols: num[] ; rows: num[] }
+layout { cols?: num[] ; rows?: num[] ; areas: str[] }
+level { name?: str ; height?: num ; ground?: bool ; rooms: room ; outdoor?: outdoor ; voids?: void ; layout?: layout ; openings?: opening ; fixtures?: fixture }
+room { poly?: point[] ; rect?: [x,y,w,h] ; kind?: enum(ROOM_KINDS) ; name?: str ; zone?: str ; habitable?: bool ; wet?: bool ; circulation?: bool } oneOf: "poly" xor "rect" — neither: place it in layout.areas instead
+outdoor { poly?: point[] ; rect?: [x,y,w,h] ; name?: str ; covered?: bool } oneOf: "poly" xor "rect" — neither: place it in layout.areas instead
+void { poly?: point[] ; rect?: [x,y,w,h] ; name?: str } oneOf: "poly" xor "rect" — neither: place it in layout.areas instead
+opening { id?: str ; type: enum(door|window|cased) ; between: str[] ; width: num ; position?: opening.position ; on?: opening.on ; at?: [x,y] ; hinge?: str ; swingInto?: str ; entrance?: bool ; glazed?: bool } oneOf: "on"/"position" xor "at"
+opening.on { room: str ; side?: enum(north|south|east|west) ; near?: [x,y] }
+opening.position { from: str ; distance: num }
+fixture { id?: str ; type: enum(FIXTURE_TYPES) ; in: str ; poly?: point[] ; at?: [x,y] ; size?: [x,y] ; depth?: num ; name?: str } oneOf: "poly" xor "at"+"size"
+vertical { id: str ; type: enum(stairs|lift|ramp) ; name?: str ; at: vertical.footprint ; up?: num ; risers?: num }
+vertical.footprint { level: str ; in: str ; poly?: point[] ; rect?: [x,y,w,h] } oneOf: "poly" xor "rect"
+
+ROOM_KINDS = bedroom|living|kitchen|office|bath|wc|hall|corridor|storage|utility|garage|other
+FIXTURE_TYPES = pool|bath|shower|wc|sink|counter|island|stairs|other

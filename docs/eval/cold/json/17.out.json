@@ -1,0 +1,8 @@
+{
+  "error": {
+    "issues": [
+      {"path":"levels","message":"must be an object keyed by level id","kind":"type"},
+      {"path":"vertical[0].id","message":"a vertical element needs an id matching ^[a-z][a-z0-9_]*$; levels are joined by that id, never by footprint overlap","kind":"missing"}
+    ]
+  }
+}

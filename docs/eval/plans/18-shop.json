@@ -1,0 +1,20 @@
+{
+  "title": "Shop",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "rooms": {
+    "loja": {"name":"Shop floor","kind":"other","zone":"day","rect":[0,0,7,6]},
+    "armazem": {"name":"Storeroom","kind":"storage","zone":"work","rect":[0,6,5,3]},
+    "wc": {"name":"Staff WC","kind":"wc","zone":"work","rect":[5,6,2,3]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","loja"],"on":{"room":"loja","side":"north"},"width":1.2,"entrance":true,"glazed":true},
+    {"type":"cased","between":["loja","armazem"],"width":1},
+    {"type":"door","between":["armazem","wc"],"width":0.7,"swingInto":"wc"},
+    {"type":"window","between":["exterior","loja"],"on":{"room":"loja","side":"west"},"width":2.4},
+    {"type":"window","between":["exterior","armazem"],"on":{"room":"armazem","side":"south"},"width":1},
+    {"type":"window","between":["exterior","wc"],"on":{"room":"wc","side":"east"},"width":0.5}
+  ],
+  "fixtures": [
+    {"type":"wc","in":"wc","at":[5.3,6.3],"size":[0.4,0.7]}
+  ]
+}

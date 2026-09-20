@@ -1,0 +1,25 @@
+{
+  "title": "Bungalow",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Hall", "kind": "hall", "rect": [2, 3, 4, 2], "circulation": true },
+        { "name": "Bedroom 1", "kind": "bedroom", "rect": [2, 0, 2, 3], "habitable": true },
+        { "name": "Living", "kind": "living", "rect": [4, 0, 2, 3], "habitable": true },
+        { "name": "Bedroom 2", "kind": "bedroom", "rect": [0, 3, 2, 2], "habitable": true },
+        { "name": "Bedroom 3", "kind": "bedroom", "rect": [6, 3, 2, 2], "habitable": true },
+        { "name": "Bathroom", "kind": "bath", "rect": [2, 5, 4, 2], "wet": true }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Hall", "Bedroom 1"], "on": { "room": "Hall", "side": "north", "near": [3, 3] }, "width": 0.9 },
+        { "type": "door", "between": ["Hall", "Living"], "on": { "room": "Hall", "side": "north", "near": [5, 3] }, "width": 1.2 },
+        { "type": "door", "between": ["Hall", "Bedroom 2"], "on": { "room": "Hall", "side": "west" }, "width": 0.9 },
+        { "type": "door", "between": ["Hall", "Bedroom 3"], "on": { "room": "Hall", "side": "east" }, "width": 0.9 },
+        { "type": "door", "between": ["Hall", "Bathroom"], "on": { "room": "Hall", "side": "south" }, "width": 0.8 }
+      ]
+    }
+  ]
+}

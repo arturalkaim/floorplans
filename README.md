@@ -1,8 +1,11 @@
 # floorplan
 
-Declarative floor-plan renderer and linter. A JSON description of rooms and
-openings becomes a scaled SVG, and a validator tells you what is wrong with the
-house before you draw it. "Mermaid for floor plans."
+Declarative floor-plan renderer and linter. A description of rooms and openings
+becomes a scaled SVG, and a validator tells you what is wrong with the house
+before you draw it. "Mermaid for floor plans."
+
+Write the plan as JSON, or in the [line DSL](#the-line-dsl) — one entity per
+line, about half the tokens, and the same document either way.
 
 - Rooms in, walls derived, openings attached to walls, findings out.
 - Zero runtime dependencies. ESM + TypeScript. `render` returns a string; no DOM.
@@ -15,13 +18,27 @@ npm run examples     # renders fixtures/*.json → examples/*.svg
 node src/bin.ts fixtures/casa-t3.json --out casa.svg --lint
 ```
 
-**If you are an agent authoring or editing a plan**, load `floorplan --schema`
-(the field list, generated from the parser — 2 659 tokens JSON, `o200k_base`,
-covering all 15 objects and 75 fields; `--schema=md` prints the same table for
-a human) and `floorplan <plan.json> --lint` (what is wrong with a document you
-already have) instead of this README's prose. Both are generated from the
-library itself, so neither can list a field or a rule the parser and linter
-do not actually have.
+**If you are an agent authoring or editing a plan**, load one of the generated
+schemas instead of this README's prose, and then `floorplan <plan> --lint` for
+what is wrong with a document you already have (105 tokens on casa-t3's two
+findings) or `--json` for the same thing as data (174; see "What an agent pays
+to read a plan back" below).
+
+| load | what it is | tokens |
+|---|---|---:|
+| `floorplan --schema` | one compact typed-signature line per object (with cardinality — `{id: room}`, `opening[]`), a legend, and a worked example — all 15 objects and 77 fields | 1 062 |
+| `floorplan --schema=dsl` | the line DSL's grammar — every statement and its tokens — plus the same legend and worked example, without the field-by-field index below | 1 066 |
+| `floorplan --schema=dsl-full` | `--schema=dsl` plus the field-by-field token index for all 77 fields | 1 719 |
+| `floorplan --schema=full` | the same JSON table with types, enums, cardinality and a one-sentence doc per field | 2 806 |
+| `floorplan --schema=md` | the full table as Markdown, for a human | 2 407 |
+
+Take `--schema` when you are editing a document you already have, and
+`--schema=dsl` when you are writing one from scratch: the two now cost about
+the same to load (a worked example dominates both), and the documents the DSL
+teaches you to write are still about half the size, so it still pays for
+itself on the first house. All five are generated from the library itself, so
+none can list a field, a token or a rule the parser and linter do not
+actually have.
 
 ## Playground app
 
@@ -54,8 +71,10 @@ its ground-level thumbnail; opening it goes to the same editor as any other plan
 Walls in the drawing can be dragged, and a drag **edits the source**. The text stays the
 single source of truth: moving a wall works out the new coordinate, splices it into the
 document, and the ordinary pipeline redraws — text → parse → derive → rules → SVG, which
-measures 0.3–1.2 ms, so the whole plan is recomputed on every pointer move rather than
-patched. Nothing is held in two places, so the drawing and the editor cannot drift.
+measures 1.5–5.2 ms over this repository's fixtures (21 ms for `casa-redonda`, whose round
+hall is flattened to a hundred chords), so the whole plan is recomputed on every pointer
+move rather than patched. Nothing is held in two places, so the drawing and the editor
+cannot drift.
 
 A wall is offered for dragging only when the move has a representation in the source:
 
@@ -128,13 +147,18 @@ else changes; on one that did not, the paths are the ones they always were.
 ## CLI
 
 ```
-floorplan <plan.json> [--out plan.svg] [--level id] [--lint] [--json] [--scale N]
+floorplan <plan.json> [--out plan.svg] [--level id] [--lint]
+                      [--json[=findings|all|schedule|walls]] [--scale N]
                       [--theme auto|light|dark] [--labels auto|full|index]
                       [--areas clear|centreline|none] [--mark error|warning|info|none]
 floorplan set <plan.json> <path> <value> [--json] [--dry-run]
 floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
-floorplan --schema[=md]
+floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
+floorplan --schema[=full|md|dsl|dsl-full]
 ```
+
+A plan file may be JSON or the line DSL, and every command takes either: the first
+non-space character decides, so `floorplan plan.dsl --lint` and `--json` need no flag.
 
 Exit codes: `0` clean or info only, `1` findings at warning or above, `2` usage or schema error.
 
@@ -142,16 +166,91 @@ Exit codes: `0` clean or info only, `1` findings at warning or above, `2` usage 
 plan needs it never. `--out` may contain `{level}`, and then one sheet per storey is
 written (`--out plan-{level}.svg` → `plan-piso0.svg`, `plan-piso1.svg`). `--lint` prefixes
 each finding with the level it is about once there is more than one, and a building-wide
-finding shows `—`. `--json` is unchanged in shape: findings gain `level`, and the schedule
-gains `levels[]` and `building`, both only on a document that authored `levels`.
+finding shows `—`.
 
-`--schema` needs no input file: it prints every object's field list — name, type,
-required, enum values, one-sentence doc, and mutual exclusions — read straight from the
-table the parser itself validates against (see "Plan format" below). Default is compact
-JSON, one field per line; `--schema=md` prints the same table as Markdown.
+`--schema` needs no input file: it prints every object's field list, read straight from
+the table the parser itself validates against (see "Plan format" below). Default is one
+typed-signature line per object — name, required/`?`, type, enum values inlined at ≤6 or a
+`enum(NAME)` reference otherwise, spelled out once in a trailing legend, cardinality on
+every nested-object field (`{id: room}` for an id-keyed map, `opening[]` for a list, bare
+`opening.on` for a single nested object) — plus the id format, the x/y ↔ compass axes, and
+one small worked example (`fixtures/cabin.json`, canonical form) at the end: no per-field
+doc text, 1 062 tokens for all 15 objects/77 fields. `--schema=full` prints the same table
+as compact JSON with name, type, required, enum values, cardinality and the one-sentence
+doc, one field per line, 2 806 tokens. `--schema=md` prints the full table as Markdown.
+`--schema=dsl` prints the line DSL's grammar instead, from its own table (see "The line
+DSL" below) plus the same legend and worked example, 1 066 tokens; `--schema=dsl-full`
+adds the field-by-field token index `--schema=dsl` omits, 1 719 tokens.
 
-On a schema error (exit `2`), `--json` prints `{"error":{"issues":[{"path","message"}]}}`
-to stdout instead of the text form on stderr; without `--json` the text form is unchanged.
+`fmt` canonicalises a plan and converts it between the two syntaxes. Without `--to` the
+file keeps the syntax it is in; `--out` writes somewhere else, which is what a conversion
+usually wants (`floorplan fmt plan.json --to dsl --out plan.dsl`); `--stdout` and
+`--dry-run` print the result and write nothing. Like `set` and `patch`, it validates
+before it writes, so a file is replaced only once its replacement is known good.
+
+#### `--json`: findings first
+
+```jsonc
+// floorplan casa-t3.json --json
+{
+  "summary": {"error":0,"warning":2,"info":1},
+  "findings": [
+    {"rule":"wet.no_window","severity":"warning","message":"WC suite has no exterior window; plan mechanical extraction","path":"rooms.wc_suite","rooms":["wc_suite"],"at":[5.7,1.1]}
+  ]
+}
+```
+
+| mode | prints |
+|---|---|
+| `--json` (= `--json=findings`) | `{ summary, findings }` |
+| `--json=all` | `{ summary, findings, schedule, walls }` |
+| `--json=schedule` | `{ schedule }` |
+| `--json=walls` | `{ walls }`, scoped by `--level` |
+
+Findings-first is the default because a read-back should grow with the number of
+**problems**, not with the size of the building. The schedule of a clean three-storey
+house is ~780 tokens before a single finding; the findings are ~60. Everything is printed
+through the same one-entity-per-line formatter as the canonical plan form, so a finding is
+one line and a coordinate never gets a line of its own.
+
+`walls` is the derived wall list — how an agent sees where a wall runs *before* placing an
+opening on it, instead of learning its extent by tripping `wall.ambiguous`:
+
+```jsonc
+{"id":"w5","kind":"partition","from":[6,2],"to":[8,2],"neg":{"kind":"room","id":"living"},"pos":{"kind":"room","id":"kitchen"}}
+```
+
+Endpoints are points, never `axis` + `c`: those two fields describe an axis-aligned
+segment and nothing else, and two endpoints describe any segment. `neg`/`pos` are the
+owner union (`{"kind":"room","id"}`, `{"kind":"outdoor","id"}`, `{"kind":"exterior"}`,
+`{"kind":"void","id"}`, `{"kind":"gap"}`). A wall id is unique **within its level**; on a
+document that authored `levels` each row also carries `level`.
+
+On a schema error (exit `2`), `--json` prints
+`{"error":{"issues":[{"path","message","kind"}]}}` to stdout instead of the text form on
+stderr; without `--json` the text form is unchanged. `kind` is the same vocabulary the
+`schema.*` findings use (see **Findings**).
+
+#### What an agent pays to read a plan back
+
+Measured with `gpt-tokenizer`'s `o200k_base`, before this change and after:
+
+| read-back | before | after |
+|---|---:|---:|
+| casa-t3 `--json` (was findings + schedule, pretty) | 1 270 | **174** |
+| moradia-2-pisos (two storeys) `--json` | 1 771 | **191** |
+| broken `--json` (20 findings) | 1 985 | **1 343** |
+| broken, the findings alone, pretty-printed | 1 490 | 1 955 |
+| broken, the same findings through the formatter | — | **1 292** |
+| casa-t3 `--lint` text | 105 | 105 |
+| casa-t3 `--json=all` | — | 3 020 |
+
+Two things moved at once. The formatter takes 34 % off the same payload (broken's findings
+go 1 955 → 1 292), and dropping the schedule from the default takes off the rest: a clean
+plan now costs what its problems cost. Findings themselves grew — `path`, a stable
+`opening`/`fixture` id and the structured fix data are new — and that is the trade the
+numbers were measured to make: broken's findings are 40 % bigger and still arrive for less
+than the old default, and a clean plan of any size reads back in under 200 tokens.
 
 ### `set` and `patch`: editing without re-emitting the document
 
@@ -160,8 +259,13 @@ house-sized document; a splice costs about 20, regardless of plan size — so `s
 `patch` are how an agent should make small edits, not printing and rewriting the JSON.
 
 `set` changes one value at a path (the same dotted/bracketed form `pathToString` prints,
-e.g. `openings[3].position`, `rooms.sala.poly[2][0]`, `layout.cols[1]` — and, on a
-document that authored `levels`, `levels.piso1.rooms.suite.rect[3]`):
+and the same form every finding's `path` is in, e.g. `openings[3].position`,
+`rooms.sala.poly[2][0]`, `layout.cols[1]` — and, on a document that authored `levels`,
+`levels.piso1.rooms.suite.rect[3]`). A finding's `path` is accepted verbatim:
+
+```
+floorplan set plan.json "$(floorplan plan.json --json | jq -r '.findings[0].path')" 0.9
+```
 
 ```
 floorplan set plan.json openings[3].position 2.1
@@ -194,12 +298,12 @@ Both verbs run the full pipeline on the result before writing anything: a change
 fails schema validation (`PlanError`) leaves the file untouched and reports the error
 (as the JSON envelope above under `--json`) with exit `2`; a change that validates but
 still has findings is written, and those findings are printed exactly as `--lint` would
-(or as `--json`, alongside `schedule`).
+(or as `{ summary, findings }` under `--json`).
 
 ## Library
 
 ```ts
-import { floorplan, parse, analyze, renderSvg } from "floorplan";
+import { floorplan, lint, parse, analyze, renderSvg, walls } from "floorplan";
 
 const { svg, findings, schedule } = floorplan(json);   // one call
 const { levels } = floorplan(json);                    // [{ id, name, svg, findings }, …]
@@ -207,9 +311,31 @@ const { levels } = floorplan(json);                    // [{ id, name, svg, find
 const plan = parse(json);                 // throws PlanError listing every schema problem
 const { model, findings } = analyze(plan); // never throws; geometry problems are findings
 const svg = renderSvg(model, { findings, theme: "auto" });
+const rows = walls(model);                // [{ id, kind, level?, from, to, neg, pos }, …]
 ```
 
+### `lint()`: one channel, and it never throws
+
+```ts
+const { findings, plan, model } = lint(json);
+```
+
+`lint()` folds schema problems into the findings instead of throwing them: each becomes
+`{ rule: "schema.<kind>", severity: "error", message, path }`, with the same document
+`path` a geometry finding would carry, so one loop over `findings` handles every problem a
+document can have. `plan` and `model` are present exactly when the document passed the
+schema; `error` carries the `PlanError` that `parse()` would have thrown, for a caller
+that wants its message.
+
+`parse()` and `floorplan()` still throw, so nothing that relied on that changed. The CLI
+goes through `lint()`, which is why `--lint` prints schema and geometry problems in one
+list — `--json` keeps its separate error envelope on schema failure, because a caller that
+cannot get a plan at all should be told so unmistakably.
+
 ## Plan format
+
+This section is the JSON document: the canonical model, and what both syntaxes mean. The
+[line DSL](#the-line-dsl) is the other way to write exactly this, and compiles to it.
 
 Coordinates are metres on **wall centrelines**, y grows downwards (north up).
 Rooms must tile the footprint exactly; walls are derived from shared edges.
@@ -240,9 +366,11 @@ close to a real field (`"positon"` → `did you mean "position"?`). A key prefix
 (`"_note"`, `"x-generator"`) and it is silently ignored.
 
 The prose and examples below teach the shape; **`floorplan --schema` is the authoritative
-field list** — every object, field, type, default and mutual exclusion, read directly from
-the same table `checkKeys` validates against, so it cannot list a field the parser does not
-also accept (`--schema=md` prints the same table as Markdown for a human reader).
+field list** — every object, field, type, cardinality (a single object, a list, or an
+id-keyed map) and mutual exclusion, terse, read directly from the same table `checkKeys`
+validates against, so it cannot list a field the parser does not also accept. `--schema=full`
+adds each field's one-sentence doc (units, defaults, what reads it) as compact JSON;
+`--schema=md` prints that same detail as Markdown for a human reader.
 
 ```jsonc
 {
@@ -367,18 +495,25 @@ chosen for the reader who pays per token:
 
 Measured with the `o200k_base` BPE, this repository's seven fixtures:
 
-| fixture | before | canonical | as shipped, with `rect` | lines (old formatter → now) |
-|---|---:|---:|---:|---|
-| casa-t3 | 2 322 | 1 687 | **1 501** (−35 %) | 141 → 49 |
-| apartment-t2 | 1 079 | 794 | 794 (−26 %) | 74 → 38 |
-| casa-piscina | 1 169 | 868 | 868 (−26 %) | 47 → 46 |
-| quinta | 1 042 | 791 | 763 (−27 %) | 50 → 44 |
-| casa-patio | 805 | 607 | 585 (−27 %) | 42 → 36 |
-| broken | 677 | 483 | 411 (−39 %) | 23 → 23 |
-| cabin | 644 | 473 | 429 (−33 %) | 41 → 21 |
-| **all seven** | **7 738** | **5 703** | **5 351 (−31 %)** | 418 → 257 |
-| moradia-2-pisos | — | — | **1 594** | 94 |
-| broken-levels | — | — | **770** | 62 |
+| fixture | before | canonical | as shipped, with `rect` | as the line DSL | lines (old formatter → now) |
+|---|---:|---:|---:|---:|---|
+| casa-t3 | 2 322 | 1 687 | **1 502** (−35 %) | **788** (−48 %) | 141 → 49 → 40 |
+| apartment-t2 | 1 079 | 794 | 794 (−26 %) | **361** (−55 %) | 74 → 38 → 27 |
+| casa-piscina | 1 169 | 868 | 866 (−26 %) | **478** (−45 %) | 47 → 46 → 30 |
+| quinta | 1 042 | 791 | 767 (−26 %) | **380** (−50 %) | 50 → 44 → 29 |
+| casa-patio | 805 | 607 | 585 (−27 %) | **272** (−54 %) | 42 → 36 → 22 |
+| broken | 677 | 483 | 411 (−39 %) | **205** (−50 %) | 23 → 23 → 18 |
+| cabin | 644 | 473 | 417 (−35 %) | **196** (−53 %) | 41 → 21 → 14 |
+| **all seven** | **7 738** | **5 703** | **5 342 (−31 %)** | **2 680 (−65 %)** | 418 → 257 → 180 |
+| moradia-2-pisos | — | — | **1 594** | **849** (−47 %) | 94 → 56 |
+| broken-levels | — | — | **770** | — | 62 |
+
+The DSL column is `floorplan fmt <fixture> --to dsl` on each one, measured with the same
+`o200k_base` BPE. broken-levels has no DSL column because it carries an `x-`/`_` private
+key, which is the one thing the DSL has no spelling for (see **The line DSL**). The
+review's own hand-written casa-t3 sample (`docs/agent-review.md`, 733 tokens) parses in
+this grammar and prints back at exactly 733; the shipped fixture is 788 because it also
+authors `swingInto` on all thirteen doors, `units` and `north`, which the sample left out.
 
 The two-storey house costs 1 594 tokens — 6 % more than casa-t3's single storey for twice
 the building, because a level is a block header rather than a second document. A
@@ -540,6 +675,7 @@ and `arc.too_shallow` says so.
 
 | Field | Meaning |
 |---|---|
+| `id` | optional stable handle, `^[a-z][a-z0-9_]*$`, unique among the openings on its level. Synthesised when absent — see **Stable ids** |
 | `type` | `door`, `window`, `cased` |
 | `between` | the two spaces the opening joins: room ids, an outdoor space id, or `"exterior"` for the street. At least one end must be a room — nothing is built between two outdoor spaces |
 | `on` | disambiguates when the pair shares several walls: `{ "room", "side": north\|south\|east\|west, "near": [x,y] }` |
@@ -583,6 +719,7 @@ do not divide space (no walls, no openings); they take up floor.
 
 | Field | Meaning |
 |---|---|
+| `id` | optional stable handle, `^[a-z][a-z0-9_]*$`, unique among the fixtures on its level. Synthesised when absent — see **Stable ids** |
 | `type` | `pool` `bath` `shower` `wc` `sink` `counter` `island` `stairs` `other` |
 | `in` | id of the room **or outdoor space** that contains it; the footprint must lie inside |
 | `poly` | any simple polygon, absolute metres, arcs allowed — or use `at` + `size` |
@@ -606,12 +743,86 @@ accepts an outdoor id. Model the terrace as the `outdoor` space and the water as
 fixture standing on it, rather than calling the pool itself an outdoor space; otherwise
 the same object is a fixture indoors and an anonymous polygon outdoors.
 
+### Stable ids
+
+Rooms, outdoor spaces and voids are keyed by their own id. Openings and fixtures are
+written in arrays, so they get an id too — otherwise deleting `openings[2]` silently
+renames every finding, path and cached reference after it.
+
+`id` is optional. When it is absent, one is synthesised:
+
+| entity | id | `n` counts |
+|---|---|---|
+| opening | `<type>:<a>-<b>:<n>` over the **sorted** pair in `between` | earlier openings of the same type between the same pair, in document order |
+| fixture | `<type>:<in>:<n>` | earlier fixtures of the same type in the same space |
+| a `vertical` element's footprint | `vertical:<id>` | — it is not a `fixtures[i]` at all |
+
+So `{"type":"door","between":["hall","wc"]}` is `door:hall-wc:0`, and a second door
+between the same pair is `door:hall-wc:1`. Three consequences, and they are the reason for
+the shape:
+
+- **Deleting one opening renumbers only its own pair's later siblings.** Remove the window
+  between `exterior` and `a` and the door between `hall` and `wc` keeps its name, however
+  many array indices shifted.
+- **Swapping `between` renames nothing**, because the pair is sorted — it is the same wall
+  either way.
+- **An authored id can never collide with a synthesised one.** A synthesised id always
+  contains `:`, which `^[a-z][a-z0-9_]*$` forbids, so naming one opening `porta` can never
+  take a name another already answers to. An authored id also *counts* towards its pair's
+  numbering, so adding one renames no sibling either.
+
+Ids are scoped per level: the same `porta` may be used once on each storey, and the
+finding's `path` is what tells them apart.
+
 ### Findings
 
-Every finding is `{ rule, severity, message, level?, at?, rooms?, opening?, fixture?, vertical? }`.
+Every finding is `{ rule, severity, message, path, level?, at?, rooms?, opening?, fixture?, vertical? }`,
+plus structured fix data on the three rules that already list it in prose.
+
+`path` is the JSON path of the thing the rule is about — `openings[3]`, `rooms.sala`,
+`levels.piso1.fixtures[2]`, `vertical[0].at[1]` — and, where the rule knows which field is
+at fault **and the document actually wrote it**, the field: `openings[3].width`,
+`rooms.sala.rect`. It is derived from the document that was parsed, never from a template,
+which is what makes two guarantees hold:
+
+- a path names a node that is really in the source, so `floorplan set <plan> <path>` never
+  fails on a path this library emitted. An opening that let `position` default to
+  `"center"` has no `position` node to splice, so its findings stop at `openings[3]`;
+- the geometry field is the one the author chose — `rooms.sala.rect` for a document using
+  the shorthand, `rooms.sala.poly` for one that spelled out the points.
+
+The one exception is a finding about an *absence*, which names the collection a fix would
+be written into (`tiling.gap` → `rooms`, `entrance.missing` → `openings`,
+`stair.headroom` → the level's `voids`). That collection may not exist yet, but its parent
+always does, so one `patch` `insert` is enough.
+
+`opening` and `fixture` are **ids**, not array indices (see **Stable ids**); a finding
+about a `vertical` element carries `vertical` instead, because it has no `fixtures[i]`.
 `level` names the storey a finding is about; it is absent on a building-wide finding
 (`entrance.*`, `reach.*`) and absent on **every** finding of a document with no `levels`
 block.
+
+Three rules carry the facts their message already states, structured, so acting on one
+needs no prose parsing:
+
+| rule | extra fields |
+|---|---|
+| `wall.ambiguous` | `candidates: [{ wall, side?, from, to }]` — the segments it had to choose between |
+| `room.min_dimension` | `measured`, `minimum`, `rect: [x, y, width, height]` (the clear floor) |
+| `opening.off_wall` | `nearest` (a wall id, as `--json=walls` prints it), `distance` |
+
+Schema problems reach the same channel through `lint()` as `schema.*` findings, one per
+issue, all `error`, each with the issue's own document path:
+
+| rule | catches |
+|---|---|
+| `schema.syntax` | not JSON at all, or not a JSON object |
+| `schema.unknown_field` | a key the schema has not got, with the nearest known key when there is one |
+| `schema.missing` | something required is absent: a room's geometry, a vertical element's id |
+| `schema.type` | present but the wrong type, or outside a fixed vocabulary |
+| `schema.reference` | names something undeclared: a space, a level, a void used as a room |
+| `schema.geometry` | a polygon that cannot be a shape: too few corners, zero area, crossing edges |
+| `schema.conflict` | two mutually exclusive forms, or an id used twice: `poly` and `rect`, `at` and `on` |
 
 | Rule | Severity | Catches |
 |---|---|---|
@@ -664,6 +875,220 @@ Everything else is judged per level.
 
 Thresholds are options on `analyze(plan, rules)`; `stairPitch` and `minHeadroom` are
 conventions rather than a code, which is exactly why they are options.
+
+## The line DSL
+
+The same document, one entity per line. It is an **authoring** syntax: it compiles to the
+JSON above, and the geometry, the rules and the drawing never learn which one you wrote.
+
+```
+plan "Cabana" walls 0.2/0.1
+
+room sala "Sala e cozinha" living rect 0,0 5x4
+room wc "Casa de banho" wc rect 5,0 1.2x2
+room arrumos "Arrumos" storage rect 5,2 1.2x2
+outdoor deck "Deck" rect 0,4 5x2
+
+door deck>sala at:0.9,4 w0.9 hinge:start swing:sala
+door sala>wc @-0.5 w0.7 hinge:end swing:wc
+door sala>arrumos @0.5 w0.7 hinge:start swing:arrumos
+window sala.north @2.5 w2.4
+window deck>sala @3.4 w2 on:sala.south
+window sala.west w1.2
+window wc.east w0.6
+```
+
+That is `fixtures/cabin.dsl`, the exact twin of `fixtures/cabin.json`: 196 tokens against
+417, and a test renders both and compares the SVG byte for byte. `fixtures/casa-t3.dsl`
+and `fixtures/moradia-2-pisos.dsl` are the other two.
+
+**Which syntax a file is in is decided by its first non-space character**: `{` is JSON,
+anything else is the DSL. Every entry point sniffs — `parse()`, `floorplan()`, `lint()`,
+every CLI command, the playground editor — so a `.dsl` file needs no flag anywhere, and a
+JSON document behaves exactly as it always did, down to the byte.
+
+`floorplan fmt <file> --to json|dsl` converts, and the **JSON | DSL** toggle above the
+playground editor does the same in the browser. The conversion preserves *meaning*, not
+your choice between synonyms: JSON has two spellings for an opening's position (`2` and
+`{"from":"start","distance":2}`) and two for a centred one (`"center"` and nothing at
+all), `parse()` folds each pair together, and the DSL has one spelling for each, so a
+round trip picks it. The one thing it cannot carry is a private `_`/`x-` key; `toDsl`
+refuses such a document rather than dropping the key.
+
+### Editing, findings and ids
+
+- **A finding's `path` is unchanged** — still `openings[3].width`, still the JSON path,
+  because that is the contract. A DSL document's findings gain **`line`** beside it, which
+  is the address worth having when one entity is one line.
+- **`set` and drags splice one token.** `floorplan set plan.dsl openings[3].width 1.1`
+  resolves the JSON path to the token on its line and replaces exactly that, leaving the
+  rest of the line and every other line alone — the line-based twin of what `jsonpos`
+  does for JSON. `applyDrag`/`applyMove` go through the same primitive, so dragging a wall
+  in the playground rewrites the room's `rect` in place.
+- `patch`'s `set` op works the same way. `remove`, `append` and `insert` do not: adding or
+  removing an entity in the DSL is adding or removing a whole line in a group whose place
+  the printer decides, which is `fmt`'s job. They say so and write nothing.
+- **Ids are identical.** A DSL document and its JSON twin synthesise the same
+  `door:hall-wc:0` — the rule in **Stable ids** is applied after the compile, to the same
+  document, and a test checks the ids agree fixture by fixture.
+
+### The grammar
+
+Printed by `floorplan --schema=dsl` (1 066 tokens; `--schema=dsl-full` adds the
+field-by-field token index below, 1 719 tokens) and generated below from the same table, so
+neither can describe a token the parser does not take. `[...]` is optional.
+
+<!-- generated from DSL_SCHEMA by test/readme-dsl.test.ts; run it with UPDATE_README=1 after a grammar change -->
+
+```
+plan ["Title"] [units:m] [walls <ext>/<part>] [north <deg>] [stack <id>,…]
+    document header; every part is optional, so a plan may have no plan line at all
+
+walls <ext>/<part> | walls exterior:<n> | walls partition:<n>
+    wall thicknesses; the canonical printer folds this onto the plan line
+
+north <deg>
+    bearing of "up" in degrees; the canonical printer folds this onto the plan line
+
+grid cols <n>,… rows <n>,…
+    the shared track grid every level's layout may sit on
+
+level <id> ["Name"] [h<height>] [ground]
+    a storey header: every statement after it belongs to that level, until the next one
+
+room <id> ["Name"] [<kind>] [<zone>] [rect <x>,<y> <w>x<h> | poly <x>,<y> …] [habitable] [wet] [circulation]
+    one room; the two bare words are the kind then the zone, and the kind must be a real one
+
+outdoor <id> ["Name"] [covered] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
+    a terrace, courtyard or garden: outside, but not the street
+
+void <id> ["Name"] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
+    a hole in this storey's floor: a stairwell, or the void over a double-height room
+
+layout [cols <n>,…] [rows <n>,…]
+        <cell> <cell> …   (one indented row per grid row)
+    the one multi-line statement: an ASCII picture placing already-declared spaces on the track grid
+
+<type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at:<x>,<y>]  w<width>
+        [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [id:<id>]
+    one opening. `<room>[.<side>]` alone is the short form of `exterior><room>` with an `on`
+
+fixture <type> in:<space> (at <x>,<y> size <w>x<h> | poly <x>,<y> …) ["Name"] [depth:<n>] [id:<id>]
+    a thing standing in a space: a pool, a bath, a counter
+
+stairs|lift|ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)
+        at <level> in:<space> rect <x>,<y> <w>x<h> | poly <x>,<y> …      (one indented line per level served)
+    vertical circulation: the only entity that spans levels, joined by its id and never by overlap — one `at` line per level it serves, never one line per element
+
+  arc <x>,<y> r<radius> [cw|ccw] [large]
+    inside a poly: a circular edge from the previous corner round to <x>,<y>
+
+# anything after a # is ignored, as is a blank line
+    comments and blank lines are not part of the document and are dropped by the printer
+
+a poly element is a corner or an arc to it:
+    <x>,<y>
+    arc <x>,<y> r<radius> [cw|ccw] [large]
+```
+
+Every field of the JSON schema, and the token that writes it — all 77 of them, and
+`test/dsl-schema.test.ts` fails if the parser grows a field with no spelling here.
+
+| field | token |
+|---|---|
+| `plan.title` | `"Title"` |
+| `plan.units` | `units:m` |
+| `plan.walls` | `walls <ext>/<part>` |
+| `plan.north` | `north <deg>` · `<deg>` |
+| `plan.stack` | `stack <id>,…` |
+| `plan.levels` | `<id>` |
+| `plan.vertical` | `stairs|lift|ramp` |
+| `plan.grid` | `grid` |
+| `walls.exterior` | `<ext>` |
+| `walls.partition` | `<part>` |
+| `grid.cols` | `cols <n>,…` |
+| `grid.rows` | `rows <n>,…` |
+| `layout.cols` | `cols <n>,…` |
+| `layout.rows` | `rows <n>,…` |
+| `layout.areas` | `<cell> …` |
+| `level.name` | `"Name"` |
+| `level.height` | `h<height>` |
+| `level.ground` | `ground` |
+| `level.rooms` | `<id>` |
+| `level.outdoor` | `<id>` |
+| `level.voids` | `<id>` |
+| `level.layout` | `layout` |
+| `level.openings` | `<a>><b>` |
+| `level.fixtures` | `fixture` |
+| `room.poly` | `poly <x>,<y> …` |
+| `room.rect` | `rect <x>,<y> <w>x<h>` |
+| `room.kind` | `<kind>` |
+| `room.name` | `"Name"` |
+| `room.zone` | `<zone>` |
+| `room.habitable` | `habitable` |
+| `room.wet` | `wet` |
+| `room.circulation` | `circulation` |
+| `outdoor.poly` | `poly <x>,<y> …` |
+| `outdoor.rect` | `rect <x>,<y> <w>x<h>` |
+| `outdoor.name` | `"Name"` |
+| `outdoor.covered` | `covered` |
+| `void.poly` | `poly <x>,<y> …` |
+| `void.rect` | `rect <x>,<y> <w>x<h>` |
+| `void.name` | `"Name"` |
+| `arc.arc` | `<x>,<y>` |
+| `arc.r` | `r<radius>` |
+| `arc.sweep` | `cw|ccw` |
+| `arc.large` | `large` |
+| `opening.id` | `id:<id>` |
+| `opening.type` | `<type>` |
+| `opening.between` | `<a>><b>` |
+| `opening.width` | `w<width>` |
+| `opening.position` | `@<d>` |
+| `opening.on` | `on:<room>` |
+| `opening.at` | `at:<x>,<y>` |
+| `opening.hinge` | `hinge:start|end` |
+| `opening.swingInto` | `swing:<space>` |
+| `opening.entrance` | `entrance` |
+| `opening.glazed` | `glazed` |
+| `opening.on.room` | `on:<room>` |
+| `opening.on.side` | `on:<room>.<side>` |
+| `opening.on.near` | `near:<x>,<y>` |
+| `opening.position.from` | `@-<d>` |
+| `opening.position.distance` | `@-<d>` |
+| `fixture.id` | `id:<id>` |
+| `fixture.type` | `<type>` |
+| `fixture.in` | `in:<space>` |
+| `fixture.poly` | `poly <x>,<y> …` |
+| `fixture.at` | `at <x>,<y>` |
+| `fixture.size` | `size <w>x<h>` |
+| `fixture.depth` | `depth:<n>` |
+| `fixture.name` | `"Name"` |
+| `vertical.id` | `<id>` |
+| `vertical.type` | `stairs|lift|ramp` |
+| `vertical.name` | `"Name"` |
+| `vertical.at` | `at <level> …` |
+| `vertical.up` | `up:<deg>` |
+| `vertical.risers` | `risers:<n>` |
+| `vertical.footprint.level` | `at <level>` |
+| `vertical.footprint.in` | `in:<space>` |
+| `vertical.footprint.poly` | `poly <x>,<y> …` |
+| `vertical.footprint.rect` | `rect <x>,<y> <w>x<h>` |
+
+<!-- /generated -->
+
+Numbers print shortest round-trip, in metres. A boolean is its own name for true and
+`name:false` for false. `#` starts a comment; blank lines and comments are not part of the
+document and the printer drops them. `layout` and the vertical statements are the only
+ones that continue onto indented lines.
+
+### What it cost, and what it is worth
+
+`docs/eval/authoring-eval.md` is the eval `docs/agent-review.md` §C asked for: twenty
+briefs written by hand in both syntaxes, schema failures counted. **0 of 20 in each**, and
+the twenty pairs produced the same building every time — identical rule findings and
+identical room polygons — for 9 936 tokens of JSON against 4 757 of DSL. That write-up is
+also honest about why 0–0 is weaker evidence than it looks, and about the two real defects
+a follow-up probe found in the grammar (one of them silent) before they were fixed.
 
 ## Areas, and what "clear" means
 

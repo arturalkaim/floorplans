@@ -1,0 +1,10 @@
+{
+  "summary": {"error":0,"warning":3,"info":2},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 1 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/west)","path":"levels.ground.rooms.bedroom1","rooms":["bedroom1"],"at":[1.5,1.5],"level":"ground","line":5},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 2 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the south/west)","path":"levels.ground.rooms.bedroom2","rooms":["bedroom2"],"at":[1.5,4.5],"level":"ground","line":6},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/east)","path":"levels.ground.rooms.living","rooms":["living"],"at":[5,3],"level":"ground","line":7},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom 1 opens directly off Living","path":"levels.ground.openings[0]","rooms":["bedroom1","living"],"at":[3,1.5],"opening":"door:bedroom1-living:0","level":"ground","line":13},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom 2 opens directly off Living","path":"levels.ground.openings[1]","rooms":["bedroom2","living"],"at":[3,4.5],"opening":"door:bedroom2-living:0","level":"ground","line":14}
+  ]
+}

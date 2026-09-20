@@ -1,0 +1,40 @@
+{
+  "title": "Semi-Detached With A Void",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Living", "kind": "living", "rect": [0, 0, 3, 5], "habitable": true },
+        { "name": "Hall", "kind": "hall", "rect": [3, 0, 1.3, 5], "circulation": true },
+        { "name": "Kitchen", "kind": "kitchen", "rect": [4.3, 0, 3, 5] }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Hall", "Living"], "on": { "room": "Hall", "side": "west" }, "width": 0.9 },
+        { "type": "door", "between": ["Hall", "Kitchen"], "on": { "room": "Hall", "side": "east" }, "width": 0.9 },
+        { "id": "front-door", "type": "door", "between": ["Hall"], "on": { "room": "Hall", "side": "south" }, "width": 0.9, "entrance": true }
+      ]
+    },
+    {
+      "name": "upper",
+      "rooms": [
+        { "name": "Landing", "kind": "hall", "rect": [3, 0, 1.3, 5], "circulation": true },
+        { "name": "Bathroom", "kind": "bath", "rect": [4.3, 0, 3, 1.5], "wet": true },
+        { "name": "Bedroom 1", "kind": "bedroom", "rect": [4.3, 1.5, 3, 1.75], "habitable": true },
+        { "name": "Bedroom 2", "kind": "bedroom", "rect": [4.3, 3.25, 3, 1.75], "habitable": true }
+      ],
+      "voids": [
+        { "name": "Living Void", "rect": [0, 0, 3, 5] }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Landing", "Bathroom"], "on": { "room": "Landing", "side": "east", "near": [4.3, 0.75] }, "width": 0.8 },
+        { "type": "door", "between": ["Landing", "Bedroom 1"], "on": { "room": "Landing", "side": "east", "near": [4.3, 2.4] }, "width": 0.9 },
+        { "type": "door", "between": ["Landing", "Bedroom 2"], "on": { "room": "Landing", "side": "east", "near": [4.3, 4.1] }, "width": 0.9 }
+      ]
+    }
+  ],
+  "vertical": [
+    { "id": "main-stair", "type": "stairs", "name": "Main Stair", "at": { "level": "ground", "in": "Hall", "rect": [3, 0, 1.3, 2.5] }, "up": 2.8, "risers": 14 }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "summary": {"error":2,"warning":2,"info":0},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"levels.loft.openings","line":3},
+    {"level":"loft","rule":"stair.no_arrival","severity":"error","message":"Loft Stair stands on Loft and goes nowhere; a vertical element needs a footprint on each of the levels it joins","path":"vertical[0].at","at":[0.5,0.5],"vertical":"loft_stair"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Loft Room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"levels.loft.rooms.loft_room","rooms":["loft_room"],"at":[3.5,2.5],"level":"loft","line":5},
+    {"rule":"wet.no_window","severity":"warning","message":"Shower Room has no exterior window; plan mechanical extraction","path":"levels.loft.rooms.shower_room","rooms":["shower_room"],"at":[7,1],"level":"loft","line":6}
+  ]
+}

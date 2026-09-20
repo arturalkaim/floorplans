@@ -1,0 +1,126 @@
+# floorplan DSL — one entity per line; `{` as the first character means JSON instead
+
+## statements
+
+plan ["Title"] [units:m] [walls <ext>/<part>] [north <deg>] [stack <id>,…]
+  — document header; every part is optional, so a plan may have no plan line at all
+
+walls <ext>/<part> | walls exterior:<n> | walls partition:<n>
+  — wall thicknesses; the canonical printer folds this onto the plan line
+
+north <deg>
+  — bearing of "up" in degrees; the canonical printer folds this onto the plan line
+
+grid cols <n>,… rows <n>,…
+  — the shared track grid every level's layout may sit on
+
+level <id> ["Name"] [h<height>] [ground]
+  — a storey header: every statement after it belongs to that level, until the next one
+
+room <id> ["Name"] [<kind>] [<zone>] [rect <x>,<y> <w>x<h> | poly <x>,<y> …] [habitable] [wet] [circulation]
+  — one room; the two bare words are the kind then the zone, and the kind must be a real one
+
+outdoor <id> ["Name"] [covered] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
+  — a terrace, courtyard or garden: outside, but not the street
+
+void <id> ["Name"] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
+  — a hole in this storey's floor: a stairwell, or the void over a double-height room
+
+layout [cols <n>,…] [rows <n>,…]
+        <cell> <cell> …   (one indented row per grid row)
+  — the one multi-line statement: an ASCII picture placing already-declared spaces on the track grid
+
+<type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at:<x>,<y>]  w<width>
+        [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [id:<id>]
+  — one opening. `<room>[.<side>]` alone is the short form of `exterior><room>` with an `on`
+
+fixture <type> in:<space> (at <x>,<y> size <w>x<h> | poly <x>,<y> …) ["Name"] [depth:<n>] [id:<id>]
+  — a thing standing in a space: a pool, a bath, a counter
+
+stairs|lift|ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)
+        at <level> in:<space> rect <x>,<y> <w>x<h> | poly <x>,<y> …      (one indented line per level served)
+  — vertical circulation: the only entity that spans levels, joined by its id and never by overlap
+
+# anything after a # is ignored, as is a blank line
+  — comments and blank lines are not part of the document and are dropped by the printer
+
+## poly elements
+
+  <x>,<y>
+  arc <x>,<y> r<radius> [cw|ccw] [large]
+
+## every schema field, and the token that writes it
+
+plan.title                   "Title"
+plan.units                   units:m
+plan.walls                   walls <ext>/<part>
+plan.north                   north <deg> | <deg>
+plan.stack                   stack <id>,…
+plan.levels                  <id>
+plan.vertical                stairs|lift|ramp
+plan.grid                    grid
+walls.exterior               <ext>
+walls.partition              <part>
+grid.cols                    cols <n>,…
+grid.rows                    rows <n>,…
+layout.cols                  cols <n>,…
+layout.rows                  rows <n>,…
+layout.areas                   <cell> …
+level.name                   "Name"
+level.height                 h<height>
+level.ground                 ground
+level.rooms                  <id>
+level.outdoor                <id>
+level.voids                  <id>
+level.layout                 layout
+level.openings               <a>><b>
+level.fixtures               fixture
+room.poly                    poly <x>,<y> …
+room.rect                    rect <x>,<y> <w>x<h>
+room.kind                    <kind>
+room.name                    "Name"
+room.zone                    <zone>
+room.habitable               habitable
+room.wet                     wet
+room.circulation             circulation
+outdoor.poly                 poly <x>,<y> …
+outdoor.rect                 rect <x>,<y> <w>x<h>
+outdoor.name                 "Name"
+outdoor.covered              covered
+void.poly                    poly <x>,<y> …
+void.rect                    rect <x>,<y> <w>x<h>
+void.name                    "Name"
+opening.id                   id:<id>
+opening.type                 <type>
+opening.between              <a>><b>
+opening.width                w<width>
+opening.position             @<d>
+opening.on                   on:<room>
+opening.at                   at:<x>,<y>
+opening.hinge                hinge:start|end
+opening.swingInto            swing:<space>
+opening.entrance             entrance
+opening.glazed               glazed
+opening.on.room              on:<room>
+opening.on.side              on:<room>.<side>
+opening.on.near              near:<x>,<y>
+opening.position.from        @-<d>
+opening.position.distance    @-<d>
+fixture.id                   id:<id>
+fixture.type                 <type>
+fixture.in                   in:<space>
+fixture.poly                 poly <x>,<y> …
+fixture.at                   at <x>,<y>
+fixture.size                 size <w>x<h>
+fixture.depth                depth:<n>
+fixture.name                 "Name"
+vertical.id                  <id>
+vertical.type                stairs|lift|ramp
+vertical.name                "Name"
+vertical.at                    at <level> …
+vertical.up                  up:<deg>
+vertical.risers              risers:<n>
+vertical.footprint.level       at <level>
+vertical.footprint.in        in:<space>
+vertical.footprint.poly      poly <x>,<y> …
+vertical.footprint.rect      rect <x>,<y> <w>x<h>

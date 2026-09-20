@@ -64,6 +64,10 @@ export const isRectilinear = (s: Shape): boolean => {
 
 export interface Room extends Shape {
   id: string;
+  /** where in the document this room was authored: `rooms.sala`, `levels.piso1.rooms.sala` */
+  path: string;
+  /** the keys the document actually wrote on it; see `pathTo` */
+  authored: readonly string[];
   name: string;
   kind: RoomKind;
   zone: string | undefined;
@@ -74,6 +78,8 @@ export interface Room extends Shape {
 
 export interface Outdoor extends Shape {
   id: string;
+  path: string;
+  authored: readonly string[];
   name: string;
   covered: boolean;
 }
@@ -92,6 +98,18 @@ export type FixtureType =
 /** A thing standing inside a room: sanitary ware, a kitchen run, a pool, stairs. */
 export interface Fixture extends Shape {
   index: number; // position in the authored list, for error messages
+  /**
+   * Stable handle, and what a finding names. Authored `id`, or synthesised as
+   * `<type>:<in>:<n>` where `n` counts earlier fixtures of the same type standing in the
+   * same space — so deleting `fixtures[2]` renumbers only that group's later siblings,
+   * never the whole list. A synthesised id always contains ":", which an authored id may
+   * not (`^[a-z][a-z0-9_]*$`), so the two can never collide.
+   */
+  id: string;
+  /** where in the document it was authored: `fixtures[2]`, `levels.piso1.fixtures[2]` */
+  path: string;
+  /** the keys the document actually wrote on it; see `pathTo` */
+  authored: readonly string[];
   type: FixtureType;
   name: string;
   /** id of the room that contains it */
@@ -123,6 +141,19 @@ export interface WallSelector {
 
 export interface Opening {
   index: number; // position in the authored list, for error messages
+  /**
+   * Stable handle, and what a finding names. Authored `id`, or synthesised as
+   * `<type>:<a>-<b>:<n>` from the *sorted* pair in `between`, where `n` counts earlier
+   * openings of the same type between the same pair — so deleting `openings[2]` renumbers
+   * only its own pair's later siblings, and swapping `between` renames nothing. A
+   * synthesised id always contains ":", which an authored id may not
+   * (`^[a-z][a-z0-9_]*$`), so the two can never collide.
+   */
+  id: string;
+  /** where in the document it was authored: `openings[3]`, `levels.piso1.openings[3]` */
+  path: string;
+  /** the keys the document actually wrote on it; see `pathTo` */
+  authored: readonly string[];
   type: OpeningType;
   between: [string, string]; // room ids, outdoor space ids, or the literal "exterior"
   on: WallSelector | undefined;
@@ -145,12 +176,21 @@ export interface Opening {
  */
 export interface Void extends Shape {
   id: string;
+  path: string;
+  authored: readonly string[];
   name: string;
 }
 
 /** One storey. Everything that is drawn lives on exactly one of these. */
 export interface Level {
   id: string;
+  /**
+   * Where this level's content lives in the document: `""` for a document that never
+   * authored `levels`, `levels.piso1` otherwise. Every path under it is built from this
+   * prefix, which is what keeps a single-level document's paths byte-identical to the
+   * ones it had before levels existed (docs/gaps-design.md §2.5).
+   */
+  path: string;
   name: string;
   /** floor to floor, metres; only `stair.pitch`/`stair.headroom` need it */
   height: number | undefined;
@@ -167,6 +207,12 @@ export type VerticalType = "stairs" | "lift" | "ramp";
 
 /** One footprint of a vertical element, on one of the levels it serves. */
 export interface VerticalAt extends Shape {
+  /**
+   * `vertical[i].at[j]` with the **authored** j. The parser sorts `at` into stack order,
+   * so the position in this array is not the position in the document; the path is
+   * recorded where it was read instead of being recomputed from an index that moved.
+   */
+  path: string;
   level: string;
   /** the room or outdoor space you step off it into, on that level */
   in: string;
@@ -179,6 +225,10 @@ export interface VerticalAt extends Shape {
  */
 export interface Vertical {
   index: number; // position in the authored list, for error messages
+  /** always `vertical[i]`: a vertical element spans levels, so it sits at the document root */
+  path: string;
+  /** the keys the document actually wrote on it; see `pathTo` */
+  authored: readonly string[];
   id: string;
   type: VerticalType;
   name: string;
@@ -479,23 +529,90 @@ export interface Model extends LevelModel {
 
 export type Severity = "error" | "warning" | "info";
 
+/** One of the wall segments `wall.ambiguous` had to choose between. */
+export interface WallCandidate {
+  /** the derived wall's id, as `walls` in the JSON output names it */
+  wall: string;
+  /** which side of the room the opening names it lies on, where that is meaningful */
+  side?: Side;
+  from: Pt;
+  to: Pt;
+}
+
 export interface Finding {
   rule: string;
   severity: Severity;
   message: string;
+  /**
+   * The JSON path of the thing the rule is about — `openings[3]`, `rooms.sala`,
+   * `levels.piso1.fixtures[2]`, `vertical[0].at[1]` — and, where the rule knows which
+   * field is at fault *and the document actually wrote it*, the field: `openings[3].width`.
+   *
+   * INVARIANT: a path names a node that exists in the source document, or — when the
+   * finding is about an *absence*, and names the collection a fix would be written into —
+   * a node whose parent exists, so one `patch` `insert` creates it. It is never deeper
+   * than that. This is why a field is only appended when the author wrote it: an opening
+   * that let `position` default to "center" has no `position` node to splice, so its
+   * findings stop at `openings[3]`.
+   */
+  path: string;
   /**
    * Which level produced it. Absent on a building-wide finding, and absent on *every*
    * finding of a document that did not author `levels` — a single-level plan's findings
    * are byte-identical to what they were before levels existed.
    */
   level?: string;
+  /**
+   * 1-based line in the source text, for a document authored in the line DSL — where one
+   * entity is one line, so a line is an address an agent can act on directly.
+   *
+   * INVARIANT: `path` stays the JSON path on every document, DSL or not; `line` is added
+   * beside it and never in place of it, so a consumer written against the JSON contract
+   * reads the same field it always did.
+   */
+  line?: number;
   at?: Pt;
   rooms?: string[];
-  opening?: number;
-  fixture?: number;
+  /** `Opening.id`, never an index: an index shifts when a sibling is deleted */
+  opening?: string;
+  /** `Fixture.id`, never an index */
+  fixture?: string;
   /** id of the vertical element a stair rule is about */
   vertical?: string;
+  /** `wall.ambiguous`: the segments the message lists, structured */
+  candidates?: WallCandidate[];
+  /** `room.min_dimension`: the short side measured, the minimum wanted, the clear floor */
+  measured?: number;
+  minimum?: number;
+  /** `[x, y, width, height]` — the shape a room's `rect` shorthand takes, so it reads back */
+  rect?: [number, number, number, number];
+  /** `opening.off_wall`: the id of the nearest wall and how far the point is from it */
+  nearest?: string;
+  distance?: number;
 }
+
+/** A thing in the document that knows where it was written and what keys it carries. */
+export interface Authored {
+  path: string;
+  authored: readonly string[];
+}
+
+/**
+ * `e.path`, plus the first of `fields` the document actually authored on `e`.
+ *
+ * This is the whole of "derive the path from the parsed document, never from a template"
+ * (docs/gaps-design.md §2.5): the parser records what it read, and a rule asks for the
+ * field it cares about — `pathTo(room, "poly", "rect")` for a room's geometry, whichever
+ * form the author chose — instead of guessing a key that may not be there.
+ */
+export const pathTo = (e: Authored, ...fields: string[]): string => {
+  const f = fields.find((k) => e.authored.includes(k));
+  return f === undefined ? e.path : `${e.path}.${f}`;
+};
+
+/** A path under one level's content: `openings` or `levels.piso1.openings`. */
+export const inLevel = (level: { path: string }, suffix: string): string =>
+  level.path === "" ? suffix : `${level.path}.${suffix}`;
 
 export interface Analysis {
   model: Model;

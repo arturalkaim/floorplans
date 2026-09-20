@@ -1,0 +1,31 @@
+{
+  "title": "Flat on a grid",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "layout": {
+    "cols": [4,2.5,3.5],
+    "rows": [3.5,1.4,3.5],
+    "areas": [
+      "sala sala cozinha",
+      "hall hall hall",
+      "quarto quarto banho"
+    ]
+  },
+  "rooms": {
+    "sala": {"name":"Living room","kind":"living"},
+    "cozinha": {"name":"Kitchen","kind":"kitchen"},
+    "hall": {"name":"Hall","kind":"hall"},
+    "quarto": {"name":"Bedroom","kind":"bedroom"},
+    "banho": {"name":"Bathroom","kind":"bath"}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"west"},"width":1,"entrance":true},
+    {"type":"door","between":["hall","sala"],"width":0.9,"swingInto":"sala"},
+    {"type":"door","between":["hall","cozinha"],"width":0.9,"swingInto":"cozinha"},
+    {"type":"door","between":["hall","quarto"],"width":0.8,"swingInto":"quarto"},
+    {"type":"door","between":["hall","banho"],"width":0.7,"swingInto":"banho"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"width":2},
+    {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"east"},"width":1.4},
+    {"type":"window","between":["exterior","quarto"],"on":{"room":"quarto","side":"south"},"width":1.6},
+    {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"south"},"width":0.6}
+  ]
+}

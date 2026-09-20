@@ -1,0 +1,31 @@
+{
+  "title": "Guest House",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Corridor", "kind": "corridor", "rect": [3, 0, 1.3, 8], "circulation": true },
+        { "name": "Bedroom 1", "kind": "bedroom", "rect": [4.3, 0, 3, 2], "habitable": true },
+        { "name": "Shower 1", "kind": "bath", "rect": [7.3, 0, 1.7, 2], "wet": true },
+        { "name": "Bedroom 2", "kind": "bedroom", "rect": [4.3, 2, 3, 2], "habitable": true },
+        { "name": "Shower 2", "kind": "bath", "rect": [7.3, 2, 1.7, 2], "wet": true },
+        { "name": "Bedroom 3", "kind": "bedroom", "rect": [4.3, 4, 3, 2], "habitable": true },
+        { "name": "Shower 3", "kind": "bath", "rect": [7.3, 4, 1.7, 2], "wet": true },
+        { "name": "Bedroom 4", "kind": "bedroom", "rect": [4.3, 6, 3, 2], "habitable": true },
+        { "name": "Shower 4", "kind": "bath", "rect": [7.3, 6, 1.7, 2], "wet": true }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Corridor", "Bedroom 1"], "on": { "room": "Bedroom 1", "side": "west" }, "width": 0.9 },
+        { "type": "door", "between": ["Bedroom 1", "Shower 1"], "on": { "room": "Bedroom 1", "side": "east" }, "width": 0.8 },
+        { "type": "door", "between": ["Corridor", "Bedroom 2"], "on": { "room": "Bedroom 2", "side": "west" }, "width": 0.9 },
+        { "type": "door", "between": ["Bedroom 2", "Shower 2"], "on": { "room": "Bedroom 2", "side": "east" }, "width": 0.8 },
+        { "type": "door", "between": ["Corridor", "Bedroom 3"], "on": { "room": "Bedroom 3", "side": "west" }, "width": 0.9 },
+        { "type": "door", "between": ["Bedroom 3", "Shower 3"], "on": { "room": "Bedroom 3", "side": "east" }, "width": 0.8 },
+        { "type": "door", "between": ["Corridor", "Bedroom 4"], "on": { "room": "Bedroom 4", "side": "west" }, "width": 0.9 },
+        { "type": "door", "between": ["Bedroom 4", "Shower 4"], "on": { "room": "Bedroom 4", "side": "east" }, "width": 0.8 }
+      ]
+    }
+  ]
+}

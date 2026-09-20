@@ -1,0 +1,23 @@
+{
+  "title": "Courtyard house",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "rooms": {
+    "sala": {"name":"Living room","kind":"living","rect":[0,0,9,3]},
+    "cozinha": {"name":"Kitchen","kind":"kitchen","rect":[0,3,3,3]},
+    "quarto": {"name":"Bedroom","kind":"bedroom","rect":[6,3,3,3]},
+    "banho": {"name":"Bathroom","kind":"bath","rect":[0,6,9,2.4]}
+  },
+  "outdoor": {
+    "patio": {"name":"Courtyard","rect":[3,3,3,3]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"width":1,"entrance":true},
+    {"type":"door","between":["sala","cozinha"],"width":0.9,"swingInto":"cozinha"},
+    {"type":"door","between":["sala","quarto"],"width":0.8,"swingInto":"quarto"},
+    {"type":"door","between":["cozinha","banho"],"width":0.7,"swingInto":"banho"},
+    {"type":"door","between":["patio","sala"],"width":0.9,"glazed":true,"swingInto":"sala"},
+    {"type":"window","between":["patio","cozinha"],"on":{"room":"cozinha","side":"east"},"width":1.2},
+    {"type":"window","between":["patio","quarto"],"on":{"room":"quarto","side":"west"},"width":1.2},
+    {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"south"},"width":0.6}
+  ]
+}

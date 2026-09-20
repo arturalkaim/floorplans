@@ -1,0 +1,23 @@
+{
+  "title": "Cottage with a porch",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "rooms": {
+    "sala": {"name":"Living room","kind":"living","rect":[0,0,5,5]},
+    "cozinha": {"name":"Kitchen","kind":"kitchen","rect":[5,0,3.5,5]},
+    "quarto": {"name":"Bedroom","kind":"bedroom","rect":[0,5,5,3.5]},
+    "banho": {"name":"Bathroom","kind":"bath","rect":[5,5,3.5,3.5]}
+  },
+  "outdoor": {
+    "alpendre": {"name":"Porch","covered":true,"rect":[0,8.5,8.5,2.2]}
+  },
+  "openings": [
+    {"type":"door","between":["alpendre","sala"],"width":1,"entrance":true,"glazed":true},
+    {"type":"door","between":["sala","cozinha"],"width":0.9,"swingInto":"cozinha"},
+    {"type":"door","between":["sala","quarto"],"width":0.8,"swingInto":"quarto"},
+    {"type":"door","between":["quarto","banho"],"width":0.7,"swingInto":"banho"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"west"},"width":1.8},
+    {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"east"},"width":1.4},
+    {"type":"window","between":["exterior","quarto"],"on":{"room":"quarto","side":"west"},"width":1.4},
+    {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"east"},"width":0.6}
+  ]
+}

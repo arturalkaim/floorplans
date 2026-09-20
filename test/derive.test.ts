@@ -228,7 +228,8 @@ describe("derive: openings", () => {
     const f = findings.find((x) => x.rule === "wall.unresolved")!;
     assert.ok(f);
     assert.match(f.message, /a touches: the exterior, b/);
-    assert.equal(f.opening, 0);
+    assert.equal(f.opening, "door:a-c:0");
+    assert.equal(f.path, "openings[0].between");
   });
   it("reports wall.ambiguous when a pair shares two segments, and side/near disambiguate", () => {
     const L = { rooms: { l: { kind: "living", poly: [[0, 0], [4, 0], [4, 4], [2, 4], [2, 2], [0, 2]] }, k: { kind: "kitchen", poly: rect(0, 2, 2, 2) } } };
@@ -255,7 +256,8 @@ describe("derive: openings", () => {
     assert.ok(has(findings, "opening.collision"));
     const nc = findings.find((f) => f.rule === "opening.near_corner")!;
     assert.ok(nc);
-    assert.equal(nc.opening, 3);
+    assert.equal(nc.opening, "window:a-exterior:2");
+    assert.equal(nc.path, "openings[3].position");
     assert.equal(nc.severity, "warning");
   });
   it("an opening exactly filling its wall is fine", () => {
@@ -344,11 +346,18 @@ describe("derive: opening `at` — absolute placement (B5)", () => {
   });
 
   it("farther than half the wall's thickness plus tolerance is opening.off_wall, naming the nearest wall and the distance", () => {
-    const { findings } = analyze(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: [10, 10] }] }));
+    const { findings, model } = analyze(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: [10, 10] }] }));
     const f = findings.find((x) => x.rule === "opening.off_wall")!;
     assert.ok(f, `expected opening.off_wall, got ${findings.map((x) => x.rule).join(", ")}`);
     assert.match(f.message, /is 8\.92 m from the nearest wall \(x=4 y 0→3\.4\), farther than half its thickness plus tolerance \(0\.11 m\)/);
-    assert.equal(f.opening, 0);
+    assert.equal(f.opening, "door:a-b:0");
+    // the same two facts the prose states, structured
+    assert.equal(f.path, "openings[0].at");
+    assert.equal(f.distance, 8.92);
+    // `nearest` is a wall id, the same one `--json=walls` prints — not a coordinate pair
+    const w = model.walls.find((x) => x.id === f.nearest)!;
+    assert.ok(w, `nearest ${f.nearest} is not a derived wall`);
+    assert.deepEqual([w.axis, w.c], ["v", 4]);
   });
 
   it("picks the nearer of two candidate walls between the same room pair", () => {

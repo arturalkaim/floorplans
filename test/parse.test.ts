@@ -136,7 +136,12 @@ describe("parse: rect shorthand", () => {
     const viaRect = parse({ rooms: { a: { kind: "living", rect: [0, 0, 4.6, 4.4] } } });
     const viaPoly = parse({ rooms: { a: { kind: "living", poly: rect(0, 0, 4.6, 4.4) } } });
     assert.deepEqual(viaRect.rooms[0]!.poly, viaPoly.rooms[0]!.poly);
-    assert.deepEqual(viaRect, viaPoly, "the Plan is identical: rect is authoring sugar only");
+    // `authored` is the one difference, and it is the *point*: a finding about this room's
+    // geometry has to say `rooms.a.rect` for one document and `rooms.a.poly` for the other
+    assert.deepEqual(viaRect.rooms[0]!.authored, ["kind", "rect"]);
+    assert.deepEqual(viaPoly.rooms[0]!.authored, ["kind", "poly"]);
+    const forget = (p: unknown) => JSON.parse(JSON.stringify(p, (k, v: unknown) => (k === "authored" ? undefined : v)));
+    assert.deepEqual(forget(viaRect), forget(viaPoly), "otherwise the Plan is identical: rect is authoring sugar only");
   });
 
   it("expands an outdoor rect too", () => {
@@ -178,7 +183,7 @@ describe("parse: rect shorthand", () => {
       layout: { cols: [3], rows: [3], areas: ["a"] },
       rooms: { a: { kind: "hall", rect: [0, 0, 3, 3] } },
     });
-    assert.deepEqual(issues, [{ path: "rooms.a", message: "has both a rect and cells in layout.areas; use one" }]);
+    assert.deepEqual(issues, [{ path: "rooms.a", message: "has both a rect and cells in layout.areas; use one", kind: "conflict" }]);
   });
 
   it("offers rect in the has-no-geometry message and accepts it as a known key", () => {
@@ -538,6 +543,6 @@ describe("parse: opening `glazed`", () => {
 
   it("is only valid on doors", () => {
     const issues = issueListOf(twoRooms({ openings: [{ type: "window", between: ["exterior", "a"], on: { room: "a", side: "north" }, width: 1, glazed: true }] }));
-    assert.deepEqual(issues, [{ path: "openings[0].glazed", message: "only valid on doors" }]);
+    assert.deepEqual(issues, [{ path: "openings[0].glazed", message: "only valid on doors", kind: "conflict" }]);
   });
 });

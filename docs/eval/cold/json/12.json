@@ -1,0 +1,20 @@
+{
+  "title": "Flat On A Grid",
+  "units": "m",
+  "grid": { "cols": [4, 4], "rows": [4, 4] },
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Living", "kind": "living", "habitable": true },
+        { "name": "Kitchen", "kind": "kitchen" },
+        { "name": "Bedroom", "kind": "bedroom", "habitable": true },
+        { "name": "Bathroom", "kind": "bath", "wet": true }
+      ],
+      "layout": {
+        "areas": ["Living Kitchen", "Bedroom Bathroom"]
+      }
+    }
+  ]
+}

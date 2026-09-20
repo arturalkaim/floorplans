@@ -1,0 +1,16 @@
+{
+  "summary": {"error":1,"warning":9,"info":1},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"levels.ground.openings","line":3},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 1 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/west)","path":"levels.ground.rooms.bedroom1","rooms":["bedroom1"],"at":[3,1.5],"level":"ground","line":6},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/east)","path":"levels.ground.rooms.living","rooms":["living"],"at":[5,1.5],"level":"ground","line":7},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 2 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"levels.ground.rooms.bedroom2","rooms":["bedroom2"],"at":[1,4],"level":"ground","line":8},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 3 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/east)","path":"levels.ground.rooms.bedroom3","rooms":["bedroom3"],"at":[7,4],"level":"ground","line":9},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 1 (bedroom): 1.79 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.79 × 2.79 m)","path":"levels.ground.rooms.bedroom1.rect","rooms":["bedroom1"],"at":[3,1.5],"measured":1.79,"minimum":2.4,"rect":[2.15,0.15,1.79,2.79],"level":"ground","line":6},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living (living): 1.79 m at its narrowest; comfort minimum is 3 m (clear floor 1.79 × 2.79 m)","path":"levels.ground.rooms.living.rect","rooms":["living"],"at":[5,1.5],"measured":1.79,"minimum":3,"rect":[4.06,0.15,1.79,2.79],"level":"ground","line":7},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 2 (bedroom): 1.7 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.79 × 1.7 m)","path":"levels.ground.rooms.bedroom2.rect","rooms":["bedroom2"],"at":[1,4],"measured":1.7,"minimum":2.4,"rect":[0.15,3.15,1.79,1.7],"level":"ground","line":8},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 3 (bedroom): 1.7 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.79 × 1.7 m)","path":"levels.ground.rooms.bedroom3.rect","rooms":["bedroom3"],"at":[7,4],"measured":1.7,"minimum":2.4,"rect":[6.06,3.15,1.79,1.7],"level":"ground","line":9},
+    {"rule":"wet.no_window","severity":"warning","message":"Bathroom has no exterior window; plan mechanical extraction","path":"levels.ground.rooms.bathroom","rooms":["bathroom"],"at":[4,6],"level":"ground","line":10},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 22 % of the interior (8 m²); above 10 % is worth questioning","path":"levels.ground.rooms","rooms":["hall"],"level":"ground","line":3}
+  ]
+}

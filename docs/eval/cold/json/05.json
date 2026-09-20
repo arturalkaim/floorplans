@@ -1,0 +1,18 @@
+{
+  "title": "Garage Workshop",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Garage", "kind": "garage", "poly": [[0,0],[6,0],[6,4],[4,4],[4,6],[0,6],[0,0]] },
+        { "name": "Office", "kind": "office", "rect": [4, 4, 2, 2] }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Garage", "Office"], "on": { "room": "Office", "side": "west" }, "width": 0.9 },
+        { "id": "garage-door", "type": "door", "between": ["Garage"], "on": { "room": "Garage", "side": "south" }, "width": 2.4, "entrance": true }
+      ]
+    }
+  ]
+}

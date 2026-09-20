@@ -1,11 +1,34 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { formatText } from "floorplan";
+import { formatPlan, formatText, isDslText, parseDsl, readSource, toDsl } from "floorplan";
 import type { Finding, LevelSchedule, Schedule, Severity } from "floorplan";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Drawing } from "../components/Drawing";
 import { EXAMPLES, byId } from "../lib/plans";
 import { useFloorplan } from "../lib/useFloorplan";
-import type { Options, Outcome } from "../lib/useFloorplan";
+import type { Options, Outcome, Syntax } from "../lib/useFloorplan";
+
+/**
+ * `fmt` semantics, in the browser: canonicalise in the syntax asked for, whatever the
+ * source is written in now. Returns the text unchanged when it does not parse — a
+ * half-typed document must never be replaced by an error.
+ */
+function convert(text: string, to: Syntax): string {
+  try {
+    const doc = readSource(text).doc;
+    return to === "dsl" ? toDsl(doc) : formatPlan(doc);
+  } catch {
+    return text;
+  }
+}
+
+/** Canonicalise in whichever syntax the source already is. */
+function canonicalise(text: string): string {
+  try {
+    return isDslText(text) ? toDsl(parseDsl(text).doc) : formatText(text);
+  } catch {
+    return text;
+  }
+}
 
 const DEFAULTS: Omit<Options, "theme"> = { scale: 40, areas: "clear", labels: "auto", mark: "warning" };
 /** how many steps of history to keep, each way */
@@ -203,14 +226,22 @@ export function Playground() {
   const set = useCallback(<K extends keyof typeof opts>(k: K, v: (typeof opts)[K]) => setOpts((o) => ({ ...o, [k]: v })), []);
   const format = useCallback(() => {
     mark();
-    setText((t) => {
-      try {
-        return formatText(t);
-      } catch {
-        return t;
-      }
-    });
+    setText(canonicalise);
   }, [mark]);
+
+  /**
+   * The JSON | DSL toggle. The document is the same either way — the toggle converts the
+   * *source*, exactly as `floorplan fmt --to` does, and everything downstream (the
+   * drawing, the findings, the drags) already reads whichever syntax it finds.
+   */
+  const toSyntax = useCallback(
+    (to: Syntax) => {
+      if (to === (isDslText(textRef.current) ? "dsl" : "json")) return;
+      mark();
+      setText((t) => convert(t, to));
+    },
+    [mark],
+  );
 
   if (!example)
     return (
@@ -261,7 +292,7 @@ export function Playground() {
         <section className="panel source">
           <div className="panel-head">
             <h2>Plan source</h2>
-            <span className="note">metres, wall centrelines</span>
+            <span className="note">metres, wall centrelines · JSON or the line DSL</span>
           </div>
           <nav className="nav" style={{ flexWrap: "wrap", padding: "8px 10px", borderBottom: "1px solid var(--rule)" }}>
             {EXAMPLES.map((e) => (
@@ -270,11 +301,26 @@ export function Playground() {
               </Link>
             ))}
           </nav>
+          <div className="syntax" role="group" aria-label="Source syntax">
+            {(["json", "dsl"] as const).map((sx) => (
+              <button
+                key={sx}
+                type="button"
+                data-active={outcome.syntax === sx}
+                aria-pressed={outcome.syntax === sx}
+                disabled={!outcome.ok && outcome.syntax !== sx}
+                title={sx === "json" ? "Canonical JSON — the model and interchange format" : "The line DSL — one entity per line, about half the tokens"}
+                onClick={() => toSyntax(sx)}
+              >
+                {sx.toUpperCase()}
+              </button>
+            ))}
+          </div>
           <textarea
             id="plan-source"
             className="source-text"
             spellCheck={false}
-            aria-label="Plan JSON"
+            aria-label="Plan source"
             value={text}
             onChange={(e) => onType(e.target.value)}
           />
@@ -357,7 +403,12 @@ export function Playground() {
                   {!outcome.ok &&
                     outcome.issues.map((i, n) => (
                       <li key={n}>
-                        <span className="path">{i.path || "(root)"}</span>: {i.message}
+                        <span className="path">
+                          {/* a tokenizer message already opens with `line N:`, so the
+                              locator shows the path rather than saying the line twice */}
+                          {i.message.startsWith("line ") ? i.path || "—" : i.line !== undefined ? `line ${i.line}` : i.path || "(root)"}
+                        </span>
+                        : {i.message}
                       </li>
                     ))}
                 </ul>

@@ -1,0 +1,24 @@
+{
+  "title": "Cabin With A Sleeping Loft",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "height": 2.6,
+      "rooms": [
+        { "name": "Main Room", "kind": "living", "rect": [0, 0, 5, 5], "habitable": true }
+      ]
+    },
+    {
+      "name": "loft",
+      "height": 2.2,
+      "rooms": [
+        { "name": "Loft", "kind": "bedroom", "rect": [0, 0, 5, 2.5], "habitable": true }
+      ]
+    }
+  ],
+  "vertical": [
+    { "id": "ladder-stair", "type": "stairs", "name": "Ladder Stair", "at": { "level": "ground", "in": "Main Room", "rect": [4, 4, 1, 1] }, "up": 2.6, "risers": 10 }
+  ]
+}

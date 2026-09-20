@@ -1,0 +1,11 @@
+{
+  "summary": {"error":2,"warning":3,"info":1},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"levels.ground.openings","line":3},
+    {"rule":"wall.unresolved","severity":"error","message":"opening #2: living has no wall to porch on its south side","path":"levels.ground.openings[2].on","opening":"porch_door","rooms":["living","porch"],"level":"ground","line":13},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"levels.ground.rooms.living","rooms":["living"],"at":[2,2],"level":"ground","line":5},
+    {"rule":"habitable.no_window","severity":"warning","message":"Kitchen is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south)","path":"levels.ground.rooms.kitchen","rooms":["kitchen"],"at":[5.5,2],"level":"ground","line":6},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/east)","path":"levels.ground.rooms.bedroom","rooms":["bedroom"],"at":[8.5,2],"level":"ground","line":7},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom opens directly off Kitchen","path":"levels.ground.openings[1]","rooms":["kitchen","bedroom"],"at":[7,2],"opening":"door:bedroom-kitchen:0","level":"ground","line":12}
+  ]
+}

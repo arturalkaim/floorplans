@@ -1,0 +1,19 @@
+{
+  "title": "One-bedroom flat",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "rooms": {
+    "hall": {"name":"Hall","kind":"hall","rect":[0,0,2,7.5]},
+    "sala": {"name":"Living and kitchen","kind":"living","rect":[2,0,5,4]},
+    "quarto": {"name":"Bedroom","kind":"bedroom","rect":[2,4,5,2]},
+    "banho": {"name":"Bathroom","kind":"bath","rect":[2,6,5,1.5]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"north"},"width":0.9,"entrance":true},
+    {"type":"door","between":["hall","sala"],"width":0.9,"swingInto":"sala"},
+    {"type":"door","between":["hall","quarto"],"width":0.8,"swingInto":"quarto"},
+    {"type":"door","between":["hall","banho"],"width":0.7,"swingInto":"banho"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"east"},"width":1.8},
+    {"type":"window","between":["exterior","quarto"],"on":{"room":"quarto","side":"east"},"width":1.4},
+    {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"south"},"width":0.6}
+  ]
+}

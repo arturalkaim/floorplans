@@ -1,0 +1,20 @@
+{
+  "title": "Shop",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Shop Floor", "kind": "other", "rect": [0, 0, 6, 5] },
+        { "name": "Storeroom", "kind": "storage", "rect": [6, 0, 3, 3.5] },
+        { "name": "Staff WC", "kind": "wc", "rect": [6, 3.5, 1.5, 1.5], "wet": true }
+      ],
+      "openings": [
+        { "id": "street-door", "type": "door", "between": ["Shop Floor"], "on": { "room": "Shop Floor", "side": "west" }, "width": 1.5, "entrance": true },
+        { "type": "door", "between": ["Shop Floor", "Storeroom"], "on": { "room": "Shop Floor", "side": "east", "near": [6, 1.75] }, "width": 0.9 },
+        { "type": "door", "between": ["Storeroom", "Staff WC"], "on": { "room": "Storeroom", "side": "south" }, "width": 0.8 }
+      ]
+    }
+  ]
+}

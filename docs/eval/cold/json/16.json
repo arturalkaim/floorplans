@@ -1,0 +1,23 @@
+{
+  "title": "House With A Utility",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Living", "kind": "living", "rect": [-4, 0, 4, 3], "habitable": true },
+        { "name": "Kitchen", "kind": "kitchen", "rect": [0, 0, 3, 3] },
+        { "name": "Utility", "kind": "utility", "rect": [3, 0, 2, 3] }
+      ],
+      "outdoor": [
+        { "name": "Yard", "rect": [3, 3, 2, 3], "covered": false }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Kitchen", "Living"], "on": { "room": "Kitchen", "side": "west" }, "width": 0.9 },
+        { "type": "door", "between": ["Kitchen", "Utility"], "on": { "room": "Kitchen", "side": "east" }, "width": 0.9 },
+        { "id": "back-door", "type": "door", "between": ["Utility", "Yard"], "on": { "room": "Utility", "side": "south" }, "width": 0.9, "entrance": true }
+      ]
+    }
+  ]
+}

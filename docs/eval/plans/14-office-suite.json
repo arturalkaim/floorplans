@@ -1,0 +1,22 @@
+{
+  "title": "Office suite",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "rooms": {
+    "rececao": {"name":"Reception","kind":"office","zone":"day","rect":[0,0,5,4]},
+    "corredor": {"name":"Corridor","kind":"corridor","zone":"day","rect":[5,0,1.4,4]},
+    "sala1": {"name":"Office 1","kind":"office","zone":"day","rect":[6.4,0,3.5,2]},
+    "sala2": {"name":"Office 2","kind":"office","zone":"day","rect":[6.4,2,3.5,2]},
+    "reuniao": {"name":"Meeting room","kind":"office","zone":"day","rect":[0,4,9.9,3.5]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","rececao"],"on":{"room":"rececao","side":"west"},"width":1.1,"entrance":true},
+    {"type":"door","between":["rececao","corredor"],"width":1,"swingInto":"corredor"},
+    {"type":"door","between":["corredor","sala1"],"width":0.8,"swingInto":"sala1"},
+    {"type":"door","between":["corredor","sala2"],"width":0.8,"swingInto":"sala2"},
+    {"type":"door","between":["rececao","reuniao"],"width":0.9,"swingInto":"reuniao"},
+    {"type":"window","between":["exterior","rececao"],"on":{"room":"rececao","side":"north"},"width":2.4},
+    {"type":"window","between":["exterior","sala1"],"on":{"room":"sala1","side":"east"},"width":1.4},
+    {"type":"window","between":["exterior","sala2"],"on":{"room":"sala2","side":"east"},"width":1.4},
+    {"type":"window","between":["exterior","reuniao"],"on":{"room":"reuniao","side":"south"},"width":3}
+  ]
+}

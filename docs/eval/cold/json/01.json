@@ -1,0 +1,21 @@
+{
+  "title": "Studio",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Studio", "kind": "living", "rect": [0, 0, 5, 4], "habitable": true },
+        { "name": "Shower Room", "kind": "bath", "rect": [5, 0, 2, 2], "wet": true }
+      ],
+      "fixtures": [
+        { "id": "kitchenette", "type": "counter", "in": "Studio", "at": [0.2, 0.2], "size": [2, 0.6], "name": "Kitchenette" }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Studio", "Shower Room"], "on": { "room": "Studio", "side": "east" }, "width": 0.8 },
+        { "id": "front-door", "type": "door", "between": ["Studio"], "on": { "room": "Studio", "side": "south" }, "width": 0.9, "entrance": true }
+      ]
+    }
+  ]
+}

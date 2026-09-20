@@ -9,10 +9,24 @@
 //
 // A document with no `levels` block must still produce all of it byte for byte. The
 // normalisation onto one level with a well-known id has to be invisible from outside.
+//
+// Findings are the one part that has legitimately changed since, and rather than
+// regenerating the baseline — which would throw away the evidence — the new fields are
+// projected back out before the comparison. The projection *is* the changelog, and it is
+// executable: anything that changed and is not listed here fails the test.
+//
+//   B7  `opening` / `fixture` became the entity's stable id; they were its array index
+//   B2  `path` names the document node the rule is about
+//   B2  `wall.ambiguous` carries `candidates`, `room.min_dimension` `measured`/`minimum`/
+//       `rect`, and `opening.off_wall` `nearest`/`distance` — the facts already in the prose
+//
+// Messages, order, severities, `at`, `rooms`, `level`, the schedule, the drags, the
+// canonical text and the SVG are all still compared byte for byte.
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { analyze, draggableWalls, formatText, parse, renderSvg, schedule } from "../src/index.ts";
+import type { Finding, Plan } from "../src/types.ts";
 import { compareWallCoverage } from "./svg-coverage.ts";
 
 const FIXTURES = ["casa-t3", "apartment-t2", "casa-piscina", "quinta", "casa-patio", "broken", "cabin"];
@@ -99,6 +113,21 @@ function matchDrawing(name: string, actual: string) {
   assert.equal(actual, readFileSync(file, "utf8"), `${name}: the drawing changed`);
 }
 
+/**
+ * A finding as it was before W3a: the added fields removed, and the stable ids turned
+ * back into the array indices they replaced.
+ */
+function beforeW3a(f: Finding, plan: Plan): Record<string, unknown> {
+  const { path, candidates, measured, minimum, rect, nearest, distance, opening, fixture, ...rest } = f;
+  void [path, candidates, measured, minimum, rect, nearest, distance];
+  const out: Record<string, unknown> = { ...rest };
+  // the id is looked up in the *document*, not in the model: an opening that failed to
+  // resolve has no ResolvedOpening but still carries a finding
+  if (opening !== undefined) out["opening"] = plan.openings.find((o) => o.id === opening)!.index;
+  if (fixture !== undefined) out["fixture"] = plan.fixtures.find((x) => x.id === fixture)!.index;
+  return out;
+}
+
 describe("levels: a single-level document is byte-identical to what it was before levels", () => {
   for (const name of FIXTURES) {
     it(`${name}: findings, schedule, drags and canonical text`, () => {
@@ -108,8 +137,22 @@ describe("levels: a single-level document is byte-identical to what it was befor
       const drags = [...draggableWalls(text, model).entries()]
         .map(([id, d]) => ({ id, writes: d.writes, edits: d.edits(d.c + 0.25) }))
         .sort((a, b) => a.id.localeCompare(b.id));
-      const actual = `${JSON.stringify({ findings, schedule: schedule(model), drags, formatted: formatText(text) }, null, 2)}\n`;
-      assert.equal(actual, corrected(name, baseline(name, "json")));
+      const base = JSON.parse(corrected(name, baseline(name, "json"))) as {
+        findings: unknown[];
+        schedule: unknown;
+        drags: unknown;
+        formatted: string;
+      };
+      // findings: every field the baseline had, still identical; the W3a additions
+      // projected away by beforeW3a, which is the only licensed difference
+      assert.deepEqual(findings.map((f) => beforeW3a(f, plan)), base.findings);
+      // the rest byte for byte, key order included: re-stringifying the baseline's own
+      // parsed value preserves the order it was written in, so this is a text comparison
+      assert.equal(
+        JSON.stringify({ schedule: schedule(model), drags }, null, 2),
+        JSON.stringify({ schedule: base.schedule, drags: base.drags }, null, 2),
+      );
+      assert.equal(formatText(text), base.formatted);
     });
 
     it(`${name}: the drawing says the same wall in a different way`, () => {

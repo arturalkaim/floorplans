@@ -1,0 +1,24 @@
+{
+  "title": "Pool House",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Changing Room", "kind": "other", "rect": [0, 0, 3, 3] },
+        { "name": "WC", "kind": "wc", "rect": [3, 0, 1.5, 1.5], "wet": true }
+      ],
+      "outdoor": [
+        { "name": "Deck", "rect": [0, 3, 4.5, 4], "covered": false }
+      ],
+      "fixtures": [
+        { "id": "pool", "type": "pool", "in": "Deck", "at": [0.75, 4], "size": [3, 2.5], "name": "Pool" }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Changing Room", "Deck"], "at": [1.5, 3], "width": 1.5 },
+        { "type": "door", "between": ["Changing Room", "WC"], "on": { "room": "Changing Room", "side": "east" }, "width": 0.8 }
+      ]
+    }
+  ]
+}

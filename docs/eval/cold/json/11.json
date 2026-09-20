@@ -1,0 +1,22 @@
+{
+  "title": "Kitchen Extension",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Kitchen", "kind": "kitchen", "rect": [0, 0, 4, 4] }
+      ],
+      "outdoor": [
+        { "name": "Terrace", "rect": [4, 0, 4, 4], "covered": false }
+      ],
+      "fixtures": [
+        { "id": "counter-run", "type": "counter", "in": "Kitchen", "at": [0.2, 0.2], "size": [3.5, 0.6], "depth": 0.6, "name": "Counter Run" }
+      ],
+      "openings": [
+        { "id": "kitchen-glazed-doors", "type": "door", "between": ["Kitchen", "Terrace"], "on": { "room": "Kitchen", "side": "east" }, "width": 2.4, "glazed": true }
+      ]
+    }
+  ]
+}

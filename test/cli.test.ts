@@ -4,9 +4,9 @@ import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import { formatFindings, run } from "../src/cli.ts";
+import { EXAMPLE_PLAN, formatFindings, run } from "../src/cli.ts";
 import type { CliIo } from "../src/cli.ts";
-import { SCHEMA } from "../src/index.ts";
+import { COMPASS_LINE, FIXTURE_TYPES, formatPlan, ID_RE, isSchemaFinding, lint, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, toDsl, VERTICAL_TYPES } from "../src/index.ts";
 import { twoRooms } from "./helpers.ts";
 
 function fakeIo(files: Record<string, string>, stdin = "") {
@@ -78,12 +78,45 @@ describe("cli", () => {
     assert.ok(!t.out().includes("<svg"));
     assert.match(t.out(), /entrance\.missing/);
   });
-  it("--json emits findings and schedule", () => {
+  it("--json is findings-first: a summary and the findings, and no schedule", () => {
     const t = fakeIo({ "plan.json": clean });
     assert.equal(run(["plan.json", "--json"], t.io), 0);
     const parsed = JSON.parse(t.out());
-    assert.deepEqual(parsed.findings, []);
+    assert.deepEqual(parsed, { summary: { error: 0, warning: 0, info: 0 }, findings: [] });
+  });
+
+  it("--json=all adds the schedule and the derived walls", () => {
+    const t = fakeIo({ "plan.json": clean });
+    assert.equal(run(["plan.json", "--json=all"], t.io), 0);
+    const parsed = JSON.parse(t.out());
     assert.equal(parsed.schedule.rooms.length, 2);
+    assert.ok(parsed.walls.length > 0);
+    assert.deepEqual(Object.keys(parsed), ["summary", "findings", "schedule", "walls"]);
+  });
+
+  it("--json=schedule and --json=walls select one section", () => {
+    const s = fakeIo({ "plan.json": clean });
+    run(["plan.json", "--json=schedule"], s.io);
+    assert.deepEqual(Object.keys(JSON.parse(s.out())), ["schedule"]);
+    const w = fakeIo({ "plan.json": clean });
+    run(["plan.json", "--json=walls"], w.io);
+    const walls = JSON.parse(w.out()).walls;
+    // endpoints as points and owners as tagged unions: no `axis`, no `c`
+    assert.deepEqual(Object.keys(walls[0]), ["id", "kind", "from", "to", "neg", "pos"]);
+    assert.equal(walls[0].from.length, 2);
+  });
+
+  it("rejects an unknown --json mode", () => {
+    assert.equal(run(["plan.json", "--json=everything"], fakeIo({ "plan.json": clean }).io), 2);
+  });
+
+  it("prints JSON one entity per line, not one coordinate per line", () => {
+    const t = fakeIo({ "plan.json": broken });
+    run(["plan.json", "--json"], t.io);
+    const lines = t.out().trimEnd().split("\n");
+    const findings = JSON.parse(t.out()).findings.length;
+    // `{`, summary, `"findings": [`, one line per finding, `]`, `}`
+    assert.equal(lines.length, findings + 5, t.out());
   });
   it("render options reach the SVG", () => {
     const t = fakeIo({ "plan.json": clean });
@@ -102,7 +135,7 @@ describe("cli", () => {
   });
 });
 
-describe("cli: --schema", () => {
+describe("cli: --schema (terse, default)", () => {
   it("needs no input file and exits 0", () => {
     const t = fakeIo({});
     assert.equal(run(["--schema"], t.io), 0);
@@ -110,9 +143,146 @@ describe("cli: --schema", () => {
     assert.equal(t.err(), "");
   });
 
-  it("prints JSON that parses, and round-trips SCHEMA (modulo enum sets becoming arrays)", () => {
+  it("mentions every field of every SCHEMA object exactly once", () => {
     const t = fakeIo({});
     run(["--schema"], t.io);
+    const out = t.out();
+    for (const o of SCHEMA) {
+      // Greedy up to the *last* `}` on the line, not the first: a map-shaped field now
+      // prints its own nested `{id: X}`, so the naive "stop at the nearest brace" capture
+      // would truncate the body at that inner brace instead of the object's own closing one.
+      const line = new RegExp(`^${o.object.replace(/\./g, "\\.")} \\{(.*)\\}`, "m").exec(out);
+      assert.ok(line, `--schema has no line for object ${o.object}`);
+      const body = line[1]!;
+      for (const f of o.fields) {
+        const occurrences = body.split(new RegExp(`\\b${f.name}\\??:`)).length - 1;
+        assert.equal(occurrences, 1, `${o.object}.${f.name} should appear exactly once in --schema's ${o.object} line, found ${occurrences} in: ${body}`);
+      }
+    }
+  });
+
+  it("mentions every enum vocabulary's full value list exactly once, and never twice", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const out = t.out();
+    for (const vocab of [ROOM_KINDS, SIDES, OPENING_TYPES, FIXTURE_TYPES, VERTICAL_TYPES]) {
+      const joined = [...vocab].join("|");
+      const occurrences = out.split(joined).length - 1;
+      assert.equal(occurrences, 1, `vocabulary "${joined}" should appear exactly once in --schema, found ${occurrences}`);
+    }
+  });
+
+  it("marks required fields bare and optional fields with a trailing ?", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const out = t.out();
+    for (const o of SCHEMA) {
+      const line = new RegExp(`^${o.object.replace(/\./g, "\\.")} \\{(.*)\\}`, "m").exec(out)!;
+      const body = line[1]!;
+      for (const f of o.fields) {
+        const re = new RegExp(`\\b${f.name}(\\??):`);
+        const m = re.exec(body);
+        assert.ok(m, `${o.object}.${f.name} not found`);
+        assert.equal(m[1] === "?", !f.required, `${o.object}.${f.name} required=${f.required} but printed as "${m[0]}"`);
+      }
+    }
+  });
+
+  it("drops every field's one-sentence doc text (that is --schema=full's job)", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const out = t.out();
+    for (const o of SCHEMA) for (const f of o.fields) if (f.doc.length > 20) assert.ok(!out.includes(f.doc), `--schema still contains the doc text for ${o.object}.${f.name}`);
+  });
+
+  // The ~800-token budget (docs/agent-review.md B10) covered the bare field table; the
+  // legend (id format, compass axes) and the worked example (fix 4, docs/eval/cold/cold-run.md)
+  // that now follow it are worth more than the budget, and push the true cost to ~1 062
+  // gpt-tokenizer o200k_base tokens / 3 106 chars — see README.md's token table for the
+  // measured, tokenizer-backed number. This asserts a char proxy so the suite carries no
+  // tokenizer dependency, and exists only to catch an unbounded regression.
+  it("stays under a regression ceiling for its total length (field table + legend + example)", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    assert.ok(t.out().length < 4000, `--schema terse form grew to ${t.out().length} chars, past the regression ceiling`);
+  });
+});
+
+// fix 1 (docs/eval/cold/cold-run.md): `type: "object"` alone cannot say whether a field is
+// a single object, a list or an id-keyed map, and that is what made every cold-agent JSON
+// authoring attempt guess "array" for `levels`. `f.shape` is the fix; these three lines are
+// the ones the eval's own report calls out by name.
+describe("cli: --schema shows cardinality, not just type", () => {
+  it("prints levels/rooms/openings/vertical.at with their actual shape", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const out = t.out();
+    assert.match(out, /\blevels\?: \{id: level\}/, "plan.levels should read as an id-keyed map, not a bare object reference");
+    assert.match(out, /\brooms: \{id: room\}/, "level.rooms should read as an id-keyed map, not a bare object reference");
+    assert.match(out, /\bopenings\?: opening\[\]/, "level.openings should read as a list, not a bare object reference");
+    assert.match(out, /\bat: vertical\.footprint\[\]/, "vertical.at should read as a list, not a bare object reference");
+  });
+});
+
+// fix 2 (docs/eval/cold/cold-run.md): the id constraint every room/outdoor/void/level key
+// and every opening/fixture/vertical id must satisfy was never stated anywhere; the eval's
+// cold-agent authors used kebab-case ids and failed schema on `vertical[0].id` in 4 of 20
+// JSON files for exactly this reason.
+describe("cli: --schema legend states the id format and the compass axes", () => {
+  it("prints the id legend line using parse.ts's own ID_RE, not a hand-typed copy", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    assert.match(t.out(), new RegExp(`^id = ${ID_RE.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
+    // and the id-typed fields point at it rather than printing a plain "str"
+    assert.match(t.out(), /\bid\?: id\b/);
+    assert.match(t.out(), /\bid: id\b/);
+  });
+
+  it("prints the compass axes line", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    assert.ok(t.out().includes(COMPASS_LINE), "--schema is missing the compass axes line");
+  });
+});
+
+// fix 4 (docs/eval/cold/cold-run.md): neither reference had a single worked example, and the
+// eval's own verdict was that one would have prevented most of the 20/20 JSON failures.
+describe("cli: --schema and --schema=dsl end with a worked example", () => {
+  it("EXAMPLE_PLAN is fixtures/cabin.json verbatim, so the printed example cannot drift from a real fixture", () => {
+    const cabin = JSON.parse(readFileSync(new URL("../fixtures/cabin.json", import.meta.url), "utf8"));
+    assert.deepEqual(EXAMPLE_PLAN, cabin);
+  });
+
+  it("--schema's example is EXAMPLE_PLAN through the compact formatter, and lints with no schema.* findings", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const example = formatPlan(EXAMPLE_PLAN).replace(/\n$/, "");
+    assert.ok(t.out().includes(`example:\n${example}`), "--schema's example section does not match formatPlan(EXAMPLE_PLAN)");
+    const linted = lint(example);
+    assert.deepEqual(linted.findings.filter(isSchemaFinding), []);
+  });
+
+  it("--schema=dsl's example is EXAMPLE_PLAN through toDsl, and lints with no schema.* findings", () => {
+    const t = fakeIo({});
+    run(["--schema=dsl"], t.io);
+    const example = toDsl(EXAMPLE_PLAN).replace(/\n$/, "");
+    assert.ok(t.out().includes(`## example\n\n${example}`), "--schema=dsl's example section does not match toDsl(EXAMPLE_PLAN)");
+    const linted = lint(example);
+    assert.deepEqual(linted.findings.filter(isSchemaFinding), []);
+  });
+});
+
+describe("cli: --schema=full", () => {
+  it("needs no input file and exits 0", () => {
+    const t = fakeIo({});
+    assert.equal(run(["--schema=full"], t.io), 0);
+    assert.notEqual(t.out(), "");
+    assert.equal(t.err(), "");
+  });
+
+  it("prints JSON that parses, and round-trips SCHEMA (modulo enum sets becoming arrays)", () => {
+    const t = fakeIo({});
+    run(["--schema=full"], t.io);
     const printed = JSON.parse(t.out());
     assert.ok(Array.isArray(printed));
     const plain = SCHEMA.map((o) => ({
@@ -122,6 +292,7 @@ describe("cli: --schema", () => {
         type: f.type,
         required: f.required,
         ...(f.enum ? { enum: [...f.enum] } : {}),
+        ...(f.shape ? { shape: f.shape } : {}),
         doc: f.doc,
       })),
       ...(o.oneOf ? { oneOf: o.oneOf } : {}),
@@ -131,18 +302,28 @@ describe("cli: --schema", () => {
 
   it("documents every object the parser's checkKeys calls need", () => {
     const t = fakeIo({});
-    run(["--schema"], t.io);
+    run(["--schema=full"], t.io);
     const objects = JSON.parse(t.out()).map((o: { object: string }) => o.object);
     for (const name of ["plan", "room", "outdoor", "void", "opening", "opening.on", "opening.position", "fixture", "vertical", "vertical.footprint", "walls", "grid", "layout", "level"])
-      assert.ok(objects.includes(name), `--schema is missing ${name}`);
+      assert.ok(objects.includes(name), `--schema=full is missing ${name}`);
   });
+});
 
-  it("--schema=md prints a Markdown table per object and needs no input file", () => {
+describe("cli: --schema=md", () => {
+  it("prints a Markdown table per object and needs no input file", () => {
     const t = fakeIo({});
     assert.equal(run(["--schema=md"], t.io), 0);
     assert.match(t.out(), /^## plan\b/m);
     assert.match(t.out(), /^## room\b/m);
     assert.match(t.out(), /\| field \| type \| required \| enum \| doc \|/);
+  });
+});
+
+describe("cli: --schema rejects unknown modes", () => {
+  it("exits 2 on --schema=bogus", () => {
+    const t = fakeIo({});
+    assert.equal(run(["--schema=bogus"], t.io), 2);
+    assert.match(t.err(), /unknown option/);
   });
 });
 

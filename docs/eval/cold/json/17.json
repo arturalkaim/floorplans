@@ -1,0 +1,19 @@
+{
+  "title": "Loft Conversion",
+  "units": "m",
+  "levels": [
+    {
+      "name": "loft",
+      "rooms": [
+        { "name": "Loft Room", "kind": "bedroom", "rect": [0, 0, 6, 5], "habitable": true },
+        { "name": "Shower Room", "kind": "bath", "rect": [6, 0, 2, 2], "wet": true }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Loft Room", "Shower Room"], "on": { "room": "Loft Room", "side": "east" }, "width": 0.8 }
+      ]
+    }
+  ],
+  "vertical": [
+    { "id": "loft-stair", "type": "stairs", "name": "Loft Stair", "at": { "level": "loft", "in": "Loft Room", "rect": [0, 0, 1, 1] }, "up": 2.6, "risers": 13 }
+  ]
+}

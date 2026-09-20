@@ -1,0 +1,21 @@
+{
+  "title": "House with a utility",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "rooms": {
+    "sala": {"name":"Living room","kind":"living","rect":[0,0,5.5,5]},
+    "cozinha": {"name":"Kitchen","kind":"kitchen","rect":[5.5,0,4,3.2]},
+    "lavandaria": {"name":"Utility","kind":"utility","rect":[5.5,3.2,4,1.8]}
+  },
+  "outdoor": {
+    "quintal": {"name":"Yard","rect":[0,5,9.5,4]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"width":1,"entrance":true},
+    {"type":"cased","between":["sala","cozinha"],"width":1.6},
+    {"type":"door","between":["cozinha","lavandaria"],"width":0.8,"swingInto":"lavandaria"},
+    {"type":"door","id":"porta_servico","between":["quintal","lavandaria"],"width":0.8,"swingInto":"lavandaria"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"west"},"width":2},
+    {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"east"},"width":1.6},
+    {"type":"window","between":["exterior","lavandaria"],"on":{"room":"lavandaria","side":"east"},"width":0.8}
+  ]
+}

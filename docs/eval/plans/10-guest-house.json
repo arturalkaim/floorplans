@@ -1,0 +1,40 @@
+{
+  "title": "Guest house",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "rooms": {
+    "corredor": {"name":"Corridor","kind":"corridor","rect":[0,0,14,1.4]},
+    "q1": {"name":"Room 1","kind":"bedroom","rect":[0,1.4,3.5,3]},
+    "q2": {"name":"Room 2","kind":"bedroom","rect":[3.5,1.4,3.5,3]},
+    "q3": {"name":"Room 3","kind":"bedroom","rect":[7,1.4,3.5,3]},
+    "q4": {"name":"Room 4","kind":"bedroom","rect":[10.5,1.4,3.5,3]},
+    "b1": {"name":"Shower 1","kind":"bath","rect":[0,4.4,3.5,1.8]},
+    "b2": {"name":"Shower 2","kind":"bath","rect":[3.5,4.4,3.5,1.8]},
+    "b3": {"name":"Shower 3","kind":"bath","rect":[7,4.4,3.5,1.8]},
+    "b4": {"name":"Shower 4","kind":"bath","rect":[10.5,4.4,3.5,1.8]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","corredor"],"on":{"room":"corredor","side":"west"},"width":1,"entrance":true},
+    {"type":"door","between":["corredor","q1"],"width":0.8,"swingInto":"q1"},
+    {"type":"door","between":["corredor","q2"],"width":0.8,"swingInto":"q2"},
+    {"type":"door","between":["corredor","q3"],"width":0.8,"swingInto":"q3"},
+    {"type":"door","between":["corredor","q4"],"width":0.8,"swingInto":"q4"},
+    {"type":"door","between":["q1","b1"],"width":0.7,"swingInto":"b1"},
+    {"type":"door","between":["q2","b2"],"width":0.7,"swingInto":"b2"},
+    {"type":"door","between":["q3","b3"],"width":0.7,"swingInto":"b3"},
+    {"type":"door","between":["q4","b4"],"width":0.7,"swingInto":"b4"},
+    {"type":"window","between":["exterior","q1"],"on":{"room":"q1","side":"north"},"width":1.4},
+    {"type":"window","between":["exterior","q2"],"on":{"room":"q2","side":"north"},"width":1.4},
+    {"type":"window","between":["exterior","q3"],"on":{"room":"q3","side":"north"},"width":1.4},
+    {"type":"window","between":["exterior","q4"],"on":{"room":"q4","side":"north"},"width":1.4},
+    {"type":"window","between":["exterior","b1"],"on":{"room":"b1","side":"south"},"width":0.6},
+    {"type":"window","between":["exterior","b2"],"on":{"room":"b2","side":"south"},"width":0.6},
+    {"type":"window","between":["exterior","b3"],"on":{"room":"b3","side":"south"},"width":0.6},
+    {"type":"window","between":["exterior","b4"],"on":{"room":"b4","side":"south"},"width":0.6}
+  ],
+  "fixtures": [
+    {"type":"shower","in":"b1","at":[0.2,4.6],"size":[0.9,0.9]},
+    {"type":"shower","in":"b2","at":[3.7,4.6],"size":[0.9,0.9]},
+    {"type":"shower","in":"b3","at":[7.2,4.6],"size":[0.9,0.9]},
+    {"type":"shower","in":"b4","at":[10.7,4.6],"size":[0.9,0.9]}
+  ]
+}

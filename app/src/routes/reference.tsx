@@ -1,4 +1,4 @@
-import { FIXTURE_TYPES, OPENING_TYPES, RULES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "floorplan";
+import { ARC_SYNTAX, DSL_SCHEMA, FIXTURE_TYPES, OPENING_TYPES, RULES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "floorplan";
 import type { FieldDoc, RuleDoc } from "floorplan";
 
 /**
@@ -26,10 +26,10 @@ export function Reference() {
   return (
     <article className="doc">
       <p>
-        A plan is one JSON document. Coordinates are <strong>metres on wall centrelines</strong>, y grows
-        downwards, and rooms must tile the footprint exactly — walls are derived from the edges they share,
-        never authored. A room is any simple polygon — straight edges at any angle, or true circular
-        arcs — and a plan has one storey or many.
+        A plan is one document, written either as JSON or in the <a href="#dsl">line DSL</a>. Coordinates are{" "}
+        <strong>metres on wall centrelines</strong>, y grows downwards, and rooms must tile the footprint
+        exactly — walls are derived from the edges they share, never authored. A room is any simple polygon —
+        straight edges at any angle, or true circular arcs — and a plan has one storey or many.
       </p>
       <p>
         Write it in canonical form: <strong>one entity per line</strong> — a room, an outdoor space, an
@@ -46,8 +46,8 @@ export function Reference() {
   "rooms":    { "<id>": { "name", "kind", "zone", "poly" | "rect" } },
   "outdoor":  { "<id>": { "name", "poly" | "rect", "covered" } },
   "voids":    { "<id>": { "name", "poly" | "rect" } },
-  "fixtures": [ { "type", "in", "poly" | "at" + "size" } ],
-  "openings": [ { "type", "between", "on", "position", "width" } ]
+  "fixtures": [ { "id"?, "type", "in", "poly" | "at" + "size" } ],
+  "openings": [ { "id"?, "type", "between", "on", "position", "width" } ]
 }`}</code></pre>
 
       <h2>Rooms</h2>
@@ -201,14 +201,97 @@ export function Reference() {
         so.
       </p>
 
+      <h2 id="dsl">The line DSL</h2>
+      <p>
+        The same document, written one entity per line. It is an <em>authoring</em> syntax: it compiles to the
+        JSON above and nothing downstream — the geometry, the rules, the drawing — sees the difference. Every
+        entry point sniffs the first non-space character, so <code>{"{"}</code> is JSON and anything else is
+        the DSL; <code>floorplan fmt &lt;file&gt; --to json|dsl</code> converts between them, and the{" "}
+        <strong>JSON | DSL</strong> toggle above the playground editor does the same thing in the browser.
+      </p>
+      <p>
+        It exists for the cost. Measured with <code>o200k_base</code>: casa-t3 is <strong>1 502</strong>{" "}
+        tokens as canonical JSON and <strong>788</strong> here; one door is 61 tokens against 14. Openings are
+        55 % of a plan's tokens, and an opening is exactly where the key names repeat.
+      </p>
+      <pre><code>{`plan "Cabana" walls 0.2/0.1
+
+room sala "Sala e cozinha" living rect 0,0 5x4
+room wc "Casa de banho" wc rect 5,0 1.2x2
+outdoor deck "Deck" rect 0,4 5x2
+
+door deck>sala at:0.9,4 w0.9 hinge:start swing:sala
+door sala>wc @-0.5 w0.7 hinge:end swing:wc
+window sala.north @2.5 w2.4
+window wc.east w0.6`}</code></pre>
+      <h3>Statements</h3>
+      <dl className="grammar">
+        {DSL_SCHEMA.map((st) => (
+          <div key={st.statement}>
+            <dt><pre><code>{st.syntax}</code></pre></dt>
+            <dd>{st.doc}</dd>
+          </div>
+        ))}
+      </dl>
+      <p>
+        A <code>poly</code> takes <code>&lt;x&gt;,&lt;y&gt;</code> corners and, for a curve,{" "}
+        <code>{ARC_SYNTAX}</code> — an arc from the previous corner to this one. <code>@&lt;d&gt;</code> is
+        metres from the wall run’s start to the opening’s centre and <code>@-&lt;d&gt;</code> from its end;{" "}
+        <code>&lt;room&gt;.&lt;side&gt;</code> on its own is the short form of{" "}
+        <code>exterior&gt;&lt;room&gt;</code> with an <code>on</code>. A boolean is its own name for true and{" "}
+        <code>name:false</code> for false. Comments start with <code>#</code>.
+      </p>
+      <h3>Every field, and the token that writes it</h3>
+      <p>
+        Generated from the same table <code>floorplan --schema=dsl</code> prints. A test walks the JSON schema
+        and fails if a field has no token here, so the two syntaxes can express exactly the same documents.
+      </p>
+      <table>
+        <tbody>
+          {SCHEMA.flatMap((o) =>
+            o.fields.map((f) => {
+              const key = `${o.object}.${f.name}`;
+              const tokens = [...new Set(DSL_SCHEMA.flatMap((st) => st.tokens.filter((t) => t.field === key).map((t) => t.token)))];
+              return (
+                <tr key={key}>
+                  <td><code>{key}</code></td>
+                  <td>{tokens.map((t) => <code key={t} style={{ marginRight: 8 }}>{t}</code>)}</td>
+                </tr>
+              );
+            }),
+          )}
+        </tbody>
+      </table>
+      <p>
+        A finding on a DSL document carries <code>line</code> beside its <code>path</code> — beside, never
+        instead: the JSON path is the contract, and the line is the address the DSL adds.{" "}
+        <code>set</code> and a drag both splice one token on one line and leave the rest of the file alone.
+      </p>
+
       <h2>Findings</h2>
       <p>
-        Every finding is <code>{"{ rule, severity, message, level?, at?, rooms?, opening?, fixture?, vertical? }"}</code>.{" "}
+        Every finding is{" "}
+        <code>{"{ rule, severity, message, path, level?, at?, rooms?, opening?, fixture?, vertical? }"}</code>.{" "}
+        <code>path</code> is the JSON path of the thing the rule is about — <code>openings[3].width</code>,{" "}
+        <code>rooms.sala.rect</code>, <code>levels.piso1.fixtures[2]</code> — derived from the document that
+        was parsed rather than from a template, so it names a node that is really there and{" "}
+        <code>set</code> takes it verbatim. A field is only appended when the author wrote it: an opening that
+        let <code>position</code> default has no <code>position</code> to splice.
+      </p>
+      <p>
+        <code>opening</code> and <code>fixture</code> are stable ids, never array indices — an authored{" "}
+        <code>id</code>, or one synthesised as <code>&lt;type&gt;:&lt;a&gt;-&lt;b&gt;:&lt;n&gt;</code> for an
+        opening and <code>&lt;type&gt;:&lt;in&gt;:&lt;n&gt;</code> for a fixture, so deleting{" "}
+        <code>openings[2]</code> renumbers only its own pair's later siblings.{" "}
         <code>level</code> names the storey it is about, and is absent both on a building-wide finding and on
-        every finding of a document with no <code>levels</code> block. Schema
-        problems throw; geometry and semantic problems come back as findings so a broken plan still draws. The
-        CLI exits <code>0</code> when clean or info only, <code>1</code> at warning or above, <code>2</code> on
-        a schema error.
+        every finding of a document with no <code>levels</code> block.
+      </p>
+      <p>
+        <code>parse()</code> and <code>floorplan()</code> throw on a schema problem; <code>lint()</code> never
+        throws and returns it as a <code>schema.*</code> finding carrying the same document path, so one loop
+        handles every problem a document can have. Geometry and semantic problems are always findings, so a
+        broken plan still draws. The CLI exits <code>0</code> when clean or info only, <code>1</code> at
+        warning or above, <code>2</code> on a schema error.
       </p>
       {(["error", "warning", "info"] as const).map((sev) => (
         <section key={sev}>

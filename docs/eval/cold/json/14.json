@@ -1,0 +1,23 @@
+{
+  "title": "Office Suite",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Reception", "kind": "other", "rect": [0, 0, 3, 4.5] },
+        { "name": "Corridor", "kind": "corridor", "rect": [3, 0, 1.3, 4.5], "circulation": true },
+        { "name": "Office 1", "kind": "office", "rect": [4.3, 0, 3, 1.5] },
+        { "name": "Office 2", "kind": "office", "rect": [4.3, 1.5, 3, 1.5] },
+        { "name": "Meeting Room", "kind": "other", "rect": [4.3, 3, 3, 1.5] }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Corridor", "Reception"], "on": { "room": "Corridor", "side": "west" }, "width": 1.2 },
+        { "type": "door", "between": ["Corridor", "Office 1"], "on": { "room": "Corridor", "side": "east", "near": [4.3, 0.75] }, "width": 0.9 },
+        { "type": "door", "between": ["Corridor", "Office 2"], "on": { "room": "Corridor", "side": "east", "near": [4.3, 2.25] }, "width": 0.9 },
+        { "type": "door", "between": ["Corridor", "Meeting Room"], "on": { "room": "Corridor", "side": "east", "near": [4.3, 3.75] }, "width": 0.9 }
+      ]
+    }
+  ]
+}

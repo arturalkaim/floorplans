@@ -1,0 +1,23 @@
+{
+  "title": "Two-Bedroom Flat",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Bedroom 1", "kind": "bedroom", "rect": [0, 0, 3, 3], "habitable": true },
+        { "name": "Bedroom 2", "kind": "bedroom", "rect": [0, 3, 3, 3], "habitable": true },
+        { "name": "Corridor", "kind": "corridor", "rect": [3, 0, 1.3, 6], "circulation": true },
+        { "name": "Bathroom", "kind": "bath", "rect": [4.3, 0, 2, 2], "wet": true },
+        { "name": "Living", "kind": "living", "rect": [0, 6, 7.3, 4], "habitable": true }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Corridor", "Bedroom 1"], "on": { "room": "Corridor", "side": "west", "near": [3, 1.5] }, "width": 0.9 },
+        { "type": "door", "between": ["Corridor", "Bedroom 2"], "on": { "room": "Corridor", "side": "west", "near": [3, 4.5] }, "width": 0.9 },
+        { "type": "door", "between": ["Corridor", "Bathroom"], "on": { "room": "Corridor", "side": "east" }, "width": 0.8 },
+        { "type": "door", "between": ["Corridor", "Living"], "on": { "room": "Corridor", "side": "south" }, "width": 1.2 }
+      ]
+    }
+  ]
+}

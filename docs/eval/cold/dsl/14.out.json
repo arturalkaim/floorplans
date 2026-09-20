@@ -1,0 +1,11 @@
+{
+  "summary": {"error":1,"warning":4,"info":1},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"levels.ground.openings","line":3},
+    {"rule":"habitable.no_window","severity":"warning","message":"Office 1 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/east)","path":"levels.ground.rooms.office1","rooms":["office1"],"at":[5.8,0.75],"level":"ground","line":7},
+    {"rule":"habitable.no_window","severity":"warning","message":"Office 2 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the east)","path":"levels.ground.rooms.office2","rooms":["office2"],"at":[5.8,2.25],"level":"ground","line":8},
+    {"rule":"room.min_dimension","severity":"warning","message":"Office 1 (office): 1.29 m at its narrowest; comfort minimum is 2 m (clear floor 2.79 × 1.29 m)","path":"levels.ground.rooms.office1.rect","rooms":["office1"],"at":[5.8,0.75],"measured":1.29,"minimum":2,"rect":[4.36,0.15,2.79,1.29],"level":"ground","line":7},
+    {"rule":"room.min_dimension","severity":"warning","message":"Office 2 (office): 1.38 m at its narrowest; comfort minimum is 2 m (clear floor 2.79 × 1.38 m)","path":"levels.ground.rooms.office2.rect","rooms":["office2"],"at":[5.8,2.25],"measured":1.38,"minimum":2,"rect":[4.36,1.56,2.79,1.38],"level":"ground","line":8},
+    {"rule":"circulation.share","severity":"info","message":"Corridor take 18 % of the interior (5.85 m²); above 10 % is worth questioning","path":"levels.ground.rooms","rooms":["corridor"],"level":"ground","line":3}
+  ]
+}

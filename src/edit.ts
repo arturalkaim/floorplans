@@ -4,6 +4,7 @@
 import { pointOnShapeBoundary } from "./derive.ts";
 import { metres, spliceAll } from "./jsonpos.ts";
 import type { JsonPath } from "./jsonpos.ts";
+import { dslSpliceAll, isDslText, readSource } from "./dsl.ts";
 import { levelOf } from "./svg.ts";
 import type { Axis, LevelModel, Model, Pt, Shape, Wall } from "./types.ts";
 import { ownerId } from "./types.ts";
@@ -56,13 +57,29 @@ const SPACE_KINDS = ["rooms", "outdoor", "voids"] as const;
 /** A path as a reader of a status line would write it: `levels.piso1.layout`. */
 const label = (path: JsonPath): string => path.join(".");
 
+/**
+ * The document behind the source text, in whichever syntax it is written. A drag is
+ * computed from the *document* — which keys a space authored, where its corners are — and
+ * both syntaxes compile to the same document, so everything below this line is unchanged
+ * by the DSL's arrival.
+ */
 const safeParse = (text: string): unknown => {
   try {
-    return JSON.parse(text);
+    return readSource(text).doc;
   } catch {
     return undefined;
   }
 };
+
+/**
+ * The one place an edit becomes characters. A `{ path, literal }` edit is syntax-neutral:
+ * `spliceAll` finds the JSON node, `dslSpliceAll` finds the token on the DSL line, and
+ * both replace exactly that value and nothing else. Routing here rather than inside each
+ * writer is what keeps `spaceForm` and `fixtureWriter` — and therefore every path this
+ * module produces for a JSON document — byte-identical to what they were.
+ */
+const applyEdits = (text: string, edits: Array<{ path: JsonPath; literal: string }>): string =>
+  isDslText(text) ? dslSpliceAll(text, edits) : spliceAll(text, edits);
 
 /**
  * A room or outdoor space is authored either as a `poly` or as a `rect: [x, y, w, h]`, and
@@ -401,7 +418,7 @@ export function applyDrag(text: string, d: Draggable, rawNext: number, free = fa
   const snapped = free ? Math.round(clamped * 1000) / 1000 : Math.round(clamped / SNAP) * SNAP;
   const next = Math.round(Math.min(Math.max(snapped, d.min), d.max) * 1000) / 1000;
   if (near(next, d.c)) return text;
-  return spliceAll(text, d.edits(next));
+  return applyEdits(text, d.edits(next));
 }
 
 /**
@@ -578,7 +595,7 @@ export function applyMove(text: string, m: Movable, to: Pt, free = false): strin
   const grid = free ? 0.001 : SNAP;
   const at: Pt = [Math.round(to[0] / grid) * grid, Math.round(to[1] / grid) * grid];
   if (near(at[0], m.at[0]) && near(at[1], m.at[1])) return text;
-  return spliceAll(text, m.edits(at));
+  return applyEdits(text, m.edits(at));
 }
 
 

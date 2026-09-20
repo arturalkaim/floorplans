@@ -201,13 +201,24 @@ export function ringPerimeter(ring: MmRing): number {
   return p;
 }
 
-/** The ring as a closed polyline: corners with every arc's canonical chord points. */
+/**
+ * The ring as a closed polyline: corners with every arc's canonical chord points.
+ *
+ * INVARIANT: memoised on the ring's identity. `flattenArc` is canonical — same arc, same
+ * points, always — so the cache can only ever return what a fresh call would build, and a
+ * ring is a value nothing mutates in place. Without it a round room re-flattens its arcs
+ * on every point test, which is most of the time a curved plan spends.
+ */
+const POINTS = new WeakMap<MmRing, P[]>();
 export function ringPoints(ring: MmRing): P[] {
+  const hit = POINTS.get(ring);
+  if (hit !== undefined) return hit;
   const out: P[] = [];
   for (const e of ringEdges(ring)) {
     out.push(e.a);
     if (e.arc) for (const p of flattenArc(e.arc)) out.push(p);
   }
+  POINTS.set(ring, out);
   return out;
 }
 

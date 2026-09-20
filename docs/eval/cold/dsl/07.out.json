@@ -1,0 +1,13 @@
+{
+  "summary": {"error":5,"warning":3,"info":0},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"levels.ground.openings","line":3},
+    {"level":"loft","rule":"level.unreachable","severity":"error","message":"Loft has no stair, lift or ramp: nothing arrives on it","path":"vertical"},
+    {"rule":"space.no_access","severity":"error","message":"Main Room has no door or cased opening","path":"levels.ground.rooms.main_room","rooms":["main_room"],"at":[2,2.5],"level":"ground","line":4},
+    {"rule":"space.no_access","severity":"error","message":"Loft has no door or cased opening","path":"levels.loft.rooms.loft_room","rooms":["loft_room"],"at":[2.5,1.25],"level":"loft","line":7},
+    {"level":"ground","rule":"stair.no_arrival","severity":"error","message":"Ladder Stair stands on Ground and goes nowhere; a vertical element needs a footprint on each of the levels it joins","path":"vertical[0].at","at":[4.5,4.5],"vertical":"ladder_stair"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Main Room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"levels.ground.rooms.main_room","rooms":["main_room"],"at":[2,2.5],"level":"ground","line":4},
+    {"rule":"habitable.no_window","severity":"warning","message":"Loft is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"levels.loft.rooms.loft_room","rooms":["loft_room"],"at":[2.5,1.25],"level":"loft","line":7},
+    {"rule":"room.min_dimension","severity":"warning","message":"Loft (bedroom): 2.2 m at its narrowest; comfort minimum is 2.4 m (clear floor 4.7 × 2.2 m)","path":"levels.loft.rooms.loft_room.rect","rooms":["loft_room"],"at":[2.5,1.25],"measured":2.2,"minimum":2.4,"rect":[0.15,0.15,4.7,2.2],"level":"loft","line":7}
+  ]
+}

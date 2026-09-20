@@ -1,0 +1,22 @@
+{
+  "title": "One-Bedroom Flat",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Living Kitchen", "kind": "living", "rect": [0, 0, 3, 4], "habitable": true },
+        { "name": "Hall", "kind": "hall", "rect": [3, 0, 1.3, 4.8], "circulation": true },
+        { "name": "Bedroom", "kind": "bedroom", "rect": [4.3, 0, 3.5, 3], "habitable": true },
+        { "name": "Bathroom", "kind": "bath", "rect": [4.3, 3, 2.2, 1.8], "wet": true }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Hall", "Living Kitchen"], "on": { "room": "Hall", "side": "west" }, "width": 0.9 },
+        { "type": "door", "between": ["Hall", "Bedroom"], "on": { "room": "Hall", "side": "east", "near": [4.3, 1.5] }, "width": 0.9 },
+        { "type": "door", "between": ["Hall", "Bathroom"], "on": { "room": "Hall", "side": "east", "near": [4.3, 3.9] }, "width": 0.8 },
+        { "id": "front-door", "type": "door", "between": ["Hall"], "on": { "room": "Hall", "side": "south" }, "width": 0.9, "entrance": true }
+      ]
+    }
+  ]
+}

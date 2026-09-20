@@ -1,0 +1,18 @@
+{
+  "title": "Studio",
+  "walls": {"exterior":0.3,"partition":0.1},
+  "rooms": {
+    "sala": {"name":"Studio","kind":"living","rect":[0,0,5,4]},
+    "banho": {"name":"Shower room","kind":"bath","rect":[5,0,2,4]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","sala"],"on":{"room":"sala","side":"west"},"width":0.9,"entrance":true},
+    {"type":"door","between":["sala","banho"],"width":0.8,"swingInto":"banho"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"south"},"width":1.8},
+    {"type":"window","between":["exterior","banho"],"on":{"room":"banho","side":"east"},"width":0.6}
+  ],
+  "fixtures": [
+    {"type":"shower","in":"banho","at":[5.2,0.2],"size":[0.9,0.9]},
+    {"type":"counter","in":"sala","at":[0.2,0.2],"size":[2.4,0.6]}
+  ]
+}
