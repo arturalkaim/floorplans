@@ -365,6 +365,23 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
   const O = outdoor.length;
   const arr = arrange(spaces.map(ringOf));
 
+  // Snap-rounding has a budget of passes, not a proof, and a plan can reach the end of it
+  // still moving — a handful of chords bending onto one another's hot pixels in a cycle.
+  // Everything below is a well-formed arrangement of the chords as they stood when the
+  // budget ran out, which is not the same thing as the arrangement of the document, so it
+  // is said out loud rather than returned as if it were settled (gpt-5.5 §2.7).
+  if (arr.unstable) {
+    const u = arr.unstable;
+    const box = [toM(u.box.x0), toM(u.box.y0), toM(u.box.x1), toM(u.box.y1)].map(snap);
+    findings.push({
+      rule: "geometry.unstable",
+      severity: "error",
+      message: `the geometry did not settle: after ${u.passes} rounds of snapping to the millimetre grid, ${u.moved} chords were still moving, all of them between (${box[0]}, ${box[1]}) and (${box[2]}, ${box[3]}). Every wall and area on this level is derived from where they happened to stop; move the edges that meet there apart, or round their coordinates to the millimetre yourself`,
+      path: inLevel(level, "rooms"),
+      at: [snap((box[0]! + box[2]!) / 2), snap((box[1]! + box[3]!) / 2)],
+    });
+  }
+
   /**
    * One owner per face. A face several rooms claim is an `overlap`; one inside the
    * building that nobody claims is a `gap`; the rest are the space that contains the
@@ -515,6 +532,27 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
     }
   }
 
+  // ---- a void is a hole in the slab, so no room may have floor over it ----
+  // `ownerOfFace` prefers a room to a void, which is right for the ordinary case — a void
+  // that shares its edge with the room around it claims no face the room also claims —
+  // but it means a void drawn *inside* a room is swallowed without trace: no wall round
+  // it, its area still counted as interior floor, and nothing said. A declared hole under
+  // a declared floor is a contradiction, exactly as a room over open sky is.
+  for (const v of voids) {
+    for (const r of rooms) {
+      if (areaBoth(arr, R + O + voids.indexOf(v), rooms.indexOf(r)) <= 0) continue;
+      const b = shapeBox(v);
+      findings.push({
+        rule: "void.overlap",
+        severity: "error",
+        message: `${v.name} is a hole in this floor but ${r.name} has floor over it; cut the room back to the void's edge`,
+        path: pathTo(r, "poly", "rect"),
+        at: [snap((b.x0 + b.x1) / 2), snap((b.y0 + b.y1) / 2)],
+        rooms: [r.id],
+      });
+    }
+  }
+
   // ---- fixtures standing inside rooms ----
   // a fixture stands in a room or in an outdoor space — a pool is a pool either way
   const hostShape = new Map<string, Shape>([
@@ -632,6 +670,30 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
   };
   const planGrid = gridOf(0);
 
+  /**
+   * The rings of everything standing on one room's floor, to be read as holes in it.
+   *
+   * Only what the room hosts, and only where it is inside the room's box: the inscribed
+   * circle's containment test is even-odd across the rings it is given, which is the
+   * polylabel convention and assumes every hole is inside the outer ring. A fixture that
+   * is not — which is `fixture.outside_space`, an error in its own right — would
+   * otherwise make points *outside* the room count as inside it and hand the search a
+   * circle that fits nowhere.
+   *
+   * A vertical element's footprint is included, as it is in the sweep grid's `busy`: a
+   * stair takes up the floor it stands on even though `fixtureArea` does not count it.
+   */
+  const occupiedRings = (room: Shape & { id: string }): P[][] => {
+    const b = shapeBox(room);
+    return planFixtures
+      .filter((f) => f.in === room.id)
+      .filter((f) => {
+        const fb = shapeBox(f);
+        return fb.x0 >= b.x0 - MM && fb.y0 >= b.y0 - MM && fb.x1 <= b.x1 + MM && fb.y1 <= b.y1 + MM;
+      })
+      .map((f) => ringPoints(ringOf(f)));
+  };
+
   // ---- room metrics ----
   const roomModels: RoomModel[] = rooms.map((room) => {
     const ring = ringOf(room);
@@ -665,7 +727,13 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
     const split = splitByThickness(ring, arr, rooms.indexOf(room), wallOfEdge, room.id);
     const clear = offsetRing(split.ring, (i) => split.dist[i]! / 2);
     const clearArea = Math.abs(ringArea(clear)) / 1e6;
-    const inscribed = poleOfInaccessibility(clear.pts.length ? [ringPoints(clear)] : [[[0, 0]]], 0.5);
+    // Whatever stands on the floor is a hole in it. The rectilinear sweep has always
+    // known that — `owned` refuses a cell anything is standing on — and the circle has to
+    // ask the same question, or a round living room with an island in the middle of it
+    // measures as wide empty as full (gpt-5.5 §2.6). `poleOfInaccessibility` takes holes
+    // after the outer ring, and its even-odd containment test does the rest.
+    const holes = occupiedRings(room);
+    const inscribed = poleOfInaccessibility(clear.pts.length ? [ringPoints(clear), ...holes] : [[[0, 0]]], 0.5);
 
     if (clear.pts.length === 0 && area > 0) {
       findings.push({
@@ -706,7 +774,7 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
       clearRect,
       bearing: bearingDeg,
       inscribed: { at: ptM([inscribed.at[0], inscribed.at[1]] as P), r: snap(inscribed.r / 1000) },
-      minDimension: straight ? snap(Math.min(clearRect.w, clearRect.h)) : snap((2 * inscribed.r) / 1000),
+      minDimension: straight ? snap(Math.min(clearRect.w, clearRect.h)) : snap(Math.max(0, (2 * inscribed.r) / 1000)),
       labelAt: [snap(label[0]), snap(label[1])],
       exteriorWindow: false,
       exteriorFaces: [...faces],
@@ -857,6 +925,12 @@ function wallsOf(arr: Arrangement, wallOwner: (face: number) => Owner, thickness
     const left = wallOwner(arr.half[he.twin]!.face);
     if (sameOwner(left, right)) continue;
     if (isVoid(left) && isVoid(right)) continue;
+    // Two declared voids are two holes in the same slab, side by side: neither has a
+    // floor for a wall to stand on, so nothing is built between them. This is not the
+    // `isVoid` case above — a void is *not* open sky, and keeps its wall against a room,
+    // against the street and against a courtyard, which is what makes the stairwell
+    // partition and the envelope past a double-height space derive at all.
+    if (left.kind === "void" && right.kind === "void") continue;
     const pair = [ownerKey(left), ownerKey(right)].sort().join("\u0000");
     pieces.push({ h, a: arr.verts[he.from]!, b: arr.verts[he.to]!, circle: he.circle, pair });
   }
@@ -1015,21 +1089,29 @@ const mergeable = (a: Piece, b: Piece): boolean => {
 function wallFrom(parts: Part[], neg: Owner, pos: Owner, thickness: number, edges: number[]): Wall {
   const geos = parts.map(partGeometry);
   const geometry: WallGeometry = geos.length === 1 ? geos[0]! : { kind: "chain", parts: geos };
-  const start = ptM(parts[0]!.start);
-  const end = ptM(parts[parts.length - 1]!.end);
+  // the ends in the canonical direction — the direction `geometry` runs in and the one
+  // `neg`/`pos` are the left and right of
+  const a = ptM(parts[0]!.start);
+  const b = ptM(parts[parts.length - 1]!.end);
   const length = snap(parts.reduce((s, p) => s + partLength(p), 0) / 1000);
   const straight = geos.length === 1 && geos[0]!.kind === "segment";
-  const axis: Axis | undefined = !straight ? undefined : start[1] === end[1] ? "h" : start[0] === end[0] ? "v" : undefined;
-  const c = axis === "h" ? start[1] : axis === "v" ? start[0] : undefined;
-  const lo = axis === "h" ? Math.min(start[0], end[0]) : axis === "v" ? Math.min(start[1], end[1]) : 0;
-  const hi = axis === "h" ? Math.max(start[0], end[0]) : axis === "v" ? Math.max(start[1], end[1]) : length;
+  const axis: Axis | undefined = !straight ? undefined : a[1] === b[1] ? "h" : a[0] === b[0] ? "v" : undefined;
+  const c = axis === "h" ? a[1] : axis === "v" ? a[0] : undefined;
+  const lo = axis === "h" ? Math.min(a[0], b[0]) : axis === "v" ? Math.min(a[1], b[1]) : 0;
+  const hi = axis === "h" ? Math.max(a[0], b[0]) : axis === "v" ? Math.max(a[1], b[1]) : length;
+  // INVARIANT: `start` is the end `from` is at and `end` the end `to` is at, which is the
+  // west or north end first for an axis-aligned wall — the same "start" that `hinge` and
+  // `position.from` name, that `walls()` prints and that the README states. A vertical
+  // wall is the one place that differs from the canonical direction, which runs *north*:
+  // for it, and only for it, the two are swapped (B10).
+  const flipped = axis === "v";
   const w: Wall = {
     id: "",
     kind: isOpenSky(neg) || isOpenSky(pos) ? "exterior" : "partition",
     thickness,
     geometry,
-    start,
-    end,
+    start: flipped ? b : a,
+    end: flipped ? a : b,
     length,
     from: lo,
     to: hi,
@@ -1115,6 +1197,19 @@ function acuteCorners(ring: MmRing, dist: number[]): Array<{ at: P; deg: number;
   return out;
 }
 
+const snapPt = (p: Pt): Pt => [snap(p[0]), snap(p[1])];
+
+/**
+ * Is a coordinate on a line of the sweep grid, at the grid's own resolution?
+ *
+ * INVARIANT: the grid is built from millimetre-snapped rotated coordinates, so a
+ * comparison against it has to be made on the same lattice and cannot be exact. One
+ * millimetre is the whole tolerance: it is what a coordinate can lose to `snap`, and it
+ * is also what a wall's far end drifts across when the frame's bearing — itself snapped,
+ * to a thousandth of a degree — is a few thousandths off the wall's own.
+ */
+const onLine = (v: number, c: number): boolean => Math.abs(Math.round((v - c) * 1000)) <= 1;
+
 /** A rotation about the origin by `deg` clockwise on the page. */
 function rotator(deg: number): (p: Pt) => Pt {
   if (deg === 0) return (p) => p;
@@ -1146,6 +1241,12 @@ function longestEdgeBearing(room: Shape): number {
  * authored on centrelines, so a comfort minimum has to come off both faces; a side that
  * does not sit on a wall deducts nothing. Where a side spans walls of different thickness
  * the thickest wins, which is the conservative reading for a comfort check.
+ *
+ * The wall's endpoints are rotated into the room's frame and snapped exactly as
+ * `buildGrid` snapped the ring points that produced `c`. Comparing the unsnapped rotation
+ * against the snapped grid was B9: at any bearing but 0 the residue is sub-millimetre,
+ * larger than the 1e-6 the test used, so no wall matched and every angled room's
+ * `clearRect` was its centreline `largestRect`.
  */
 function halfWallAlong(
   walls: Wall[],
@@ -1159,11 +1260,11 @@ function halfWallAlong(
   let t = 0;
   for (const w of walls) {
     if (w.geometry.kind !== "segment") continue;
-    const a = g.rot(w.geometry.a);
-    const b = g.rot(w.geometry.b);
+    const a = snapPt(g.rot(w.geometry.a));
+    const b = snapPt(g.rot(w.geometry.b));
     const wc = axis === "h" ? a[1] : a[0];
     const other = axis === "h" ? b[1] : b[0];
-    if (!eq(wc, other) || !eq(wc, c)) continue;
+    if (!onLine(wc, c) || !onLine(other, c)) continue;
     const lo = Math.min(axis === "h" ? a[0] : a[1], axis === "h" ? b[0] : b[1]);
     const hi = Math.max(axis === "h" ? a[0] : a[1], axis === "h" ? b[0] : b[1]);
     if (w.neg.kind !== "room" && w.pos.kind !== "room") continue;

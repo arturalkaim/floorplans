@@ -479,9 +479,11 @@ being a `tiling.gap`, and both are owner classes, so a wall derives beside one.
 
 A void has the building over it, so it is *not* open sky: the wall between a room and a
 stairwell is an ordinary partition, a window onto a void is still `window.not_exterior`,
-and the envelope wall runs past a double-height space that reaches the façade. A void's
-area stays out of `interiorArea` and inside the envelope, and nothing opens into one —
-naming a void in an opening's `between` is a schema error.
+and the envelope wall runs past a double-height space that reaches the façade. Two voids
+that meet, though, share no wall: neither has a floor for one to stand on, so the
+boundary between a stairwell and the double-height space beside it derives nothing. A
+void's area stays out of `interiorArea` and inside the envelope, and nothing opens into
+one — naming a void in an opening's `between` is a schema error.
 
 A void has to reach an edge of the room around it. A room enclosing one completely would
 be a ring, and a single ring cannot express a hole.
@@ -709,7 +711,7 @@ and `arc.too_shallow` says so.
 | `position` | `"center"` (default), a number (metres from the wall's start to the opening centre), or `{ "from": "start"\|"end", "distance" }` |
 | `at` | `[x, y]`: place the opening by an absolute point instead of `on` + `position` — picks the nearest wall between the two spaces in `between` and projects the point onto it |
 | `width` | metres |
-| `hinge` | doors: `"start"` or `"end"` jamb. A wall's start is its west or north end; on a wall that is neither horizontal nor vertical it is whichever end the wall runs from — eastward, or northward when the wall is vertical. |
+| `hinge` | doors: `"start"` or `"end"` jamb. A wall's start is its west or north end; on a wall that is neither horizontal nor vertical it is whichever end the wall runs from — eastward, or northward when the wall is vertical. `Wall.start` in the model is that same end, and `--json=walls` prints it as the row's `from`. |
 | `swingInto` | doors: room the leaf opens into (default: the room in `between`, never the street or a terrace) |
 | `entrance` | doors: mark the main entrance. It must lead to the street, or you get `entrance.not_street` |
 | `glazed` | doors: `true` for a glazed door (default `false`) — counts as daylight for `habitable.no_window`, same as a window |
@@ -830,7 +832,7 @@ about a `vertical` element carries `vertical` instead, because it has no `fixtur
 (`entrance.*`, `reach.*`) and absent on **every** finding of a document with no `levels`
 block.
 
-Three rules carry the facts their message already states, structured, so acting on one
+Four rules carry the facts their message already states, structured, so acting on one
 needs no prose parsing:
 
 | rule | extra fields |
@@ -838,6 +840,7 @@ needs no prose parsing:
 | `wall.ambiguous` | `candidates: [{ wall, side?, from, to }]` — the segments it had to choose between |
 | `room.min_dimension` | `measured`, `minimum`, `rect: [x, y, width, height]` (the clear floor) |
 | `opening.off_wall` | `nearest` (a wall id, as `--json=walls` prints it), `distance` |
+| `structure.over_open_sky` | `below: [{ kind, id }]` — the floor plates on the level below the room does stand on |
 
 Schema problems reach the same channel through `lint()` as `schema.*` findings, one per
 issue, all `error`, each with the issue's own document path:
@@ -863,17 +866,19 @@ issue, all `error`, each with the issue's own document path:
 | `space.no_access` / `reach.unreachable` | error | room without a door / not reachable from the street |
 | `habitable.no_window` / `wet.no_window` | warning | living space without a window or glazed exterior door / WC needing extraction |
 | `wet.opens_to_kitchen` | warning | WC door straight into a kitchen |
-| `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
+| `privacy.bedroom_through_route` | warning | a bedroom lies on every path from the entrance to another bedroom — an articulation point of the access graph, not merely a door between two bedrooms |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |
 | `opening.near_corner` | warning | sliver of wall < 0.1 m beside an opening |
 | `fixture.outside_space` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |
 | `outdoor.overlap` | error | a room is built over an outdoor space, which is open sky |
+| `void.overlap` | error | a room has floor over a declared void, which is a hole in this storey's slab |
 | `fixture.clearance` | warning | gap between two fixtures too narrow to walk through |
 | `door.swing_hits_fixture` | warning | a door leaf sweeps into a fixture |
 | `entrance.not_street` | warning | a door marked `"entrance": true` opens onto an enclosed courtyard, or onto another room |
 | `circulation.share` | info | halls and corridors above 10 % of the interior |
 | `arc.too_shallow` | warning | an arc bulging under 5 mm past its chord: a straight edge written as a curve |
 | `room.no_clear_floor` | error | a room its own walls leave no floor in: the inward offset turns inside out |
+| `geometry.unstable` | error | snap-rounding ran out of passes with chords still moving, and the region they are in is named |
 | `geometry.sliver` | info | a face under 100 mm² that nothing covers: two edges meant to meet are a fraction apart |
 | `room.acute_corner` | info | a corner under 25°, where the mitred wall faces meet so far along each arm that the point of the room is wall |
 | `privacy.bedroom_off_living` / `entrance.multiple` / `door.swing_collision` | info | worth a look |
@@ -891,7 +896,7 @@ Across levels:
 | `level.unreachable` | error | a storey no stair, lift or ramp arrives on |
 | `stair.no_arrival` | error | a vertical element's footprint is not inside the space its `in` names, or it stands on one level and joins nothing |
 | `stair.misaligned` | warning | consecutive footprints barely overlap, or do not overlap at all: not one shaft |
-| `structure.over_open_sky` | warning | a room stands over no room below — a cantilever, or a room that has lost its support |
+| `structure.over_open_sky` | warning | a room stands over open sky below — over no room, no covered outdoor space and no void: a cantilever, or a room that has lost its support |
 | `stair.pitch` | info | with `risers` and `height`: the pitch or the going is outside the comfortable range |
 | `stair.headroom` | info | with `risers`, `height` and `up`: the floor above stays closed too far up the flight |
 | `entrance.not_ground` | info | a door opens to the outside on a level the street does not meet |

@@ -72,6 +72,29 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
   return f;
 }
 
+/**
+ * Every node of the building's access graph someone standing on the road can walk to,
+ * without ever entering `blocked`.
+ *
+ * The walk starts wherever that person already is: the street itself, and every outdoor
+ * space the street reaches on a level it meets. `blocked` is how a rule asks whether one
+ * room is on *every* path to another — close its doors and see what is cut off.
+ */
+function reachableFrom(model: Model, blocked?: string): Set<string> {
+  const ground = new Set(model.plan.levels.filter((l) => l.ground).map((l) => l.id));
+  const start = ["exterior"];
+  for (const lm of model.levels)
+    if (ground.has(lm.level.id))
+      for (const id of lm.streetOutdoor) start.push(`${lm.level.id}/${ownerKey(outdoorOwner(id))}`);
+  const seen = new Set<string>(start.filter((n) => n !== blocked));
+  const queue = [...seen];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const n of model.building.access.get(cur) ?? []) if (!seen.has(n) && n !== blocked) (seen.add(n), queue.push(n));
+  }
+  return seen;
+}
+
 /** Per-level naming helpers: a message says the name the author wrote, never an id. */
 function namesOf(lm: LevelModel) {
   const byId = new Map(lm.rooms.map((m) => [m.room.id, m]));
@@ -166,18 +189,7 @@ function buildingRules(
       if ((lm.access.get(ownerKey(roomOwner(m.room.id)))?.size ?? 0) === 0) noAccess.add(`${lm.level.id}/${m.room.id}`);
 
   if (!hasEntrance) return;
-  // the walk starts wherever someone standing on the road already is: the street itself
-  // and every outdoor space it reaches on a level the street meets
-  const start = ["exterior"];
-  for (const lm of model.levels)
-    if (ground.has(lm.level.id))
-      for (const id of lm.streetOutdoor) start.push(`${lm.level.id}/${ownerKey(outdoorOwner(id))}`);
-  const seen = new Set<string>(start);
-  const queue = [...start];
-  while (queue.length) {
-    const cur = queue.shift()!;
-    for (const n of model.building.access.get(cur) ?? []) if (!seen.has(n)) (seen.add(n), queue.push(n));
-  }
+  const seen = reachableFrom(model);
   for (const lm of model.levels) {
     const served = model.plan.vertical.some((v) => v.at.some((a) => a.level === lm.level.id));
     for (const m of lm.rooms) {
@@ -214,6 +226,21 @@ function levelRules(
   const kindOf = (rid: string): RoomKind | undefined => byId.get(rid)?.room.kind;
   const doors = lm.openings.filter((o) => o.spec.type === "door");
   const street = (o: Owner) => isStreet(o, lm.streetOutdoor);
+
+  /**
+   * Is `x` on every path from the street to `y`? Doors *and* cased openings are the
+   * edges of `building.access`, so a jack-and-jill pair reached through an arch counts
+   * as reached. A `y` that cannot be walked to at all is not "cut off by x": it has
+   * `reach.unreachable` of its own, and saying it twice helps nobody.
+   */
+  const walks = new Map<string, Set<string>>();
+  const walk = (blocked: string) => {
+    let s = walks.get(blocked);
+    if (s === undefined) walks.set(blocked, (s = reachableFrom(model, blocked === "" ? undefined : blocked)));
+    return s;
+  };
+  const nodeOf = (rid: string) => `${id}/${ownerKey(roomOwner(rid))}`;
+  const separates = (x: string, y: string) => walk("").has(nodeOf(y)) && !walk(nodeOf(x)).has(nodeOf(y));
 
   // Marking a courtyard door the main entrance is allowed by the schema — the door is
   // legitimate — but it is not the way in, and saying so is more useful than silence.
@@ -308,15 +335,23 @@ function levelRules(
       });
     }
     if (ka === "bedroom" && kb === "bedroom") {
-      push({
-        rule: "privacy.bedroom_through_route",
-        severity: "warning",
-        message: `${nameOf(a)} and ${nameOf(b)} connect directly; one bedroom is a route to the other`,
-        path: o.spec.path,
-        rooms: [a, b],
-        at: o.center,
-        opening: o.spec.id,
-      });
+      // A door between two bedrooms is not by itself a through route: a jack-and-jill
+      // pair that both open off the hall is a deliberate, private arrangement. What the
+      // rule is about is the bedroom you have to walk through, so it asks the access
+      // graph: is one of them on *every* path from the street to the other?
+      const through = separates(a, b) ? a : separates(b, a) ? b : undefined;
+      if (through !== undefined) {
+        const other = through === a ? b : a;
+        push({
+          rule: "privacy.bedroom_through_route",
+          severity: "warning",
+          message: `the only way into ${nameOf(other)} is through ${nameOf(through)}; a bedroom is a room to be in, not a corridor`,
+          path: o.spec.path,
+          rooms: [through, other],
+          at: o.center,
+          opening: o.spec.id,
+        });
+      }
     }
     const living = new Set<RoomKind>(["living", "kitchen"]);
     if ((ka === "bedroom" && kb && living.has(kb)) || (kb === "bedroom" && ka && living.has(ka))) {
@@ -597,20 +632,57 @@ function verticalRules(
   for (let k = 1; k < model.levels.length; k++) {
     const upper = model.levels[k]!;
     const lower = model.levels[k - 1]!;
+    const support = supportOn(lower);
     for (const m of upper.rooms) {
-      const un = uncovered(m.room, lower.rooms.map((r) => r.room));
+      const un = uncovered(m.room, support.map((s) => s.shape));
       if (un.area <= 1e-6) continue;
+      // what it *does* stand on, so the reader can see whether 2 m² of overhang is the
+      // porch being a metre short or the room being in the wrong place entirely
+      const on_ = support.filter((s) => overlapArea(m.room, s.shape) > 1e-6);
+      const below = on_.map((s) => ({ kind: s.kind, id: s.id }));
+      const rest = on_.length === 0 ? "nothing below it at all" : `the rest on ${on_.map((s) => s.name).join(", ")}`;
       f.push({
         ...on(upper.level.id),
         rule: "structure.over_open_sky",
         severity: "warning",
-        message: `${m.room.name} has ${snap(un.area)} m² standing over no room on ${lower.level.name}; a cantilever is real, but so is a room that has lost its support`,
+        message: `${m.room.name} has ${snap(un.area)} m² standing over open sky on ${lower.level.name}, ${rest}; a cantilever is real, but so is a room that has lost its support`,
         path: m.room.path,
         at: un.at,
         rooms: [m.room.id],
+        below,
       });
     }
   }
+}
+
+/** A floor plate on the level below, and what it is called in the document. */
+interface Support {
+  kind: "room" | "outdoor" | "void";
+  id: string;
+  name: string;
+  shape: Shape;
+}
+
+/**
+ * What can hold a room up from one level down.
+ *
+ * A room is the obvious case. A `covered` outdoor space is a roof by definition
+ * (`SCHEMA`, src/parse.ts), and a roof is the floor of whatever stands on it — a bedroom
+ * over a porch is the commonest first floor there is. A `void` is a hole in *that*
+ * level's slab, not in this one: by the INVARIANT on `isVoid` (src/types.ts) a declared
+ * void has the building over it, which is why the wall beside a stairwell derives as a
+ * partition, so the structure that surrounds it is still there to carry this floor.
+ *
+ * What is left out is open sky: the street, and an outdoor space with no roof.
+ */
+function supportOn(lower: LevelModel): Support[] {
+  return [
+    ...lower.rooms.map((r): Support => ({ kind: "room", id: r.room.id, name: r.room.name, shape: r.room })),
+    ...lower.level.outdoor
+      .filter((o) => o.covered)
+      .map((o): Support => ({ kind: "outdoor", id: o.id, name: o.name, shape: o })),
+    ...lower.level.voids.map((v): Support => ({ kind: "void", id: v.id, name: v.name, shape: v })),
+  ];
 }
 
 const name = (byLevel: Map<string, LevelModel>, id: string) => byLevel.get(id)?.level.name ?? id;

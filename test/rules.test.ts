@@ -454,3 +454,87 @@ describe("rules: an entrance is a door to the street", () => {
     assert.ok(model.access.get("room:hall")!.has("outdoor:patio"));
   });
 });
+
+/**
+ * B13: a door between two bedrooms is not a through route.
+ *
+ * The rule used to fire on any bedroom-bedroom door, so a jack-and-jill pair — two
+ * bedrooms that each open off the hall and also connect to one another — was told "one
+ * bedroom is a route to the other", which is false: close the connecting door and both
+ * are still reached from the hall. The test is now the one the name always meant: is one
+ * of them an articulation point, on *every* path from the street to the other?
+ */
+describe("privacy.bedroom_through_route is a through-route test (B13)", () => {
+  const plan = (openings: unknown[]) => ({
+    walls: { exterior: 0.3, partition: 0.12 },
+    rooms: {
+      hall: { name: "Hall", kind: "hall", rect: [0, 0, 3, 6] },
+      q1: { name: "Quarto 1", kind: "bedroom", rect: [3, 0, 4, 3] },
+      q2: { name: "Quarto 2", kind: "bedroom", rect: [3, 3, 4, 3] },
+    },
+    openings: [
+      { type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "west" }, width: 1, entrance: true },
+      { type: "window", between: ["exterior", "hall"], on: { room: "hall", side: "north" }, width: 1.2 },
+      { type: "window", between: ["exterior", "q1"], on: { room: "q1", side: "east" }, width: 1.2 },
+      { type: "window", between: ["exterior", "q2"], on: { room: "q2", side: "east" }, width: 1.2 },
+      ...openings,
+    ],
+  });
+  const hits = (openings: unknown[]) => only(run(plan(openings)), "privacy.bedroom_through_route");
+  const jack = { type: "door", between: ["q1", "q2"], width: 0.8 };
+  const off = (room: string) => ({ type: "door", between: ["hall", room], width: 0.8 });
+
+  it("stays quiet on a jack-and-jill pair: both bedrooms also open off the hall", () => {
+    const f = hits([off("q1"), off("q2"), jack]);
+    assert.deepEqual(f.map((x) => x.message), []);
+  });
+
+  it("counts a cased opening as a way in, because the access graph does", () => {
+    const f = hits([off("q1"), { type: "cased", between: ["hall", "q2"], width: 1 }, jack]);
+    assert.deepEqual(f.map((x) => x.message), []);
+  });
+
+  it("reports the bedroom that really is the only way in, and says which it is", () => {
+    const f = hits([off("q1"), jack]);
+    assert.equal(f.length, 1);
+    assert.equal(f[0]!.severity, "warning");
+    assert.equal(f[0]!.message, "the only way into Quarto 2 is through Quarto 1; a bedroom is a room to be in, not a corridor");
+    // the route first, the room behind it second — the order a fix is written in
+    assert.deepEqual(f[0]!.rooms, ["q1", "q2"]);
+  });
+
+  it("reports it whichever side of the door the through room is on", () => {
+    const f = hits([off("q2"), jack]);
+    assert.equal(f.length, 1);
+    assert.equal(f[0]!.message, "the only way into Quarto 1 is through Quarto 2; a bedroom is a room to be in, not a corridor");
+    assert.deepEqual(f[0]!.rooms, ["q2", "q1"]);
+  });
+
+  it("stays quiet when neither bedroom can be reached at all: reach.unreachable says that", () => {
+    const f = run(plan([jack]));
+    assert.deepEqual(only(f, "privacy.bedroom_through_route"), []);
+    assert.equal(only(f, "reach.unreachable").length, 2);
+  });
+
+  it("walks a chain of three bedrooms and reports both links", () => {
+    const ids = ["hall", "q1", "q2", "q3"];
+    const three = {
+      walls: { exterior: 0.3, partition: 0.12 },
+      rooms: {
+        hall: { name: "Hall", kind: "hall", rect: [0, 0, 3, 3] },
+        q1: { name: "Quarto 1", kind: "bedroom", rect: [3, 0, 3, 3] },
+        q2: { name: "Quarto 2", kind: "bedroom", rect: [6, 0, 3, 3] },
+        q3: { name: "Quarto 3", kind: "bedroom", rect: [9, 0, 3, 3] },
+      },
+      openings: [
+        { type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "west" }, width: 1, entrance: true },
+        { type: "door", between: ["hall", "q1"], width: 0.8 },
+        { type: "door", between: ["q1", "q2"], width: 0.8 },
+        { type: "door", between: ["q2", "q3"], width: 0.8 },
+        ...ids.map((r) => ({ type: "window", between: ["exterior", r], on: { room: r, side: "north" }, width: 1.2 })),
+      ],
+    };
+    const f = only(run(three), "privacy.bedroom_through_route");
+    assert.deepEqual(f.map((x) => x.rooms), [["q1", "q2"], ["q2", "q3"]]);
+  });
+});

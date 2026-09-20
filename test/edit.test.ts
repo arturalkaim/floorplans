@@ -431,3 +431,52 @@ describe("edit: fixtures move and resize, in whichever form they are authored", 
     assert.doesNotThrow(() => parse(JSON.parse(applyDrag(moved, d, d.c + 0.4))));
   });
 });
+
+/**
+ * B12: a fixture whose `poly` carries an arc.
+ *
+ * An arc entry keeps its corner at `poly[v].arc`, so the writer's `poly[v][0]` addressed
+ * nothing and the splice threw a `JsonPosError` out of `applyMove` — and out of
+ * `applyDrag` on two of the four edges, which the review did not reach. A
+ * `draggable*`/`movable*` function promises a `Map`, so a handle it offers has to be one
+ * that applies: the writer now addresses whichever holder the author wrote, and declines
+ * the fixture outright when it can read neither form.
+ */
+describe("a fixture with an arc in its poly moves, and never throws (B12)", () => {
+  const curved = (poly: unknown[]) => ({
+    walls: { exterior: 0.3, partition: 0.12 },
+    rooms: { sala: { name: "Sala", kind: "living", rect: [0, 0, 8, 6] } },
+    openings: [{ type: "door", between: ["exterior", "sala"], on: { room: "sala", side: "west" }, width: 1, entrance: true }],
+    fixtures: [{ type: "counter", in: "sala", name: "Bancada", poly }],
+  });
+  const arcPoly = [[2, 2], [5, 2], { arc: [5, 3], r: 0.5, sweep: "cw" }, [2, 3]];
+  const textOf = (poly: unknown[]) => JSON.stringify(curved(poly), null, 2);
+
+  it("moves every element of the poly, the arc's corner included, and leaves r and sweep alone", () => {
+    const text = textOf(arcPoly);
+    const model = modelOf(text);
+    const m = movableFixtures(text, model).get("fixture:0")!;
+    const after = JSON.parse(applyMove(text, m, [m.at[0] + 1, m.at[1] + 0.5])).fixtures[0].poly;
+    assert.deepEqual(after, [[3, 2.5], [6, 2.5], { arc: [6, 3.5], r: 0.5, sweep: "cw" }, [3, 3.5]]);
+  });
+
+  it("resizes from every side, including the two that used to throw", () => {
+    const text = textOf(arcPoly);
+    const edges = draggableFixtureEdges(text, modelOf(text));
+    assert.equal(edges.size, 4);
+    for (const [id, d] of edges) assert.doesNotThrow(() => applyDrag(text, d, d.c + 0.25), id);
+    // the south edge carries both a plain corner and the arc's, and moves both
+    const south = edges.get("fixture:0:south")!;
+    const after = JSON.parse(applyDrag(text, south, 3.5)).fixtures[0].poly;
+    assert.deepEqual(after, [[2, 2], [5, 2], { arc: [5, 3.5], r: 0.5, sweep: "cw" }, [2, 3.5]]);
+  });
+
+  it("declines the handle rather than offering one that throws, when a corner cannot be addressed", () => {
+    // the text the caller is editing has drifted from the model — the app's own case —
+    // and one corner is in neither form. No handle is offered, and nothing throws.
+    const text = textOf([[2, 2], [5, 2], { arc: "somewhere else" }, [2, 3]]);
+    const model = modelOf(textOf(arcPoly));
+    assert.equal(movableFixtures(text, model).size, 0);
+    assert.equal(draggableFixtureEdges(text, model).size, 0);
+  });
+});

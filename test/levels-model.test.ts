@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { analyze, floorplan, parse, PlanError } from "../src/index.ts";
 import { has, rulesOf, sharedGridPlan, twoStoreys } from "./helpers.ts";
@@ -194,7 +195,7 @@ describe("levels: what only exists between storeys", () => {
     const f = analyze(parse(doc)).findings.find((x) => x.rule === "structure.over_open_sky")!;
     assert.ok(f, "a metre of overhang should be reported");
     assert.equal(f.severity, "warning");
-    assert.match(f.message, /standing over no room on Piso 0/);
+    assert.match(f.message, /standing over open sky on Piso 0/);
     assert.ok(!rules(twoStoreys()).includes("structure.over_open_sky"));
   });
 
@@ -286,5 +287,173 @@ describe("levels: a void is the dual of an outdoor space", () => {
     assert.equal(upper.interiorArea, 30.8); // 35 less the 4.2 m2 stairwell, which is not floor
     assert.equal(upper.envelope.area, 35);
     assert.equal(upper.envelope.outline.length, 1);
+  });
+});
+
+/**
+ * B8: what holds a room up is a floor plate, not a room.
+ *
+ * `structure.over_open_sky` compared the upper room against `lower.rooms` alone, so the
+ * two commonest multi-level configurations — a bedroom over a covered porch, a bedroom
+ * over a stairwell void — were reported as cantilevers. A `covered` outdoor space has a
+ * roof by definition, and that roof is this room's floor; a `void` is a hole inside the
+ * building (the INVARIANT on `isVoid` in src/types.ts), so the structure around it is
+ * still there.
+ */
+describe("structure.over_open_sky asks what is below, not which rooms are below (B8)", () => {
+  /** the ground floor, whatever the level above stands on */
+  const stack = (p0: Record<string, unknown>) => ({
+    walls: { exterior: 0.3, partition: 0.12 },
+    stack: ["p0", "p1"],
+    levels: {
+      p0: { name: "Piso 0", height: 2.7, ground: true, ...p0 },
+      p1: {
+        name: "Piso 1",
+        height: 2.6,
+        rooms: {
+          patamar: { name: "Patamar", kind: "hall", rect: [0, 0, 2, 5] },
+          quarto: { name: "Quarto", kind: "bedroom", rect: [2, 0, 6, 5] },
+        },
+        openings: [
+          { type: "door", between: ["patamar", "quarto"], width: 0.9 },
+          { type: "window", between: ["exterior", "quarto"], on: { room: "quarto", side: "north" }, width: 1.2 },
+        ],
+      },
+    },
+    vertical: [
+      {
+        id: "esc",
+        type: "stairs",
+        risers: 16,
+        at: [
+          { level: "p0", in: "hall", rect: [0.2, 0.2, 1, 2.6] },
+          { level: "p1", in: "patamar", rect: [0.2, 0.2, 1, 1.2] },
+        ],
+      },
+    ],
+  });
+
+  /** hall over the west half, and whatever the caller puts over the east half */
+  const westHall = {
+    rooms: { hall: { name: "Hall", kind: "hall", rect: [0, 0, 4, 5] } },
+    openings: [{ type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "west" }, width: 1, entrance: true }],
+  };
+  const east = [[4, 0], [8, 0], [8, 5], [4, 5]];
+
+  const sky = (doc: unknown) => analyze(parse(doc)).findings.filter((x) => x.rule === "structure.over_open_sky");
+
+  it("does not report a bedroom over a covered porch", () => {
+    const f = sky(stack({ ...westHall, outdoor: { alpendre: { name: "Alpendre", poly: east, covered: true } } }));
+    assert.deepEqual(f.map((x) => x.message), []);
+  });
+
+  it("still reports a bedroom over an uncovered terrace: no roof is no floor", () => {
+    const f = sky(stack({ ...westHall, outdoor: { terraco: { name: "Terraço", poly: east, covered: false } } }));
+    assert.equal(f.length, 1);
+    assert.match(f[0]!.message, /Quarto has 20 m² standing over open sky on Piso 0, the rest on Hall/);
+    // and it says what the room does stand on, so the fix is one edit away
+    assert.deepEqual(f[0]!.below, [{ kind: "room", id: "hall" }]);
+  });
+
+  it("does not report a bedroom over a stairwell void", () => {
+    const f = sky(
+      stack({
+        rooms: {
+          hall: { name: "Hall", kind: "hall", poly: [[0, 0], [8, 0], [8, 5], [6.5, 5], [6.5, 2], [5, 2], [5, 5], [0, 5]] },
+        },
+        voids: { vaz: { name: "Caixa de escada", rect: [5, 2, 1.5, 3] } },
+        openings: [{ type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "west" }, width: 1, entrance: true }],
+      }),
+    );
+    assert.deepEqual(f.map((x) => x.message), []);
+  });
+
+  it("still reports a real cantilever, and names every kind of support it does have", () => {
+    const f = sky(
+      stack({
+        // the ground floor stops at x = 6: 2 m of the bedroom hangs over the garden
+        rooms: { hall: { name: "Hall", kind: "hall", rect: [0, 0, 3, 5] } },
+        outdoor: { alpendre: { name: "Alpendre", poly: [[3, 0], [4.5, 0], [4.5, 5], [3, 5]], covered: true } },
+        voids: { vaz: { name: "Vazio", rect: [4.5, 0, 1.5, 5] } },
+        openings: [{ type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "west" }, width: 1, entrance: true }],
+      }),
+    );
+    assert.equal(f.length, 1);
+    // quarto is x 2 → 8; hall, alpendre and vazio together reach x = 6, so 2 × 5 = 10 m²
+    assert.match(f[0]!.message, /Quarto has 10 m²/);
+    assert.deepEqual(f[0]!.below, [
+      { kind: "room", id: "hall" },
+      { kind: "outdoor", id: "alpendre" },
+      { kind: "void", id: "vaz" },
+    ]);
+  });
+});
+
+/**
+ * B14: two adjacent voids share no wall.
+ *
+ * `wallsOf` suppressed a wall only between two `isVoid` owners — open sky and undeclared
+ * gaps — so a boundary between two *declared* voids derived a partition: a wall in mid
+ * air, with no floor on either side to stand on. A declared void is still not open sky,
+ * so it keeps its wall against a room, against the street and against a courtyard, which
+ * is what the INVARIANT on `isVoid` is for.
+ */
+describe("a wall between two voids is not built (B14)", () => {
+  const twoVoids = {
+    walls: { exterior: 0.3, partition: 0.12 },
+    stack: ["p0", "p1"],
+    levels: {
+      p0: {
+        name: "Piso 0",
+        ground: true,
+        rooms: { sala: { name: "Sala", kind: "living", rect: [0, 0, 8, 6] } },
+        openings: [
+          { type: "door", between: ["exterior", "sala"], on: { room: "sala", side: "west" }, width: 1, entrance: true },
+        ],
+      },
+      p1: {
+        name: "Piso 1",
+        // an L of floor around two holes that meet each other along x = 4
+        rooms: { quarto: { name: "Quarto", kind: "bedroom", poly: [[0, 0], [8, 0], [8, 2], [2, 2], [2, 6], [0, 6]] } },
+        voids: {
+          vazio_sala: { name: "Vazio sala", rect: [2, 2, 2, 4] },
+          vazio_escada: { name: "Vazio escada", rect: [4, 2, 4, 4] },
+        },
+        openings: [{ type: "window", between: ["exterior", "quarto"], on: { room: "quarto", side: "north" }, width: 1.2 }],
+      },
+    },
+    vertical: [
+      {
+        id: "esc",
+        type: "stairs",
+        at: [
+          { level: "p0", in: "sala", rect: [4.2, 2.2, 1, 3 ] },
+          { level: "p1", in: "quarto", rect: [4.2, 0.2, 1, 1.6] },
+        ],
+      },
+    ],
+  };
+
+  it("derives no wall where two voids meet, and keeps every wall a void has to a room or the street", () => {
+    const upper = analyze(parse(twoVoids)).model.levels.find((l) => l.level.id === "p1")!;
+    const pairs = upper.walls.map((w) => [w.neg.kind === "void" ? w.neg.id : w.neg.kind, w.pos.kind === "void" ? w.pos.id : w.pos.kind]);
+    assert.deepEqual(pairs.filter(([a, b]) => a!.startsWith("vazio") && b!.startsWith("vazio")), []);
+    // the shared boundary is x = 4 from y 2 to 6; nothing stands on it
+    assert.deepEqual(upper.walls.filter((w) => w.axis === "v" && w.c === 4).map((w) => w.id), []);
+    // both voids keep their wall to the room, and vazio_escada keeps the envelope
+    assert.ok(pairs.some(([a, b]) => [a, b].includes("vazio_sala") && [a, b].includes("room")));
+    assert.ok(pairs.some(([a, b]) => [a, b].includes("vazio_escada") && [a, b].includes("exterior")));
+  });
+
+  it("removes exactly one wall from moradia's piso1 and renumbers the nine after it", () => {
+    const doc = JSON.parse(readFileSync(new URL("../fixtures/moradia-2-pisos.json", import.meta.url), "utf8"));
+    const piso1 = analyze(parse(doc)).model.levels.find((l) => l.level.id === "piso1")!;
+    assert.equal(piso1.walls.length, 27, "28 before: w19 was vazio_sala | vazio_escada, x = 4.9, y 3.2 → 5.2");
+    assert.deepEqual(piso1.walls.filter((w) => w.neg.kind === "void" && w.pos.kind === "void"), []);
+    // x = 4.9 still carries the walls either side of the voids, and nothing between them
+    assert.deepEqual(
+      piso1.walls.filter((w) => w.axis === "v" && w.c === 4.9).map((w) => [w.id, w.from, w.to]),
+      [["w17", 0, 1.4], ["w18", 1.4, 3.2], ["w19", 5.2, 7.2], ["w20", 7.2, 8.2], ["w21", 8.2, 10]],
+    );
   });
 });

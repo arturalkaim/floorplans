@@ -5,12 +5,17 @@
 // comb of slivers, loses a T-junction, or decides the same point is on two sides of the
 // same edge. They are cheap to write and expensive to discover later.
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { arrange } from "../src/arrangement.ts";
+import { SNAP_PASSES, arrange } from "../src/arrangement.ts";
 import { analyze, parse } from "../src/index.ts";
 import { flattenArc, mmRing, resolveArc, straightRing } from "../src/ring.ts";
 import type { Arc, MmRing, P } from "../src/ring.ts";
 import { rulesOf } from "./helpers.ts";
+
+const FIXTURES = readdirSync(new URL("../fixtures/", import.meta.url))
+  .filter((n) => n.endsWith(".json"))
+  .map((n) => n.replace(/\.json$/, ""));
 
 const box = (x: number, y: number, w: number, h: number): MmRing =>
   straightRing([
@@ -212,5 +217,102 @@ describe("robustness: arcs", () => {
       }),
     );
     assert.ok(!rulesOf(findings).some((x) => x.startsWith("tiling.")), rulesOf(findings).join(", "));
+  });
+});
+
+/**
+ * gpt-5.5 §2.7: snap-rounding has a budget of passes, not a proof.
+ *
+ * `snapRound` stopped after 8 passes whatever state it was in, and `arrange` returned the
+ * half-woven result as if it had settled. It can be exhausted — this file constructs a
+ * document that never settles — so it now says so, with the region still moving, and
+ * `derive` turns that into a `geometry.unstable` error.
+ *
+ * Two things were wrong, and the second hid the first. The termination test compared the
+ * *length* of the chord list, and a pass can add chords that duplicate an (endpoints,
+ * source edge) triple already there: the same arrangement, a longer list. On a soup of
+ * crossing rings that growth is unbounded, so an arrangement that had converged on the
+ * first pass looked unsettled for ever and burned the whole budget proving it. Settling
+ * is now the triples ceasing to change, which is exactly what `arrange` reads.
+ */
+describe("snap-rounding says when it has not settled (gpt-5.5 §2.7)", () => {
+  /** twelve long thin triangles overlapping inside a 24 mm window */
+  const fan = (): MmRing[] => {
+    const out: MmRing[] = [];
+    for (let i = 0; i < 12; i++) {
+      const y = 10000 + i * 2;
+      out.push(straightRing([[0, y], [20000, 10000 + ((i * 7919) % 24)], [10000, y + 1]] as P[]));
+    }
+    return out;
+  };
+
+  /**
+   * Six simple polygons 28 mm across, found by search. Two chords cycle for ever between
+   * the same pair of hot pixels: the arrangement never reaches a fixed point at any
+   * budget, which is the case §2.7 says cannot be assumed away.
+   */
+  const NEVER: P[][] = [
+    [[4, 9], [28, 25], [26, 28]],
+    [[6, 4], [25, 23], [20, 26], [19, 24]],
+    [[29, 1], [22, 6], [13, 10], [5, 14]],
+    [[0, 0], [28, 0], [24, 11]],
+    [[6, 8], [13, 8], [15, 14], [13, 12]],
+    [[1, 6], [29, 8], [25, 12], [24, 12]],
+  ];
+
+  it("takes seven passes on the fan, and reports nothing because seven is within the budget", () => {
+    const rings = fan();
+    // the smallest budget that settles it
+    const needed = (() => {
+      for (let p = 1; p <= 20; p++) if (arrange(rings, p).unstable === undefined) return p;
+      return Infinity;
+    })();
+    assert.equal(needed, 7, "the fan is the adversarial case that needs several passes");
+    assert.equal(arrange(rings, SNAP_PASSES).unstable, undefined);
+  });
+
+  it("names the region still moving when the budget is too small", () => {
+    const u = arrange(fan(), 4).unstable;
+    assert.ok(u, "four passes is not enough for the fan");
+    assert.equal(u.passes, 4);
+    assert.ok(u.moved > 0);
+    // the fan's crossings are all in a 20 mm band around y = 10 m, and by the fourth pass
+    // only a millimetre-wide sliver of it is still moving
+    assert.ok(u.box.x1 - u.box.x0 < 2000 && u.box.y1 - u.box.y0 < 30, JSON.stringify(u.box));
+  });
+
+  it("reports a construction that never settles, at any budget", () => {
+    const rings = NEVER.map((p) => straightRing(p));
+    for (const budget of [SNAP_PASSES, 32, 64]) {
+      const u = arrange(rings, budget).unstable;
+      assert.ok(u, `settled at ${budget} passes, which this construction is not meant to do`);
+      assert.equal(u.passes, budget);
+      assert.equal(u.moved, 2, "two chords cycle between the same pair of hot pixels");
+      assert.deepEqual(u.box, { x0: 13, y0: 9, x1: 14, y1: 10 }, "one millimetre square");
+    }
+  });
+
+  it("turns it into a geometry.unstable error on the level, naming that region in metres", () => {
+    const doc = {
+      walls: { exterior: 0.3, partition: 0.12 },
+      rooms: Object.fromEntries(
+        NEVER.map((pts, i) => [`r${i}`, { name: `R${i}`, kind: "storage", poly: pts.map(([x, y]) => [x / 1000, y / 1000]) }]),
+      ),
+      openings: [],
+    };
+    const f = analyze(parse(doc)).findings.filter((x) => x.rule === "geometry.unstable");
+    assert.equal(f.length, 1);
+    assert.equal(f[0]!.severity, "error");
+    assert.equal(f[0]!.path, "rooms");
+    assert.match(f[0]!.message, /after 8 rounds of snapping to the millimetre grid, 2 chords were still moving/);
+    assert.match(f[0]!.message, /between \(0\.013, 0\.009\) and \(0\.014, 0\.01\)/);
+    assert.deepEqual(f[0]!.at, [0.014, 0.01]);
+  });
+
+  it("never fires on a plan anyone would draw: every fixture settles", () => {
+    for (const name of FIXTURES) {
+      const doc = JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));
+      assert.ok(!rulesOf(analyze(parse(doc)).findings).includes("geometry.unstable"), name);
+    }
   });
 });

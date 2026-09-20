@@ -389,7 +389,18 @@ export type WallGeometry =
  * `from`/`to` are the wall's own 1-D parameter, and are **not** tied to that direction:
  * for an axis-aligned wall they stay the coordinate along its axis, ascending, because
  * every opening's `position` and every message quoting a wall already means that.
- * Elsewhere they run 0 … `length` from `start`.
+ * Elsewhere they run 0 … `length` from the canonical start.
+ *
+ * INVARIANT: `start` and `end` are the ends `from` and `to` are at — the west or north
+ * end first — and *not* the ends of the canonical direction. The two differ on exactly
+ * one kind of wall, the vertical one, whose canonical direction runs north while its
+ * parameter ascends south; for a horizontal, angled or curved wall they are the same
+ * points. This is the direction every public spelling of "start" already means: the jamb
+ * `hinge: "start"` and `position: { from: "start" }` pick, the `from`/`to` points
+ * `walls()` prints, and the README. Naming the canonical end `start` made a vertical
+ * wall's `start` its *south* end, which is a trap and nothing else (B10). Code that wants
+ * the canonical ends — the outward normal of an angled wall, say — takes them from
+ * `geometry`, which still runs that way.
  */
 export interface Wall {
   id: string;
@@ -445,8 +456,11 @@ export interface RoomModel {
   /** bearing of the room's own frame, degrees clockwise from east; 0 for a rectilinear room */
   bearing: number;
   /**
-   * The largest circle that fits in the clear floor. Rotation-invariant and defined for
-   * a curved room, which is what makes it the narrowness measure a rectangle cannot be.
+   * The largest circle that fits in the clear floor **that nothing stands on**: the
+   * fixtures the room hosts, a stair's footprint among them, are holes in it. Rotation-
+   * invariant and defined for a curved room, which is what makes it the narrowness
+   * measure a rectangle cannot be, and it excludes what is in the way for the same reason
+   * `largestRect` does — the two are answers to one question asked of two shapes.
    */
   inscribed: { at: Pt; r: number };
   /**
@@ -616,6 +630,12 @@ export interface Finding {
   /** `opening.off_wall`: the id of the nearest wall and how far the point is from it */
   nearest?: string;
   distance?: number;
+  /**
+   * `structure.over_open_sky`: the floor plates on the level below that the room *does*
+   * stand on, in the order rooms, covered outdoor spaces, voids. Empty when the room
+   * hangs over open sky along its whole footprint.
+   */
+  below?: Array<{ kind: "room" | "outdoor" | "void"; id: string }>;
 }
 
 /** A thing in the document that knows where it was written and what keys it carries. */

@@ -148,13 +148,38 @@ function throughPixel(a: P, b: P, h: P): boolean {
 }
 
 /**
+ * How many times snap-rounding will bend segments onto hot pixels before it gives up.
+ *
+ * Each pass can only construct a coordinate that was not there before, and a snapped
+ * coordinate is an integer millimetre, so the process terminates — but nobody has proved
+ * a bound, and 8 is a budget, not a theorem. A plan that reaches it has not settled, and
+ * `arrange` says so rather than returning a half-woven arrangement in silence.
+ */
+export const SNAP_PASSES = 8;
+
+/** What did not settle: how many chords the last pass still changed, and where they are. */
+export interface Unstable {
+  passes: number;
+  /** chords the last pass added or removed */
+  moved: number;
+  /** millimetres, over the ends of those chords */
+  box: { x0: number; y0: number; x1: number; y1: number };
+}
+
+/**
  * Split every segment at every hot pixel it passes through, bending it to the pixel's
  * centre. Repeated until no new intersection appears, which on a rectilinear plan is
  * after the first pass because no coordinate is ever constructed.
+ *
+ * `passes` is the budget and is a parameter so the exhausted branch can be exercised on a
+ * plan that merely needs more passes than it is given, rather than only on one nobody has
+ * managed to construct.
  */
-function snapRound(segs: Seg[]): Seg[] {
+function snapRound(segs: Seg[], passes: number): { segs: Seg[]; unstable: Unstable | undefined } {
   let cur = segs;
-  for (let pass = 0; pass < 8; pass++) {
+  let moving: Seg[] = [];
+  let pass = 0;
+  for (; pass < passes; pass++) {
     const hot = new Map<string, P>();
     const heat = (p: P) => hot.set(key(p), p);
     for (const s of cur) {
@@ -174,11 +199,55 @@ function snapRound(segs: Seg[]): Seg[] {
       }
     }
     const next = splitAll(cur, [...hot.values()]);
-    const stable = next.length === cur.length && !constructed;
+    // Settled means "the arrangement's input has stopped changing", and its input is the
+    // set of (endpoints, source edge) triples — not the segment list, whose *length* can
+    // keep growing with pieces that duplicate triples already present. On an adversarial
+    // soup of crossing rings that growth is unbounded and linear in the pass count, so
+    // testing the length made an arrangement that converged on pass 1 look unstable for
+    // ever, and spent the whole budget proving it.
+    const changed = differing(cur, next);
+    const stable = !constructed && changed.length === 0;
     cur = next;
-    if (stable) break;
+    if (stable) return { segs: cur, unstable: undefined };
+    // what this pass changed: where the weaving is still moving, and the only thing worth
+    // pointing at if the budget runs out
+    moving = changed;
   }
-  return cur;
+  const xs = moving.flatMap((s) => [s.a[0], s.b[0]]);
+  const ys = moving.flatMap((s) => [s.a[1], s.b[1]]);
+  return {
+    segs: cur,
+    unstable: {
+      passes: pass,
+      moved: moving.length,
+      box: {
+        x0: Math.min(...xs, Infinity),
+        y0: Math.min(...ys, Infinity),
+        x1: Math.max(...xs, -Infinity),
+        y1: Math.max(...ys, -Infinity),
+      },
+    },
+  };
+}
+
+/**
+ * The chords one pass added or dropped, as `arrange` sees them.
+ *
+ * What `arrange` reads off a segment list is the set of (endpoints, source edge) triples,
+ * not the list: pieces that duplicate a triple already present weave into the same
+ * arrangement and are not a change. Comparing lengths instead was B-class silent
+ * non-termination — on a soup of crossing rings the list grows by a handful of duplicate
+ * triples every pass, without bound, so an arrangement that had converged on the first
+ * pass spent the whole budget looking unsettled.
+ */
+function differing(a: Seg[], b: Seg[]): Seg[] {
+  const tri = (s: Seg) => `${keyOf(s.a, s.b)}|${s.input}|${s.edge}`;
+  const x = new Map(a.map((s) => [tri(s), s]));
+  const y = new Map(b.map((s) => [tri(s), s]));
+  const out: Seg[] = [];
+  for (const [k, s] of x) if (!y.has(k)) out.push(s);
+  for (const [k, s] of y) if (!x.has(k)) out.push(s);
+  return out;
 }
 
 const boxesTouch = (s: Seg, t: Seg) =>
@@ -266,13 +335,20 @@ export interface Arrangement {
   /** the unbounded face */
   outer: number;
   rings: MmRing[];
+  /**
+   * Set only when snap-rounding used up its whole budget of passes without reaching a
+   * fixed point. Everything below is still a well-formed arrangement of the segments as
+   * they stood when the budget ran out, but it is not the arrangement of the input, so a
+   * caller has to say so: `geometry.unstable` (src/derive.ts) is that finding.
+   */
+  unstable?: Unstable;
 }
 
 const twinOf = (h: number) => h ^ 1;
 
 /** Build the arrangement of every input ring. */
-export function arrange(rings: MmRing[]): Arrangement {
-  const segs = snapRound(segsOf(rings));
+export function arrange(rings: MmRing[], passes = SNAP_PASSES): Arrangement {
+  const { segs, unstable } = snapRound(segsOf(rings), passes);
 
   // unique undirected edges; an edge two spaces share appears once, carrying both
   const edges = new Map<string, { seg: Seg; srcs: Array<{ input: number; edge: number }> }>();
@@ -399,7 +475,7 @@ export function arrange(rings: MmRing[]): Arrangement {
     if (i !== outer) f.probe = facePole(f, half, verts);
     f.tags = polys.flatMap((poly, k) => (pointInPolyMm(f.probe, poly) ? [k] : []));
   }
-  return { verts, half, faces, outer, rings };
+  return { verts, half, faces, outer, rings, ...(unstable ? { unstable } : {}) };
 }
 
 const keyOf = (a: P, b: P) => (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]) ? `${key(a)}|${key(b)}` : `${key(b)}|${key(a)}`);
