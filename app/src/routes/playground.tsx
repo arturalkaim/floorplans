@@ -141,16 +141,22 @@ export function Playground() {
     setText(example.source);
   }, [example, mark]);
 
-  // typing is its own undo step, collapsed while you keep typing
+  // typing is its own undo step, collapsed while you keep typing: `before` is captured
+  // once, at the first keystroke of a burst (when no timer is pending yet), not on every
+  // keystroke — otherwise it would keep sliding forward to the *previous* keystroke's
+  // text, and undo would land one character short of the burst's actual start.
   const typingTimer = useRef<number | undefined>(undefined);
+  const typingBefore = useRef<string | undefined>(undefined);
   const onType = useCallback(
     (next: string) => {
+      if (typingTimer.current === undefined) typingBefore.current = textRef.current;
       window.clearTimeout(typingTimer.current);
-      const before = textRef.current;
-      typingTimer.current = window.setTimeout(
-        () => setHist((h) => ({ past: [...h.past, before].slice(-HISTORY), future: [] })),
-        600,
-      );
+      typingTimer.current = window.setTimeout(() => {
+        typingTimer.current = undefined;
+        const before = typingBefore.current;
+        typingBefore.current = undefined;
+        if (before !== undefined) setHist((h) => ({ past: [...h.past, before].slice(-HISTORY), future: [] }));
+      }, 600);
       setText(next);
     },
     [],
