@@ -13,6 +13,17 @@ export interface RuleDoc {
 }
 
 export const RULES: readonly RuleDoc[] = [
+  // schema, produced by lint() from the issues parse() would have thrown. Every one is an
+  // error and every one carries the issue's own document path, so a schema problem and a
+  // geometry problem reach an agent through the same channel (docs/agent-review.md §B8).
+  { id: "schema.syntax", severity: "error", catches: "the text is not JSON at all, or the document is not a JSON object" },
+  { id: "schema.unknown_field", severity: "error", catches: "a key the schema does not have, with the nearest known key when there is one within two edits" },
+  { id: "schema.missing", severity: "error", catches: "something required is absent: a room's geometry, a vertical element's id, a plan with no rooms" },
+  { id: "schema.type", severity: "error", catches: "present but the wrong type, or a value outside a fixed vocabulary such as a room kind or a side" },
+  { id: "schema.reference", severity: "error", catches: "names something that is not declared: a space, a level, a void used as if it were a room" },
+  { id: "schema.geometry", severity: "error", catches: "a polygon or rectangle that cannot be a shape: too few corners, zero area, crossing edges, a space in several pieces" },
+  { id: "schema.conflict", severity: "error", catches: "two mutually exclusive forms given together, or an id used twice: `poly` and `rect`, `at` and `on`" },
+
   // geometry and topology, produced by derive()
   { id: "tiling.gap", severity: "error", catches: "a hole in the plan: somewhere inside the footprint no room covers the floor (one finding per contiguous hole, however many cells it spans)" },
   { id: "tiling.overlap", severity: "error", catches: "two or more rooms claim the same area (one finding per contiguous overlap, however many cells it spans)" },

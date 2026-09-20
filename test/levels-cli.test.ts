@@ -68,11 +68,30 @@ describe("levels: schedule and CLI", () => {
     assert.match(t.out(), /\bcima\s+error\s+level\.unreachable/);
   });
 
-  it("--json carries the level on findings and the sections in the schedule", () => {
+  it("--json=all carries the sections in the schedule and the level on every wall", () => {
     const t = fakeIo({ "p.json": plan });
-    run(["p.json", "--json"], t.io);
+    run(["p.json", "--json=all"], t.io);
     const parsed = JSON.parse(t.out());
     assert.ok(Array.isArray(parsed.schedule.levels));
     assert.equal(parsed.schedule.building.storeys, 2);
+    assert.deepEqual([...new Set(parsed.walls.map((w: { level: string }) => w.level))], ["baixo", "cima"]);
+  });
+
+  it("--level scopes --json=walls to that storey", () => {
+    const t = fakeIo({ "p.json": plan });
+    run(["p.json", "--json=walls", "--level", "cima"], t.io);
+    const walls = JSON.parse(t.out()).walls as Array<{ level: string }>;
+    assert.ok(walls.length > 0);
+    assert.deepEqual([...new Set(walls.map((w) => w.level))], ["cima"]);
+  });
+
+  it("--json stays findings-first however many storeys there are", () => {
+    const t = fakeIo({ "p.json": plan });
+    run(["p.json", "--json"], t.io);
+    const parsed = JSON.parse(t.out());
+    assert.deepEqual(Object.keys(parsed), ["summary", "findings"]);
+    // and a finding of a levelled document names its level and a path under it
+    const f = parsed.findings.find((x: { level?: string }) => x.level !== undefined);
+    if (f) assert.ok(String(f.path).startsWith(`levels.${f.level}.`), `${f.path} is not under levels.${f.level}`);
   });
 });

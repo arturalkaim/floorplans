@@ -77,12 +77,45 @@ describe("cli", () => {
     assert.ok(!t.out().includes("<svg"));
     assert.match(t.out(), /entrance\.missing/);
   });
-  it("--json emits findings and schedule", () => {
+  it("--json is findings-first: a summary and the findings, and no schedule", () => {
     const t = fakeIo({ "plan.json": clean });
     assert.equal(run(["plan.json", "--json"], t.io), 0);
     const parsed = JSON.parse(t.out());
-    assert.deepEqual(parsed.findings, []);
+    assert.deepEqual(parsed, { summary: { error: 0, warning: 0, info: 0 }, findings: [] });
+  });
+
+  it("--json=all adds the schedule and the derived walls", () => {
+    const t = fakeIo({ "plan.json": clean });
+    assert.equal(run(["plan.json", "--json=all"], t.io), 0);
+    const parsed = JSON.parse(t.out());
     assert.equal(parsed.schedule.rooms.length, 2);
+    assert.ok(parsed.walls.length > 0);
+    assert.deepEqual(Object.keys(parsed), ["summary", "findings", "schedule", "walls"]);
+  });
+
+  it("--json=schedule and --json=walls select one section", () => {
+    const s = fakeIo({ "plan.json": clean });
+    run(["plan.json", "--json=schedule"], s.io);
+    assert.deepEqual(Object.keys(JSON.parse(s.out())), ["schedule"]);
+    const w = fakeIo({ "plan.json": clean });
+    run(["plan.json", "--json=walls"], w.io);
+    const walls = JSON.parse(w.out()).walls;
+    // endpoints as points and owners as tagged unions: no `axis`, no `c`
+    assert.deepEqual(Object.keys(walls[0]), ["id", "kind", "from", "to", "neg", "pos"]);
+    assert.equal(walls[0].from.length, 2);
+  });
+
+  it("rejects an unknown --json mode", () => {
+    assert.equal(run(["plan.json", "--json=everything"], fakeIo({ "plan.json": clean }).io), 2);
+  });
+
+  it("prints JSON one entity per line, not one coordinate per line", () => {
+    const t = fakeIo({ "plan.json": broken });
+    run(["plan.json", "--json"], t.io);
+    const lines = t.out().trimEnd().split("\n");
+    const findings = JSON.parse(t.out()).findings.length;
+    // `{`, summary, `"findings": [`, one line per finding, `]`, `}`
+    assert.equal(lines.length, findings + 5, t.out());
   });
   it("render options reach the SVG", () => {
     const t = fakeIo({ "plan.json": clean });
