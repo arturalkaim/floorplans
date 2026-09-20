@@ -248,7 +248,9 @@ export function parse(input: unknown): Plan {
       return undefined;
     }
     if (v !== "exterior" && !roomIds.has(v)) {
-      bad(path, `unknown room ${JSON.stringify(v)}`);
+      if (spaceIds.has(v))
+        bad(path, `${JSON.stringify(v)} is an outdoor space; an opening onto it is written between the room and "exterior"`);
+      else bad(path, `unknown room ${JSON.stringify(v)}`);
       return undefined;
     }
     return v;

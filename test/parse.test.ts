@@ -282,6 +282,39 @@ describe("parse: unknown keys are reported (A4)", () => {
   });
 });
 
+describe("parse: A7 — an opening naming a declared outdoor space", () => {
+  it('gives an honest message instead of "unknown room"', () => {
+    const issues = issueListOf(
+      twoRooms({
+        outdoor: { deck: { poly: rect(0, 4, 3, 2) } },
+        openings: [{ type: "door", between: ["a", "deck"], width: 0.9 }],
+      }),
+    );
+    const issue = issues.find((i) => i.path === "openings[0].between[1]");
+    assert.ok(issue, `expected an issue at openings[0].between[1], got ${issues.map((i) => i.path).join(", ")}`);
+    assert.equal(issue!.message, '"deck" is an outdoor space; an opening onto it is written between the room and "exterior"');
+  });
+
+  it('still says "unknown room" for a name that is not declared at all', () => {
+    const issues = issueListOf(twoRooms({ openings: [{ type: "door", between: ["a", "nope"], width: 0.9 }] }));
+    const issue = issues.find((i) => i.path === "openings[0].between[1]");
+    assert.ok(issue);
+    assert.equal(issue!.message, 'unknown room "nope"');
+  });
+
+  it("still works when the outdoor space is on the other side of `between`", () => {
+    const issues = issueListOf(
+      twoRooms({
+        outdoor: { deck: { poly: rect(0, 4, 3, 2) } },
+        openings: [{ type: "door", between: ["deck", "a"], width: 0.9 }],
+      }),
+    );
+    const issue = issues.find((i) => i.path === "openings[0].between[0]");
+    assert.ok(issue);
+    assert.equal(issue!.message, '"deck" is an outdoor space; an opening onto it is written between the room and "exterior"');
+  });
+});
+
 describe("parse: layout grid compiles to polygons", () => {
   const grid = {
     walls: { exterior: 0.3, partition: 0.12 },
