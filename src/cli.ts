@@ -4,7 +4,8 @@
 //                       [--areas clear|centreline|none] [--mark error|warning|info|none]
 // floorplan set <plan.json> <path> <value> [--json] [--dry-run]
 // floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
-// floorplan --schema[=md]
+// floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
+// floorplan --schema[=md|=dsl]
 // Exit codes: 0 clean (or only info), 1 findings at warning or above, 2 usage / parse error.
 // The executable entry point is bin.ts, which wires stdio/fs onto `run` unconditionally;
 // this module stays a plain, IO-free function so tests can drive it with a fake CliIo.
@@ -20,9 +21,15 @@
 // derived walls are behind `--json=all`, or selected on their own.
 //
 // `--schema` exists so an agent can load the field list (~600 tokens) instead of the
-// README's prose (~2400 tokens) — see docs/agent-review.md B10.
+// README's prose (~2400 tokens) — see docs/agent-review.md B10. `--schema=dsl` is the
+// same idea for the line DSL: the grammar's coverage table, generated from DSL_SCHEMA.
+//
+// Every input path reads *source text*, and `lint()`/`floorplan()` decide from its first
+// non-space character whether it is JSON or DSL — so `floorplan plan.dsl --lint` and
+// `floorplan plan.dsl --json` need nothing here. `fmt` is the converter between the two.
 
 import { appendAt, insertKey, JsonPosError, removeAt, spliceAt } from "./jsonpos.ts";
+import { DslPosError, dslSchemaText, dslSpliceAt, isDslText, readSource, toDsl } from "./dsl.ts";
 import { formatPlan } from "./format.ts";
 import { floorplan, isSchemaFinding, lint, SCHEMA, schedule, summarize, walls, worstSeverity } from "./index.ts";
 import type { FieldDoc, LintResult, ObjectDoc } from "./index.ts";
@@ -45,25 +52,28 @@ const USAGE = `usage: floorplan <plan.json> [--out plan.svg] [--level id] [--lin
                  [--areas clear|centreline|none] [--mark error|warning|info|none]
        floorplan set <plan.json> <path> <value> [--json] [--dry-run]
        floorplan patch <plan.json> <patch.json|-> [--json] [--dry-run]
-       floorplan --schema[=md]
+       floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
+       floorplan --schema[=md|=dsl]
 
+A plan file may be JSON or the line DSL; the first non-space character says which.
 --level picks which storey to draw (default: the ground level), and scopes --json=walls.
 --out may contain {level}, and then one file per level is written.
 --json alone is { summary, findings }; =all adds schedule and walls; =schedule and
        =walls select one section.
 --schema prints the document's field table as JSON (default) or, with =md,
-         as Markdown; needs no input file.`;
+         as Markdown; =dsl prints the line DSL's grammar. Needs no input file.`;
 
 export function run(argv: string[], io: CliIo): number {
   if (argv[0] === "set") return runSet(argv.slice(1), io);
   if (argv[0] === "patch") return runPatch(argv.slice(1), io);
+  if (argv[0] === "fmt") return runFmt(argv.slice(1), io);
   const args = parseArgs(argv);
   if (args instanceof Error) {
     io.stderr(`${args.message}\n${USAGE}\n`);
     return 2;
   }
   if (args.schema !== undefined) {
-    io.stdout(args.schema === "md" ? schemaMarkdown() : schemaJson());
+    io.stdout(args.schema === "md" ? schemaMarkdown() : args.schema === "dsl" ? dslSchemaText() : schemaJson());
     return 0;
   }
   if (!args.input) {
@@ -170,8 +180,8 @@ interface Args {
   labels: "auto" | "full" | "index" | undefined;
   areas: "clear" | "centreline" | "none" | undefined;
   mark: Severity | "none" | undefined;
-  /** `--schema` (JSON, default) or `--schema=md`; needs no input file. */
-  schema: "json" | "md" | undefined;
+  /** `--schema` (JSON, default), `--schema=md` or `--schema=dsl`; needs no input file. */
+  schema: "json" | "md" | "dsl" | undefined;
 }
 
 function parseArgs(argv: string[]): Args | Error {
@@ -211,6 +221,7 @@ function parseArgs(argv: string[]): Args | Error {
       a.mark = v;
     } else if (t === "--schema") a.schema = "json";
     else if (t === "--schema=md") a.schema = "md";
+    else if (t === "--schema=dsl") a.schema = "dsl";
     else if (t.startsWith("-")) return new Error(`unknown option ${t}`);
     else if (a.input === undefined) a.input = t;
     else return new Error(`unexpected argument ${t}`);
@@ -229,7 +240,7 @@ function reportSchema(linted: LintResult, io: CliIo, json: boolean): void {
   else io.stderr(`${linted.error!.message}\n`);
 }
 
-function reportJsonPosError(e: JsonPosError, io: CliIo, json: boolean): void {
+function reportPosError(e: JsonPosError | DslPosError, io: CliIo, json: boolean): void {
   if (json) io.stdout(formatPlan({ error: { message: e.message, line: e.line, column: e.column } }));
   else io.stderr(`${e.message}\n`);
 }
@@ -300,6 +311,72 @@ function finish(text: string, planPath: string, io: CliIo, opts: { json: boolean
   return worst === "error" || worst === "warning" ? 1 : 0;
 }
 
+const FMT_USAGE = `usage: floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
+
+Canonicalises a plan, and converts it between the two syntaxes. Without --to the
+file keeps the syntax it is already in. --out writes somewhere else, which is what
+a conversion usually wants (\`fmt plan.json --to dsl --out plan.dsl\`). --stdout and
+--dry-run both print the result and write nothing.`;
+
+/**
+ * `fmt`: one canonical form per syntax, and a lossless conversion between them.
+ *
+ * The result is validated before anything is written — the same guarantee `set` and
+ * `patch` give through `finish`, and it matters more here because a conversion rewrites
+ * the whole file rather than one value.
+ */
+function runFmt(argv: string[], io: CliIo): number {
+  const positional: string[] = [];
+  let to: "json" | "dsl" | undefined;
+  let out: string | undefined;
+  let print = false;
+  for (let i = 0; i < argv.length; i++) {
+    const t = argv[i]!;
+    if (t === "--to") {
+      const v = argv[++i];
+      if (v !== "json" && v !== "dsl") {
+        io.stderr(`--to must be json or dsl\n${FMT_USAGE}\n`);
+        return 2;
+      }
+      to = v;
+    } else if (t === "--out") out = argv[++i];
+    else if (t === "--stdout" || t === "--dry-run") print = true;
+    else if (t.startsWith("-")) {
+      io.stderr(`unknown option ${t}\n${FMT_USAGE}\n`);
+      return 2;
+    } else positional.push(t);
+  }
+  const planPath = positional[0];
+  if (!planPath || positional.length > 1) {
+    io.stderr(`${FMT_USAGE}\n`);
+    return 2;
+  }
+  let text: string;
+  try {
+    text = io.readFile(planPath);
+  } catch (e) {
+    io.stderr(`cannot read ${planPath}: ${(e as Error).message}\n`);
+    return 2;
+  }
+  // The document is read through `lint()` so a file that does not parse is reported the
+  // way every other problem is, and never half-converted.
+  const linted = lint(text);
+  if (linted.findings.some(isSchemaFinding)) {
+    reportSchema(linted, io, false);
+    return 2;
+  }
+  const target = to ?? (isDslText(text) ? "dsl" : "json");
+  let converted: string;
+  try {
+    const doc = readSource(text).doc;
+    converted = target === "dsl" ? toDsl(doc) : formatPlan(doc);
+  } catch (e) {
+    io.stderr(`cannot write ${planPath} as ${target}: ${(e as Error).message}\n`);
+    return 2;
+  }
+  return finish(converted, out ?? planPath, io, { json: false, dryRun: print });
+}
+
 const SET_USAGE = `usage: floorplan set <plan.json> <path> <value> [--json] [--dry-run]`;
 
 function runSet(argv: string[], io: CliIo): number {
@@ -333,10 +410,12 @@ function runSet(argv: string[], io: CliIo): number {
   }
   let spliced: string;
   try {
-    spliced = spliceAt(text, path, literalFor(value)).text;
+    // One path, two syntaxes: jsonpos finds the JSON node, dslpos finds the token on the
+    // DSL line. Either way exactly that value is replaced and nothing else moves.
+    spliced = isDslText(text) ? dslSpliceAt(text, path, literalFor(value)).text : spliceAt(text, path, literalFor(value)).text;
   } catch (e) {
-    if (e instanceof JsonPosError) {
-      reportJsonPosError(e, io, json);
+    if (e instanceof JsonPosError || e instanceof DslPosError) {
+      reportPosError(e, io, json);
       return 2;
     }
     throw e;
@@ -382,6 +461,14 @@ function applyOp(text: string, op: PatchOp): string {
   const path = parsePath(op.path);
   if (path instanceof Error) throw path;
   const literal = () => JSON.stringify(op.value);
+  if (isDslText(text)) {
+    // `set` is a token splice and works the same in both syntaxes. The three structural
+    // ops are not: adding or removing an entity in the DSL is adding or removing a whole
+    // line, in a group whose place in the file the printer decides — which is `fmt`'s
+    // job, not a splice's. Saying so beats writing a line into the wrong section.
+    if (op.op === "set") return dslSpliceAt(text, path, literal()).text;
+    throw new DslPosError(`"${op.op}" is not supported on a DSL document; convert it with \`floorplan fmt <file> --to json\` first, or edit the line directly`);
+  }
   switch (op.op) {
     case "set":
       return spliceAt(text, path, literal()).text;
@@ -442,7 +529,7 @@ function runPatch(argv: string[], io: CliIo): number {
       text = applyOp(text, op);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      const position = e instanceof JsonPosError ? { line: e.line, column: e.column } : {};
+      const position = e instanceof JsonPosError || e instanceof DslPosError ? { line: e.line, column: e.column } : {};
       if (json) io.stdout(`${JSON.stringify({ error: { op: i, kind: op.op, path: op.path, message, ...position } }, null, 2)}\n`);
       else io.stderr(`op ${i} (${op.op} ${op.path}) failed: ${message}\n`);
       return 2;

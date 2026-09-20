@@ -154,7 +154,7 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
   },
   {
     statement: "layout",
-    syntax: "layout [cols <n>,…] [rows <n>,…]\\n  <cell> <cell> …   (one indented row per grid row)",
+    syntax: "layout [cols <n>,…] [rows <n>,…]\n        <cell> <cell> …   (one indented row per grid row)",
     doc: "the one multi-line statement: an ASCII picture placing already-declared spaces on the track grid",
     tokens: [
       { token: "layout", field: "level.layout", required: false, doc: "the statement itself" },
