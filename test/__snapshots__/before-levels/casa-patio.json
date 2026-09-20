@@ -1,0 +1,464 @@
+{
+  "findings": [
+    {
+      "rule": "circulation.share",
+      "severity": "info",
+      "message": "Hall take 15 % of the interior (17.92 m²); above 10 % is worth questioning",
+      "rooms": [
+        "hall"
+      ]
+    }
+  ],
+  "schedule": {
+    "rooms": [
+      {
+        "id": "sala",
+        "name": "Sala",
+        "kind": "living",
+        "zone": "day",
+        "area": 40.24,
+        "clearArea": 36.406,
+        "fixtureArea": 0,
+        "usableArea": 36.406
+      },
+      {
+        "id": "cozinha",
+        "name": "Cozinha",
+        "kind": "kitchen",
+        "zone": "day",
+        "area": 26.64,
+        "clearArea": 24.014,
+        "fixtureArea": 0,
+        "usableArea": 24.014
+      },
+      {
+        "id": "hall",
+        "name": "Hall",
+        "kind": "hall",
+        "zone": "day",
+        "area": 17.92,
+        "clearArea": 15.772,
+        "fixtureArea": 0,
+        "usableArea": 15.772
+      },
+      {
+        "id": "quarto",
+        "name": "Quarto",
+        "kind": "bedroom",
+        "zone": "night",
+        "area": 25.84,
+        "clearArea": 23.574,
+        "fixtureArea": 0,
+        "usableArea": 23.574
+      },
+      {
+        "id": "wc",
+        "name": "WC",
+        "kind": "wc",
+        "zone": "night",
+        "area": 12.24,
+        "clearArea": 10.814,
+        "fixtureArea": 0,
+        "usableArea": 10.814
+      }
+    ],
+    "interiorArea": 122.88,
+    "interiorClearArea": 110.58,
+    "footprint": 122.88,
+    "waterArea": 0,
+    "outdoor": [
+      {
+        "id": "patio",
+        "name": "Pátio",
+        "area": 16,
+        "fixtureArea": 0,
+        "usableArea": 16,
+        "covered": false,
+        "streetConnected": false
+      }
+    ]
+  },
+  "drags": [
+    {
+      "id": "w10",
+      "writes": "layout.rows[3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.65"
+        }
+      ]
+    },
+    {
+      "id": "w14",
+      "writes": "layout.cols[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            0
+          ],
+          "literal": "3.85"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "3.75"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            0
+          ],
+          "literal": "3.85"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            2
+          ],
+          "literal": "3.75"
+        }
+      ]
+    },
+    {
+      "id": "w15",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "4.25"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.35"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            2
+          ],
+          "literal": "4.25"
+        }
+      ]
+    },
+    {
+      "id": "w16",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "4.25"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.35"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            2
+          ],
+          "literal": "4.25"
+        }
+      ]
+    },
+    {
+      "id": "w17",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "4.25"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.35"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            2
+          ],
+          "literal": "4.25"
+        }
+      ]
+    },
+    {
+      "id": "w18",
+      "writes": "layout.cols[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.85"
+        }
+      ]
+    },
+    {
+      "id": "w19",
+      "writes": "layout.cols[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.85"
+        }
+      ]
+    },
+    {
+      "id": "w20",
+      "writes": "layout.cols[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.85"
+        }
+      ]
+    },
+    {
+      "id": "w3",
+      "writes": "layout.rows[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            0
+          ],
+          "literal": "3.65"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "3.75"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            1
+          ],
+          "literal": "3.65"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            3
+          ],
+          "literal": "3.75"
+        }
+      ]
+    },
+    {
+      "id": "w4",
+      "writes": "layout.rows[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "4.25"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.35"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            3
+          ],
+          "literal": "4.25"
+        }
+      ]
+    },
+    {
+      "id": "w5",
+      "writes": "layout.rows[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "4.25"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.35"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            3
+          ],
+          "literal": "4.25"
+        }
+      ]
+    },
+    {
+      "id": "w6",
+      "writes": "layout.rows[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "4.25"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.35"
+        },
+        {
+          "path": [
+            "outdoor",
+            "patio",
+            "rect",
+            3
+          ],
+          "literal": "4.25"
+        }
+      ]
+    },
+    {
+      "id": "w7",
+      "writes": "layout.rows[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.85"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.15"
+        }
+      ]
+    },
+    {
+      "id": "w8",
+      "writes": "layout.rows[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.85"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.15"
+        }
+      ]
+    },
+    {
+      "id": "w9",
+      "writes": "layout.rows[3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.65"
+        }
+      ]
+    }
+  ],
+  "formatted": "{\n  \"title\": \"Casa com Pátio\",\n  \"walls\": {\"exterior\":0.3,\"partition\":0.12},\n  \"layout\": {\n    \"cols\": [3.6,4,3.6],\n    \"rows\": [3.4,4,1.6,3.4],\n    \"areas\": [\n      \"sala   sala   cozinha\",\n      \"sala   .      cozinha\",\n      \"hall   hall   hall\",\n      \"quarto quarto wc\"\n    ]\n  },\n  \"rooms\": {\n    \"sala\": {\"name\":\"Sala\",\"kind\":\"living\",\"zone\":\"day\"},\n    \"cozinha\": {\"name\":\"Cozinha\",\"kind\":\"kitchen\",\"zone\":\"day\"},\n    \"hall\": {\"name\":\"Hall\",\"kind\":\"hall\",\"zone\":\"day\"},\n    \"quarto\": {\"name\":\"Quarto\",\"kind\":\"bedroom\",\"zone\":\"night\"},\n    \"wc\": {\"name\":\"WC\",\"kind\":\"wc\",\"zone\":\"night\"}\n  },\n  \"outdoor\": {\n    \"patio\": {\"name\":\"Pátio\",\"covered\":false,\"rect\":[3.6,3.4,4,4]}\n  },\n  \"openings\": [\n    {\"type\":\"door\",\"between\":[\"exterior\",\"hall\"],\"on\":{\"room\":\"hall\",\"side\":\"west\"},\"width\":1,\"swingInto\":\"hall\",\"entrance\":true},\n    {\"type\":\"door\",\"between\":[\"patio\",\"hall\"],\"on\":{\"room\":\"hall\",\"side\":\"north\",\"near\":[5.6,7.4]},\"width\":1,\"swingInto\":\"hall\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"sala\"],\"width\":1,\"swingInto\":\"sala\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"cozinha\"],\"width\":0.9,\"swingInto\":\"cozinha\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"quarto\"],\"width\":0.9,\"swingInto\":\"quarto\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"wc\"],\"width\":0.8,\"swingInto\":\"wc\"},\n    {\"type\":\"window\",\"between\":[\"patio\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"east\",\"near\":[3.6,5.4]},\"width\":2},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"cozinha\"],\"on\":{\"room\":\"cozinha\",\"side\":\"east\"},\"width\":1.6},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"quarto\"],\"on\":{\"room\":\"quarto\",\"side\":\"south\"},\"width\":1.8},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"wc\"],\"on\":{\"room\":\"wc\",\"side\":\"south\"},\"width\":0.6}\n  ]\n}\n"
+}

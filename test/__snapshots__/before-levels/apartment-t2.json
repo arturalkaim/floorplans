@@ -1,0 +1,466 @@
+{
+  "findings": [
+    {
+      "rule": "room.min_dimension",
+      "severity": "warning",
+      "message": "Hall (hall): 0.99 m at its narrowest; comfort minimum is 1 m (clear floor 0.99 × 5.82 m)",
+      "rooms": [
+        "hall"
+      ],
+      "at": [
+        3.75,
+        3
+      ]
+    },
+    {
+      "rule": "wet.no_window",
+      "severity": "warning",
+      "message": "WC has no exterior window; plan mechanical extraction",
+      "rooms": [
+        "wc"
+      ],
+      "at": [
+        5.3,
+        4.6
+      ]
+    }
+  ],
+  "schedule": {
+    "rooms": [
+      {
+        "id": "quarto1",
+        "name": "Quarto 1",
+        "kind": "bedroom",
+        "zone": "night",
+        "area": 14.4,
+        "clearArea": 13.046,
+        "fixtureArea": 0,
+        "usableArea": 13.046
+      },
+      {
+        "id": "quarto2",
+        "name": "Quarto 2",
+        "kind": "bedroom",
+        "zone": "night",
+        "area": 17.2,
+        "clearArea": 15.63,
+        "fixtureArea": 0,
+        "usableArea": 15.63
+      },
+      {
+        "id": "wc",
+        "name": "WC",
+        "kind": "bath",
+        "zone": "night",
+        "area": 5.6,
+        "clearArea": 5.084,
+        "fixtureArea": 0,
+        "usableArea": 5.084
+      },
+      {
+        "id": "hall",
+        "name": "Hall",
+        "kind": "hall",
+        "zone": "day",
+        "area": 6.6,
+        "clearArea": 5.762,
+        "fixtureArea": 0,
+        "usableArea": 5.762
+      },
+      {
+        "id": "sala",
+        "name": "Sala",
+        "kind": "living",
+        "zone": "day",
+        "area": 19.42,
+        "clearArea": 17.796,
+        "fixtureArea": 0,
+        "usableArea": 17.796
+      },
+      {
+        "id": "cozinha",
+        "name": "Cozinha",
+        "kind": "kitchen",
+        "zone": "day",
+        "area": 14.96,
+        "clearArea": 13.588,
+        "fixtureArea": 0,
+        "usableArea": 13.588
+      },
+      {
+        "id": "lavandaria",
+        "name": "Lavandaria",
+        "kind": "utility",
+        "zone": "work",
+        "area": 3.6,
+        "clearArea": 3.086,
+        "fixtureArea": 0,
+        "usableArea": 3.086
+      }
+    ],
+    "interiorArea": 81.78,
+    "interiorClearArea": 73.992,
+    "footprint": 81.78,
+    "waterArea": 0,
+    "outdoor": []
+  },
+  "drags": [
+    {
+      "id": "w10",
+      "writes": "layout.rows[3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.65"
+        }
+      ]
+    },
+    {
+      "id": "w11",
+      "writes": "layout.rows[3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.65"
+        }
+      ]
+    },
+    {
+      "id": "w14",
+      "writes": "layout.cols[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            0
+          ],
+          "literal": "3.45"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "0.85"
+        }
+      ]
+    },
+    {
+      "id": "w15",
+      "writes": "layout.cols[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            0
+          ],
+          "literal": "3.45"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "0.85"
+        }
+      ]
+    },
+    {
+      "id": "w16",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "1.35"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "1.75"
+        }
+      ]
+    },
+    {
+      "id": "w17",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "1.35"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "1.75"
+        }
+      ]
+    },
+    {
+      "id": "w18",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "1.35"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "1.75"
+        }
+      ]
+    },
+    {
+      "id": "w19",
+      "writes": "layout.cols[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "2.25"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            3
+          ],
+          "literal": "2.15"
+        }
+      ]
+    },
+    {
+      "id": "w20",
+      "writes": "layout.cols[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "2.25"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            3
+          ],
+          "literal": "2.15"
+        }
+      ]
+    },
+    {
+      "id": "w21",
+      "writes": "layout.cols[3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            3
+          ],
+          "literal": "2.65"
+        }
+      ]
+    },
+    {
+      "id": "w22",
+      "writes": "layout.cols[3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            3
+          ],
+          "literal": "2.65"
+        }
+      ]
+    },
+    {
+      "id": "w23",
+      "writes": "layout.cols[3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            3
+          ],
+          "literal": "2.65"
+        }
+      ]
+    },
+    {
+      "id": "w4",
+      "writes": "layout.rows[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            0
+          ],
+          "literal": "3.45"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "1.05"
+        }
+      ]
+    },
+    {
+      "id": "w5",
+      "writes": "layout.rows[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "1.55"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.25"
+        }
+      ]
+    },
+    {
+      "id": "w6",
+      "writes": "layout.rows[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "1.55"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.25"
+        }
+      ]
+    },
+    {
+      "id": "w7",
+      "writes": "layout.rows[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.75"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.15"
+        }
+      ]
+    },
+    {
+      "id": "w8",
+      "writes": "layout.rows[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.75"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.15"
+        }
+      ]
+    },
+    {
+      "id": "w9",
+      "writes": "layout.rows[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.75"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.15"
+        }
+      ]
+    }
+  ],
+  "formatted": "{\n  \"title\": \"Apartamento T2\",\n  \"walls\": {\"exterior\":0.25,\"partition\":0.11},\n  \"layout\": {\n    \"cols\": [3.2,1.1,2,2.4],\n    \"rows\": [3.2,1.3,1.5,3.4],\n    \"areas\": [\n      \"quarto1 hall quarto2 quarto2\",\n      \"quarto1 hall wc      quarto2\",\n      \"sala    hall wc      lavandaria\",\n      \"sala    sala cozinha cozinha\"\n    ]\n  },\n  \"rooms\": {\n    \"quarto1\": {\"name\":\"Quarto 1\",\"kind\":\"bedroom\",\"zone\":\"night\"},\n    \"quarto2\": {\"name\":\"Quarto 2\",\"kind\":\"bedroom\",\"zone\":\"night\"},\n    \"wc\": {\"name\":\"WC\",\"kind\":\"bath\",\"zone\":\"night\"},\n    \"hall\": {\"name\":\"Hall\",\"kind\":\"hall\",\"zone\":\"day\"},\n    \"sala\": {\"name\":\"Sala\",\"kind\":\"living\",\"zone\":\"day\"},\n    \"cozinha\": {\"name\":\"Cozinha\",\"kind\":\"kitchen\",\"zone\":\"day\"},\n    \"lavandaria\": {\"name\":\"Lavandaria\",\"kind\":\"utility\",\"zone\":\"work\"}\n  },\n  \"openings\": [\n    {\"type\":\"door\",\"between\":[\"exterior\",\"hall\"],\"on\":{\"room\":\"hall\",\"side\":\"north\"},\"width\":0.9,\"hinge\":\"start\",\"swingInto\":\"hall\",\"entrance\":true},\n    {\"type\":\"door\",\"between\":[\"hall\",\"quarto1\"],\"position\":{\"from\":\"end\",\"distance\":0.55},\"width\":0.8,\"hinge\":\"end\",\"swingInto\":\"quarto1\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"quarto2\"],\"position\":{\"from\":\"end\",\"distance\":0.55},\"width\":0.8,\"hinge\":\"end\",\"swingInto\":\"quarto2\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"wc\"],\"position\":{\"from\":\"start\",\"distance\":0.55},\"width\":0.7,\"hinge\":\"start\",\"swingInto\":\"wc\"},\n    {\"type\":\"cased\",\"between\":[\"hall\",\"sala\"],\"on\":{\"room\":\"hall\",\"side\":\"south\"},\"width\":1.1},\n    {\"type\":\"cased\",\"between\":[\"sala\",\"cozinha\"],\"position\":{\"from\":\"start\",\"distance\":1.4},\"width\":1.8},\n    {\"type\":\"door\",\"between\":[\"cozinha\",\"lavandaria\"],\"position\":{\"from\":\"end\",\"distance\":0.5},\"width\":0.7,\"hinge\":\"end\",\"swingInto\":\"lavandaria\"},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"quarto1\"],\"on\":{\"room\":\"quarto1\",\"side\":\"west\"},\"position\":2.2,\"width\":1.6},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"quarto2\"],\"on\":{\"room\":\"quarto2\",\"side\":\"north\"},\"position\":2.6,\"width\":1.6},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"south\"},\"position\":2.1,\"width\":2.6},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"west\"},\"position\":3,\"width\":1.4},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"cozinha\"],\"on\":{\"room\":\"cozinha\",\"side\":\"south\"},\"position\":2.2,\"width\":1.6},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"lavandaria\"],\"width\":0.8}\n  ]\n}\n"
+}

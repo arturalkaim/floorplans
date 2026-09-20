@@ -1,0 +1,439 @@
+{
+  "findings": [
+    {
+      "rule": "entrance.multiple",
+      "severity": "info",
+      "message": "3 doors lead outside (Corredor, Sala, Arrecadação); the main one is Corredor"
+    }
+  ],
+  "schedule": {
+    "rooms": [
+      {
+        "id": "quarto",
+        "name": "Quarto",
+        "kind": "bedroom",
+        "zone": "night",
+        "area": 22.44,
+        "clearArea": 20.115,
+        "fixtureArea": 0,
+        "usableArea": 20.115
+      },
+      {
+        "id": "wc",
+        "name": "WC",
+        "kind": "bath",
+        "zone": "night",
+        "area": 6.12,
+        "clearArea": 5.208,
+        "fixtureArea": 0,
+        "usableArea": 5.208
+      },
+      {
+        "id": "corredor",
+        "name": "Corredor",
+        "kind": "corridor",
+        "zone": "day",
+        "area": 10.88,
+        "clearArea": 9.548,
+        "fixtureArea": 0,
+        "usableArea": 9.548
+      },
+      {
+        "id": "cozinha",
+        "name": "Cozinha",
+        "kind": "kitchen",
+        "zone": "day",
+        "area": 30.24,
+        "clearArea": 27.314,
+        "fixtureArea": 0,
+        "usableArea": 27.314
+      },
+      {
+        "id": "sala",
+        "name": "Sala",
+        "kind": "living",
+        "zone": "day",
+        "area": 36.72,
+        "clearArea": 33.273,
+        "fixtureArea": 0,
+        "usableArea": 33.273
+      },
+      {
+        "id": "arrecadacao",
+        "name": "Arrecadação",
+        "kind": "storage",
+        "zone": "anexo",
+        "area": 8.32,
+        "clearArea": 6.67,
+        "fixtureArea": 0,
+        "usableArea": 6.67
+      }
+    ],
+    "interiorArea": 114.72,
+    "interiorClearArea": 102.128,
+    "footprint": 114.72,
+    "waterArea": 15,
+    "outdoor": [
+      {
+        "id": "jardim",
+        "name": "Jardim interior",
+        "area": 16,
+        "fixtureArea": 0,
+        "usableArea": 16,
+        "covered": false,
+        "streetConnected": false
+      },
+      {
+        "id": "terraco",
+        "name": "Terraço",
+        "area": 22.04,
+        "fixtureArea": 15,
+        "usableArea": 7.04,
+        "covered": false,
+        "streetConnected": true
+      }
+    ]
+  },
+  "drags": [
+    {
+      "id": "w10",
+      "writes": "2 coordinates in arrecadacao",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "arrecadacao",
+            "rect",
+            1
+          ],
+          "literal": "13.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "arrecadacao",
+            "rect",
+            3
+          ],
+          "literal": "2.35"
+        }
+      ]
+    },
+    {
+      "id": "w11",
+      "writes": "1 coordinates in arrecadacao",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "arrecadacao",
+            "rect",
+            3
+          ],
+          "literal": "2.85"
+        }
+      ]
+    },
+    {
+      "id": "w15",
+      "writes": "layout.cols[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            0
+          ],
+          "literal": "3.65"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "2.95"
+        }
+      ]
+    },
+    {
+      "id": "w16",
+      "writes": "layout.cols[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            0
+          ],
+          "literal": "3.65"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "2.95"
+        }
+      ]
+    },
+    {
+      "id": "w17",
+      "writes": "layout.cols[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            0
+          ],
+          "literal": "3.65"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "2.95"
+        }
+      ]
+    },
+    {
+      "id": "w18",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "3.45"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.35"
+        }
+      ]
+    },
+    {
+      "id": "w19",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "3.45"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.35"
+        }
+      ]
+    },
+    {
+      "id": "w20",
+      "writes": "2 coordinates in arrecadacao",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "arrecadacao",
+            "rect",
+            0
+          ],
+          "literal": "7.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "arrecadacao",
+            "rect",
+            2
+          ],
+          "literal": "2.95"
+        }
+      ]
+    },
+    {
+      "id": "w21",
+      "writes": "layout.cols[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.85"
+        }
+      ]
+    },
+    {
+      "id": "w22",
+      "writes": "layout.cols[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.85"
+        }
+      ]
+    },
+    {
+      "id": "w23",
+      "writes": "layout.cols[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.85"
+        }
+      ]
+    },
+    {
+      "id": "w4",
+      "writes": "layout.rows[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            0
+          ],
+          "literal": "3.65"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "2.95"
+        }
+      ]
+    },
+    {
+      "id": "w5",
+      "writes": "layout.rows[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "3.45"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "1.55"
+        }
+      ]
+    },
+    {
+      "id": "w6",
+      "writes": "layout.rows[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "2.05"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.35"
+        }
+      ]
+    },
+    {
+      "id": "w7",
+      "writes": "layout.rows[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "2.05"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.35"
+        }
+      ]
+    },
+    {
+      "id": "w8",
+      "writes": "layout.rows[2] and [3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "2.05"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.35"
+        }
+      ]
+    },
+    {
+      "id": "w9",
+      "writes": "layout.rows[3]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            3
+          ],
+          "literal": "3.85"
+        }
+      ]
+    }
+  ],
+  "formatted": "{\n  \"title\": \"Quinta com Jardim Interior\",\n  \"units\": \"m\",\n  \"walls\": {\"exterior\":0.3,\"partition\":0.12},\n  \"north\": 0,\n  \"layout\": {\n    \"cols\": [3.4,3.2,3.6],\n    \"rows\": [3.4,3.2,1.8,3.6],\n    \"areas\": [\n      \"quarto corredor cozinha\",\n      \"quarto jardim   cozinha\",\n      \"wc     jardim   cozinha\",\n      \"sala   sala     sala\"\n    ]\n  },\n  \"rooms\": {\n    \"quarto\": {\"name\":\"Quarto\",\"kind\":\"bedroom\",\"zone\":\"night\"},\n    \"wc\": {\"name\":\"WC\",\"kind\":\"bath\",\"zone\":\"night\"},\n    \"corredor\": {\"name\":\"Corredor\",\"kind\":\"corridor\",\"zone\":\"day\"},\n    \"cozinha\": {\"name\":\"Cozinha\",\"kind\":\"kitchen\",\"zone\":\"day\"},\n    \"sala\": {\"name\":\"Sala\",\"kind\":\"living\",\"zone\":\"day\"},\n    \"arrecadacao\": {\"name\":\"Arrecadação\",\"kind\":\"storage\",\"zone\":\"anexo\",\"rect\":[7,13,3.2,2.6]}\n  },\n  \"outdoor\": {\n    \"jardim\": {\"name\":\"Jardim interior\",\"covered\":false},\n    \"terraco\": {\"name\":\"Terraço\",\"covered\":false,\"rect\":[0.2,12.6,5.8,3.8]}\n  },\n  \"fixtures\": [\n    {\"type\":\"pool\",\"in\":\"terraco\",\"name\":\"Piscina\",\"at\":[0.6,13],\"size\":[5,3],\"depth\":1.5}\n  ],\n  \"openings\": [\n    {\"type\":\"door\",\"between\":[\"exterior\",\"corredor\"],\"on\":{\"room\":\"corredor\",\"side\":\"north\"},\"width\":1,\"swingInto\":\"corredor\",\"entrance\":true},\n    {\"type\":\"door\",\"between\":[\"corredor\",\"quarto\"],\"width\":0.9,\"swingInto\":\"quarto\"},\n    {\"type\":\"door\",\"between\":[\"corredor\",\"cozinha\"],\"width\":0.9,\"swingInto\":\"cozinha\"},\n    {\"type\":\"door\",\"between\":[\"cozinha\",\"sala\"],\"width\":1.2,\"swingInto\":\"sala\"},\n    {\"type\":\"door\",\"between\":[\"sala\",\"wc\"],\"width\":0.9,\"swingInto\":\"wc\"},\n    {\"type\":\"door\",\"between\":[\"exterior\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"south\"},\"width\":1.2,\"swingInto\":\"sala\"},\n    {\"type\":\"door\",\"between\":[\"exterior\",\"arrecadacao\"],\"on\":{\"room\":\"arrecadacao\",\"side\":\"north\"},\"width\":0.9,\"swingInto\":\"arrecadacao\"},\n    {\"type\":\"window\",\"between\":[\"jardim\",\"quarto\"],\"on\":{\"room\":\"quarto\",\"side\":\"east\"},\"width\":1.8},\n    {\"type\":\"window\",\"between\":[\"jardim\",\"wc\"],\"on\":{\"room\":\"wc\",\"side\":\"east\"},\"width\":0.6},\n    {\"type\":\"window\",\"between\":[\"jardim\",\"cozinha\"],\"on\":{\"room\":\"cozinha\",\"side\":\"west\"},\"width\":1.6},\n    {\"type\":\"window\",\"between\":[\"jardim\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"north\",\"near\":[5,8.4]},\"width\":2}\n  ]\n}\n"
+}

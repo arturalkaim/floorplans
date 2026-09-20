@@ -1,0 +1,391 @@
+{
+  "findings": [
+    {
+      "rule": "circulation.share",
+      "severity": "info",
+      "message": "Hall take 15 % of the interior (18 m²); above 10 % is worth questioning",
+      "rooms": [
+        "hall"
+      ]
+    },
+    {
+      "rule": "entrance.multiple",
+      "severity": "info",
+      "message": "2 doors lead outside (Hall, Sala); the main one is Hall"
+    }
+  ],
+  "schedule": {
+    "rooms": [
+      {
+        "id": "spa",
+        "name": "Sala da piscina",
+        "kind": "other",
+        "zone": "spa",
+        "area": 48.96,
+        "clearArea": 45.441,
+        "fixtureArea": 23.68,
+        "usableArea": 21.761
+      },
+      {
+        "id": "hall",
+        "name": "Hall",
+        "kind": "hall",
+        "zone": "day",
+        "area": 18,
+        "clearArea": 16.675,
+        "fixtureArea": 0,
+        "usableArea": 16.675
+      },
+      {
+        "id": "cozinha",
+        "name": "Cozinha",
+        "kind": "kitchen",
+        "zone": "day",
+        "area": 21.6,
+        "clearArea": 19.628,
+        "fixtureArea": 3.49,
+        "usableArea": 16.138
+      },
+      {
+        "id": "wc",
+        "name": "WC",
+        "kind": "wc",
+        "zone": "day",
+        "area": 12.6,
+        "clearArea": 11.491,
+        "fixtureArea": 1.855,
+        "usableArea": 9.636
+      },
+      {
+        "id": "sala",
+        "name": "Sala",
+        "kind": "living",
+        "zone": "day",
+        "area": 15.12,
+        "clearArea": 13.526,
+        "fixtureArea": 0,
+        "usableArea": 13.526
+      }
+    ],
+    "interiorArea": 116.28,
+    "interiorClearArea": 106.761,
+    "footprint": 116.28,
+    "waterArea": 34.72,
+    "outdoor": [
+      {
+        "id": "deck",
+        "name": "Deck",
+        "area": 36.48,
+        "fixtureArea": 11.04,
+        "usableArea": 25.44,
+        "covered": false,
+        "streetConnected": true
+      }
+    ]
+  },
+  "drags": [
+    {
+      "id": "w10",
+      "writes": "layout.cols[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            0
+          ],
+          "literal": "5.05"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "2.75"
+        }
+      ]
+    },
+    {
+      "id": "w11",
+      "writes": "layout.cols[0] and [1]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            0
+          ],
+          "literal": "5.05"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "2.75"
+        }
+      ]
+    },
+    {
+      "id": "w12",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "3.25"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.35"
+        }
+      ]
+    },
+    {
+      "id": "w13",
+      "writes": "layout.cols[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            1
+          ],
+          "literal": "3.25"
+        },
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.35"
+        }
+      ]
+    },
+    {
+      "id": "w14",
+      "writes": "layout.cols[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.85"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            1,
+            0
+          ],
+          "literal": "11.65"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            2,
+            0
+          ],
+          "literal": "11.65"
+        }
+      ]
+    },
+    {
+      "id": "w15",
+      "writes": "layout.cols[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "cols",
+            2
+          ],
+          "literal": "3.85"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            1,
+            0
+          ],
+          "literal": "11.65"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            2,
+            0
+          ],
+          "literal": "11.65"
+        }
+      ]
+    },
+    {
+      "id": "w4",
+      "writes": "layout.rows[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "3.25"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "3.95"
+        }
+      ]
+    },
+    {
+      "id": "w5",
+      "writes": "layout.rows[1] and [2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            1
+          ],
+          "literal": "3.25"
+        },
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "3.95"
+        }
+      ]
+    },
+    {
+      "id": "w6",
+      "writes": "layout.rows[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "4.45"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            0,
+            1
+          ],
+          "literal": "10.45"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            1,
+            1
+          ],
+          "literal": "10.45"
+        }
+      ]
+    },
+    {
+      "id": "w7",
+      "writes": "layout.rows[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "4.45"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            0,
+            1
+          ],
+          "literal": "10.45"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            1,
+            1
+          ],
+          "literal": "10.45"
+        }
+      ]
+    },
+    {
+      "id": "w8",
+      "writes": "layout.rows[2]",
+      "edits": [
+        {
+          "path": [
+            "layout",
+            "rows",
+            2
+          ],
+          "literal": "4.45"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            0,
+            1
+          ],
+          "literal": "10.45"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "poly",
+            1,
+            1
+          ],
+          "literal": "10.45"
+        }
+      ]
+    }
+  ],
+  "formatted": "{\n  \"title\": \"Casa com Piscina\",\n  \"units\": \"m\",\n  \"walls\": {\"exterior\":0.3,\"partition\":0.12},\n  \"north\": 0,\n  \"layout\": {\n    \"cols\": [4.8,3,3.6],\n    \"rows\": [3,3,4.2],\n    \"areas\": [\n      \"spa    hall   cozinha\",\n      \"spa    hall   cozinha\",\n      \"spa    wc     sala\"\n    ]\n  },\n  \"rooms\": {\n    \"spa\": {\"name\":\"Sala da piscina\",\"kind\":\"other\",\"zone\":\"spa\",\"habitable\":false,\"wet\":true,\"circulation\":false},\n    \"hall\": {\"name\":\"Hall\",\"kind\":\"hall\",\"zone\":\"day\"},\n    \"cozinha\": {\"name\":\"Cozinha\",\"kind\":\"kitchen\",\"zone\":\"day\"},\n    \"wc\": {\"name\":\"WC\",\"kind\":\"wc\",\"zone\":\"day\"},\n    \"sala\": {\"name\":\"Sala\",\"kind\":\"living\",\"zone\":\"day\"}\n  },\n  \"outdoor\": {\n    \"deck\": {\"name\":\"Deck\",\"covered\":false,\"poly\":[[0,10.2],[11.4,10.2],[11.4,13.4],[0,13.4]]}\n  },\n  \"fixtures\": [\n    {\"type\":\"pool\",\"in\":\"spa\",\"name\":\"Piscina interior\",\"poly\":[[0.8,1],[4,1],[4,8.4],[0.8,8.4]],\"depth\":1.4},\n    {\"type\":\"pool\",\"in\":\"deck\",\"name\":\"Piscina exterior\",\"at\":[5.4,10.6],\"size\":[4.6,2.4],\"depth\":1.6},\n    {\"type\":\"bath\",\"in\":\"wc\",\"name\":\"Banheira\",\"at\":[4.95,6.15],\"size\":[1.7,0.75]},\n    {\"type\":\"wc\",\"in\":\"wc\",\"name\":\"Sanita\",\"at\":[7.3,6.15],\"size\":[0.4,0.7]},\n    {\"type\":\"sink\",\"in\":\"wc\",\"name\":\"Lavatório\",\"at\":[4.95,9.2],\"size\":[0.6,0.5]},\n    {\"type\":\"counter\",\"in\":\"cozinha\",\"name\":\"Bancada\",\"at\":[8,0.4],\"size\":[2.6,0.65]},\n    {\"type\":\"island\",\"in\":\"cozinha\",\"name\":\"Ilha\",\"at\":[8.9,3.8],\"size\":[2,0.9]}\n  ],\n  \"openings\": [\n    {\"type\":\"door\",\"between\":[\"exterior\",\"hall\"],\"on\":{\"room\":\"hall\",\"side\":\"north\"},\"width\":1,\"swingInto\":\"hall\",\"entrance\":true},\n    {\"type\":\"door\",\"between\":[\"hall\",\"spa\"],\"width\":1,\"swingInto\":\"hall\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"cozinha\"],\"width\":0.9,\"swingInto\":\"cozinha\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"wc\"],\"width\":0.8,\"swingInto\":\"hall\"},\n    {\"type\":\"door\",\"between\":[\"cozinha\",\"sala\"],\"width\":1.2,\"swingInto\":\"sala\"},\n    {\"type\":\"door\",\"between\":[\"deck\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"south\"},\"width\":1.2,\"swingInto\":\"sala\"},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"spa\"],\"on\":{\"room\":\"spa\",\"side\":\"west\"},\"width\":3},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"cozinha\"],\"on\":{\"room\":\"cozinha\",\"side\":\"east\"},\"width\":1.6},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"east\"},\"width\":1.8},\n    {\"type\":\"window\",\"between\":[\"deck\",\"wc\"],\"on\":{\"room\":\"wc\",\"side\":\"south\"},\"width\":0.6}\n  ]\n}\n"
+}

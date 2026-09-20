@@ -1,0 +1,235 @@
+{
+  "findings": [],
+  "schedule": {
+    "rooms": [
+      {
+        "id": "sala",
+        "name": "Sala e cozinha",
+        "kind": "living",
+        "area": 20,
+        "clearArea": 18.43,
+        "fixtureArea": 0,
+        "usableArea": 18.43
+      },
+      {
+        "id": "wc",
+        "name": "Casa de banho",
+        "kind": "wc",
+        "area": 2.4,
+        "clearArea": 1.943,
+        "fixtureArea": 0,
+        "usableArea": 1.943
+      },
+      {
+        "id": "arrumos",
+        "name": "Arrumos",
+        "kind": "storage",
+        "area": 2.4,
+        "clearArea": 1.943,
+        "fixtureArea": 0,
+        "usableArea": 1.943
+      }
+    ],
+    "interiorArea": 24.8,
+    "interiorClearArea": 22.316,
+    "footprint": 24.8,
+    "waterArea": 0,
+    "outdoor": [
+      {
+        "id": "deck",
+        "name": "Deck",
+        "area": 10,
+        "fixtureArea": 0,
+        "usableArea": 10,
+        "covered": false,
+        "streetConnected": true
+      }
+    ]
+  },
+  "drags": [
+    {
+      "id": "w1",
+      "writes": "2 coordinates in sala",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "rect",
+            1
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "rect",
+            3
+          ],
+          "literal": "3.75"
+        }
+      ]
+    },
+    {
+      "id": "w10",
+      "writes": "1 coordinates in arrumos",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "arrumos",
+            "rect",
+            2
+          ],
+          "literal": "1.45"
+        }
+      ]
+    },
+    {
+      "id": "w2",
+      "writes": "2 coordinates in wc",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "wc",
+            "rect",
+            1
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "wc",
+            "rect",
+            3
+          ],
+          "literal": "1.75"
+        }
+      ]
+    },
+    {
+      "id": "w3",
+      "writes": "3 coordinates in wc, arrumos",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "wc",
+            "rect",
+            3
+          ],
+          "literal": "2.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "arrumos",
+            "rect",
+            1
+          ],
+          "literal": "2.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "arrumos",
+            "rect",
+            3
+          ],
+          "literal": "1.75"
+        }
+      ]
+    },
+    {
+      "id": "w4",
+      "writes": "3 coordinates in sala, deck",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "rect",
+            3
+          ],
+          "literal": "4.25"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "rect",
+            1
+          ],
+          "literal": "4.25"
+        },
+        {
+          "path": [
+            "outdoor",
+            "deck",
+            "rect",
+            3
+          ],
+          "literal": "1.75"
+        }
+      ]
+    },
+    {
+      "id": "w5",
+      "writes": "1 coordinates in arrumos",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "arrumos",
+            "rect",
+            3
+          ],
+          "literal": "2.25"
+        }
+      ]
+    },
+    {
+      "id": "w6",
+      "writes": "2 coordinates in sala",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "rect",
+            0
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "rect",
+            2
+          ],
+          "literal": "4.75"
+        }
+      ]
+    },
+    {
+      "id": "w9",
+      "writes": "1 coordinates in wc",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "wc",
+            "rect",
+            2
+          ],
+          "literal": "1.45"
+        }
+      ]
+    }
+  ],
+  "formatted": "{\n  \"title\": \"Cabana\",\n  \"walls\": {\"exterior\":0.2,\"partition\":0.1},\n  \"rooms\": {\n    \"sala\": {\"name\":\"Sala e cozinha\",\"kind\":\"living\",\"rect\":[0,0,5,4]},\n    \"wc\": {\"name\":\"Casa de banho\",\"kind\":\"wc\",\"rect\":[5,0,1.2,2]},\n    \"arrumos\": {\"name\":\"Arrumos\",\"kind\":\"storage\",\"rect\":[5,2,1.2,2]}\n  },\n  \"outdoor\": {\n    \"deck\": {\"name\":\"Deck\",\"rect\":[0,4,5,2]}\n  },\n  \"openings\": [\n    {\"type\":\"door\",\"between\":[\"deck\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"south\"},\"position\":0.9,\"width\":0.9,\"hinge\":\"start\",\"swingInto\":\"sala\"},\n    {\"type\":\"door\",\"between\":[\"sala\",\"wc\"],\"position\":{\"from\":\"end\",\"distance\":0.5},\"width\":0.7,\"hinge\":\"end\",\"swingInto\":\"wc\"},\n    {\"type\":\"door\",\"between\":[\"sala\",\"arrumos\"],\"position\":{\"from\":\"start\",\"distance\":0.5},\"width\":0.7,\"hinge\":\"start\",\"swingInto\":\"arrumos\"},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"north\"},\"position\":2.5,\"width\":2.4},\n    {\"type\":\"window\",\"between\":[\"deck\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"south\"},\"position\":3.4,\"width\":2},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"sala\"],\"on\":{\"room\":\"sala\",\"side\":\"west\"},\"width\":1.2},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"wc\"],\"on\":{\"room\":\"wc\",\"side\":\"east\"},\"width\":0.6}\n  ]\n}\n"
+}

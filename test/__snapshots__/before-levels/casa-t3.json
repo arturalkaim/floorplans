@@ -1,0 +1,853 @@
+{
+  "findings": [
+    {
+      "rule": "wet.no_window",
+      "severity": "warning",
+      "message": "WC suite has no exterior window; plan mechanical extraction",
+      "rooms": [
+        "wc_suite"
+      ],
+      "at": [
+        5.7,
+        1.1
+      ]
+    },
+    {
+      "rule": "wet.no_window",
+      "severity": "warning",
+      "message": "WC social has no exterior window; plan mechanical extraction",
+      "rooms": [
+        "wc_social"
+      ],
+      "at": [
+        5.6,
+        6.8
+      ]
+    },
+    {
+      "rule": "circulation.share",
+      "severity": "info",
+      "message": "Distribuidor + Hall take 19 % of the interior (33.64 m²); above 10 % is worth questioning",
+      "rooms": [
+        "distrib",
+        "hall"
+      ]
+    }
+  ],
+  "schedule": {
+    "rooms": [
+      {
+        "id": "suite",
+        "name": "Suite parental",
+        "kind": "bedroom",
+        "zone": "night",
+        "area": 20.24,
+        "clearArea": 18.394,
+        "fixtureArea": 0,
+        "usableArea": 18.394
+      },
+      {
+        "id": "wc_suite",
+        "name": "WC suite",
+        "kind": "bath",
+        "zone": "night",
+        "area": 4.84,
+        "clearArea": 4.139,
+        "fixtureArea": 0,
+        "usableArea": 4.139
+      },
+      {
+        "id": "closet",
+        "name": "Closet",
+        "kind": "storage",
+        "zone": "night",
+        "area": 4.84,
+        "clearArea": 4.326,
+        "fixtureArea": 0,
+        "usableArea": 4.326
+      },
+      {
+        "id": "quarto1",
+        "name": "Quarto 1",
+        "kind": "bedroom",
+        "zone": "night",
+        "area": 15.84,
+        "clearArea": 14.581,
+        "fixtureArea": 0,
+        "usableArea": 14.581
+      },
+      {
+        "id": "quarto2",
+        "name": "Quarto 2",
+        "kind": "bedroom",
+        "zone": "night",
+        "area": 15.84,
+        "clearArea": 14.581,
+        "fixtureArea": 0,
+        "usableArea": 14.581
+      },
+      {
+        "id": "wc_comum",
+        "name": "WC comum",
+        "kind": "bath",
+        "zone": "night",
+        "area": 12.32,
+        "clearArea": 10.852,
+        "fixtureArea": 0,
+        "usableArea": 10.852
+      },
+      {
+        "id": "distrib",
+        "name": "Distribuidor",
+        "kind": "corridor",
+        "zone": "night",
+        "area": 17.08,
+        "clearArea": 15.347,
+        "fixtureArea": 0,
+        "usableArea": 15.347
+      },
+      {
+        "id": "hall",
+        "name": "Hall",
+        "kind": "hall",
+        "zone": "day",
+        "area": 16.56,
+        "clearArea": 15.277,
+        "fixtureArea": 0,
+        "usableArea": 15.277
+      },
+      {
+        "id": "escritorio",
+        "name": "Escritório",
+        "kind": "office",
+        "zone": "work",
+        "area": 11.96,
+        "clearArea": 10.492,
+        "fixtureArea": 0,
+        "usableArea": 10.492
+      },
+      {
+        "id": "wc_social",
+        "name": "WC social",
+        "kind": "wc",
+        "zone": "day",
+        "area": 4,
+        "clearArea": 3.534,
+        "fixtureArea": 0,
+        "usableArea": 3.534
+      },
+      {
+        "id": "sala",
+        "name": "Sala comum",
+        "kind": "living",
+        "zone": "day",
+        "area": 31.52,
+        "clearArea": 29.415,
+        "fixtureArea": 0,
+        "usableArea": 29.415
+      },
+      {
+        "id": "cozinha",
+        "name": "Cozinha",
+        "kind": "kitchen",
+        "zone": "day",
+        "area": 19.8,
+        "clearArea": 17.99,
+        "fixtureArea": 0,
+        "usableArea": 17.99
+      },
+      {
+        "id": "despensa",
+        "name": "Despensa",
+        "kind": "storage",
+        "zone": "work",
+        "area": 3.24,
+        "clearArea": 2.671,
+        "fixtureArea": 0,
+        "usableArea": 2.671
+      }
+    ],
+    "interiorArea": 178.08,
+    "interiorClearArea": 161.599,
+    "footprint": 178.08,
+    "waterArea": 0,
+    "outdoor": [
+      {
+        "id": "alpendre",
+        "name": "Alpendre",
+        "area": 15.12,
+        "fixtureArea": 0,
+        "usableArea": 15.12,
+        "covered": true,
+        "streetConnected": true
+      }
+    ]
+  },
+  "drags": [
+    {
+      "id": "w1",
+      "writes": "2 coordinates in suite",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "suite",
+            "rect",
+            1
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "suite",
+            "rect",
+            3
+          ],
+          "literal": "4.15"
+        }
+      ]
+    },
+    {
+      "id": "w16",
+      "writes": "3 coordinates in cozinha, despensa",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            2,
+            1
+          ],
+          "literal": "7.85"
+        },
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            3,
+            1
+          ],
+          "literal": "7.85"
+        },
+        {
+          "path": [
+            "rooms",
+            "despensa",
+            "rect",
+            3
+          ],
+          "literal": "2.05"
+        }
+      ]
+    },
+    {
+      "id": "w17",
+      "writes": "3 coordinates in wc_social, sala",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "wc_social",
+            "rect",
+            3
+          ],
+          "literal": "2.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "poly",
+            4,
+            1
+          ],
+          "literal": "8.05"
+        },
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "poly",
+            5,
+            1
+          ],
+          "literal": "8.05"
+        }
+      ]
+    },
+    {
+      "id": "w18",
+      "writes": "3 coordinates in hall, escritorio",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "hall",
+            "rect",
+            3
+          ],
+          "literal": "3.85"
+        },
+        {
+          "path": [
+            "rooms",
+            "escritorio",
+            "rect",
+            1
+          ],
+          "literal": "8.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "escritorio",
+            "rect",
+            3
+          ],
+          "literal": "2.35"
+        }
+      ]
+    },
+    {
+      "id": "w19",
+      "writes": "1 coordinates in escritorio",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "escritorio",
+            "rect",
+            3
+          ],
+          "literal": "2.85"
+        }
+      ]
+    },
+    {
+      "id": "w2",
+      "writes": "2 coordinates in wc_suite",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "wc_suite",
+            "rect",
+            1
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "wc_suite",
+            "rect",
+            3
+          ],
+          "literal": "1.95"
+        }
+      ]
+    },
+    {
+      "id": "w22",
+      "writes": "2 coordinates in cozinha",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            4,
+            1
+          ],
+          "literal": "10.85"
+        },
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            5,
+            1
+          ],
+          "literal": "10.85"
+        }
+      ]
+    },
+    {
+      "id": "w23",
+      "writes": "2 coordinates in suite",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "suite",
+            "rect",
+            0
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "suite",
+            "rect",
+            2
+          ],
+          "literal": "4.35"
+        }
+      ]
+    },
+    {
+      "id": "w24",
+      "writes": "2 coordinates in hall",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "hall",
+            "rect",
+            0
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "hall",
+            "rect",
+            2
+          ],
+          "literal": "4.35"
+        }
+      ]
+    },
+    {
+      "id": "w25",
+      "writes": "2 coordinates in escritorio",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "escritorio",
+            "rect",
+            0
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "escritorio",
+            "rect",
+            2
+          ],
+          "literal": "4.35"
+        }
+      ]
+    },
+    {
+      "id": "w3",
+      "writes": "2 coordinates in quarto1",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "quarto1",
+            "rect",
+            1
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "quarto1",
+            "rect",
+            3
+          ],
+          "literal": "4.15"
+        }
+      ]
+    },
+    {
+      "id": "w32",
+      "writes": "3 coordinates in wc_social, sala",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "wc_social",
+            "rect",
+            2
+          ],
+          "literal": "2.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "poly",
+            0,
+            0
+          ],
+          "literal": "6.85"
+        },
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "poly",
+            5,
+            0
+          ],
+          "literal": "6.85"
+        }
+      ]
+    },
+    {
+      "id": "w35",
+      "writes": "3 coordinates in quarto1, quarto2",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "quarto1",
+            "rect",
+            2
+          ],
+          "literal": "3.85"
+        },
+        {
+          "path": [
+            "rooms",
+            "quarto2",
+            "rect",
+            0
+          ],
+          "literal": "10.65"
+        },
+        {
+          "path": [
+            "rooms",
+            "quarto2",
+            "rect",
+            2
+          ],
+          "literal": "3.35"
+        }
+      ]
+    },
+    {
+      "id": "w36",
+      "writes": "4 coordinates in sala, cozinha",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "poly",
+            1,
+            0
+          ],
+          "literal": "12.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "sala",
+            "poly",
+            2,
+            0
+          ],
+          "literal": "12.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            0,
+            0
+          ],
+          "literal": "12.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            5,
+            0
+          ],
+          "literal": "12.25"
+        }
+      ]
+    },
+    {
+      "id": "w37",
+      "writes": "3 coordinates in quarto2, wc_comum",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "quarto2",
+            "rect",
+            2
+          ],
+          "literal": "3.85"
+        },
+        {
+          "path": [
+            "rooms",
+            "wc_comum",
+            "rect",
+            0
+          ],
+          "literal": "14.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "wc_comum",
+            "rect",
+            2
+          ],
+          "literal": "2.55"
+        }
+      ]
+    },
+    {
+      "id": "w38",
+      "writes": "4 coordinates in cozinha, despensa",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            1,
+            0
+          ],
+          "literal": "15.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            2,
+            0
+          ],
+          "literal": "15.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "despensa",
+            "rect",
+            0
+          ],
+          "literal": "15.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "despensa",
+            "rect",
+            2
+          ],
+          "literal": "1.55"
+        }
+      ]
+    },
+    {
+      "id": "w39",
+      "writes": "1 coordinates in wc_comum",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "wc_comum",
+            "rect",
+            2
+          ],
+          "literal": "3.05"
+        }
+      ]
+    },
+    {
+      "id": "w4",
+      "writes": "2 coordinates in quarto2",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "quarto2",
+            "rect",
+            1
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "quarto2",
+            "rect",
+            3
+          ],
+          "literal": "4.15"
+        }
+      ]
+    },
+    {
+      "id": "w40",
+      "writes": "1 coordinates in distrib",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "distrib",
+            "rect",
+            2
+          ],
+          "literal": "12.45"
+        }
+      ]
+    },
+    {
+      "id": "w41",
+      "writes": "1 coordinates in despensa",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "despensa",
+            "rect",
+            2
+          ],
+          "literal": "2.05"
+        }
+      ]
+    },
+    {
+      "id": "w42",
+      "writes": "2 coordinates in cozinha",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            3,
+            0
+          ],
+          "literal": "17.05"
+        },
+        {
+          "path": [
+            "rooms",
+            "cozinha",
+            "poly",
+            4,
+            0
+          ],
+          "literal": "17.05"
+        }
+      ]
+    },
+    {
+      "id": "w5",
+      "writes": "2 coordinates in wc_comum",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "wc_comum",
+            "rect",
+            1
+          ],
+          "literal": "0.25"
+        },
+        {
+          "path": [
+            "rooms",
+            "wc_comum",
+            "rect",
+            3
+          ],
+          "literal": "4.15"
+        }
+      ]
+    },
+    {
+      "id": "w6",
+      "writes": "3 coordinates in wc_suite, closet",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "wc_suite",
+            "rect",
+            3
+          ],
+          "literal": "2.45"
+        },
+        {
+          "path": [
+            "rooms",
+            "closet",
+            "rect",
+            1
+          ],
+          "literal": "2.45"
+        },
+        {
+          "path": [
+            "rooms",
+            "closet",
+            "rect",
+            3
+          ],
+          "literal": "1.95"
+        }
+      ]
+    },
+    {
+      "id": "w7",
+      "writes": "3 coordinates in suite, hall",
+      "edits": [
+        {
+          "path": [
+            "rooms",
+            "suite",
+            "rect",
+            3
+          ],
+          "literal": "4.65"
+        },
+        {
+          "path": [
+            "rooms",
+            "hall",
+            "rect",
+            1
+          ],
+          "literal": "4.65"
+        },
+        {
+          "path": [
+            "rooms",
+            "hall",
+            "rect",
+            3
+          ],
+          "literal": "3.35"
+        }
+      ]
+    }
+  ],
+  "formatted": "{\n  \"title\": \"Casa T3\",\n  \"units\": \"m\",\n  \"walls\": {\"exterior\":0.3,\"partition\":0.12},\n  \"north\": 0,\n  \"rooms\": {\n    \"suite\": {\"name\":\"Suite parental\",\"kind\":\"bedroom\",\"zone\":\"night\",\"rect\":[0,0,4.6,4.4]},\n    \"wc_suite\": {\"name\":\"WC suite\",\"kind\":\"bath\",\"zone\":\"night\",\"rect\":[4.6,0,2.2,2.2]},\n    \"closet\": {\"name\":\"Closet\",\"kind\":\"storage\",\"zone\":\"night\",\"rect\":[4.6,2.2,2.2,2.2]},\n    \"quarto1\": {\"name\":\"Quarto 1\",\"kind\":\"bedroom\",\"zone\":\"night\",\"rect\":[6.8,0,3.6,4.4]},\n    \"quarto2\": {\"name\":\"Quarto 2\",\"kind\":\"bedroom\",\"zone\":\"night\",\"rect\":[10.4,0,3.6,4.4]},\n    \"wc_comum\": {\"name\":\"WC comum\",\"kind\":\"bath\",\"zone\":\"night\",\"rect\":[14,0,2.8,4.4]},\n    \"distrib\": {\"name\":\"Distribuidor\",\"kind\":\"corridor\",\"zone\":\"night\",\"rect\":[4.6,4.4,12.2,1.4]},\n    \"hall\": {\"name\":\"Hall\",\"kind\":\"hall\",\"zone\":\"day\",\"rect\":[0,4.4,4.6,3.6]},\n    \"escritorio\": {\"name\":\"Escritório\",\"kind\":\"office\",\"zone\":\"work\",\"rect\":[0,8,4.6,2.6]},\n    \"wc_social\": {\"name\":\"WC social\",\"kind\":\"wc\",\"zone\":\"day\",\"rect\":[4.6,5.8,2,2]},\n    \"sala\": {\"name\":\"Sala comum\",\"kind\":\"living\",\"zone\":\"day\",\"poly\":[[6.6,5.8],[12,5.8],[12,10.6],[4.6,10.6],[4.6,7.8],[6.6,7.8]]},\n    \"cozinha\": {\"name\":\"Cozinha\",\"kind\":\"kitchen\",\"zone\":\"day\",\"poly\":[[12,5.8],[15,5.8],[15,7.6],[16.8,7.6],[16.8,10.6],[12,10.6]]},\n    \"despensa\": {\"name\":\"Despensa\",\"kind\":\"storage\",\"zone\":\"work\",\"rect\":[15,5.8,1.8,1.8]}\n  },\n  \"outdoor\": {\n    \"alpendre\": {\"name\":\"Alpendre\",\"covered\":true,\"rect\":[6.6,10.6,5.4,2.8]}\n  },\n  \"openings\": [\n    {\"type\":\"door\",\"between\":[\"exterior\",\"hall\"],\"position\":{\"from\":\"start\",\"distance\":1.7},\"width\":1,\"hinge\":\"end\",\"swingInto\":\"hall\",\"entrance\":true},\n    {\"type\":\"door\",\"between\":[\"hall\",\"wc_social\"],\"position\":{\"from\":\"start\",\"distance\":0.6},\"width\":0.8,\"hinge\":\"end\",\"swingInto\":\"wc_social\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"escritorio\"],\"position\":{\"from\":\"start\",\"distance\":1.6},\"width\":0.8,\"hinge\":\"start\",\"swingInto\":\"escritorio\"},\n    {\"type\":\"door\",\"between\":[\"hall\",\"suite\"],\"position\":{\"from\":\"start\",\"distance\":3.45},\"width\":0.9,\"hinge\":\"end\",\"swingInto\":\"suite\"},\n    {\"type\":\"door\",\"between\":[\"suite\",\"wc_suite\"],\"position\":{\"from\":\"start\",\"distance\":1},\"width\":0.8,\"hinge\":\"end\",\"swingInto\":\"wc_suite\"},\n    {\"type\":\"door\",\"between\":[\"suite\",\"closet\"],\"position\":{\"from\":\"start\",\"distance\":0.8},\"width\":0.8,\"hinge\":\"end\",\"swingInto\":\"closet\"},\n    {\"type\":\"door\",\"between\":[\"distrib\",\"quarto1\"],\"position\":{\"from\":\"start\",\"distance\":1.05},\"width\":0.9,\"hinge\":\"end\",\"swingInto\":\"quarto1\"},\n    {\"type\":\"door\",\"between\":[\"distrib\",\"quarto2\"],\"position\":{\"from\":\"start\",\"distance\":1.05},\"width\":0.9,\"hinge\":\"end\",\"swingInto\":\"quarto2\"},\n    {\"type\":\"door\",\"between\":[\"distrib\",\"wc_comum\"],\"position\":{\"from\":\"start\",\"distance\":1.05},\"width\":0.9,\"hinge\":\"end\",\"swingInto\":\"wc_comum\"},\n    {\"type\":\"door\",\"between\":[\"despensa\",\"cozinha\"],\"on\":{\"room\":\"despensa\",\"side\":\"south\"},\"position\":{\"from\":\"start\",\"distance\":1},\"width\":0.8,\"hinge\":\"start\",\"swingInto\":\"cozinha\"},\n    {\"type\":\"cased\",\"between\":[\"hall\",\"distrib\"],\"width\":1.4},\n    {\"type\":\"cased\",\"between\":[\"distrib\",\"sala\"],\"position\":{\"from\":\"start\",\"distance\":1.2},\"width\":1.6},\n    {\"type\":\"cased\",\"between\":[\"sala\",\"cozinha\"],\"position\":{\"from\":\"start\",\"distance\":2},\"width\":1.6},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"suite\"],\"on\":{\"room\":\"suite\",\"side\":\"north\"},\"position\":2.3,\"width\":2.2},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"quarto1\"],\"position\":1.9,\"width\":1.8},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"quarto2\"],\"position\":1.9,\"width\":1.8},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"wc_comum\"],\"on\":{\"room\":\"wc_comum\",\"side\":\"north\"},\"position\":1.5,\"width\":1},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"sala\"],\"position\":1,\"width\":1.2},\n    {\"type\":\"window\",\"between\":[\"alpendre\",\"sala\"],\"position\":2.6,\"width\":3.6},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"cozinha\"],\"on\":{\"room\":\"cozinha\",\"side\":\"south\"},\"position\":2,\"width\":2},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"escritorio\"],\"on\":{\"room\":\"escritorio\",\"side\":\"south\"},\"position\":2.1,\"width\":2.2},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"escritorio\"],\"on\":{\"room\":\"escritorio\",\"side\":\"west\"},\"position\":1.3,\"width\":1.4},\n    {\"type\":\"window\",\"between\":[\"exterior\",\"despensa\"],\"position\":0.9,\"width\":1}\n  ]\n}\n"
+}
