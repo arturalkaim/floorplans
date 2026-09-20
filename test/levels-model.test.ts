@@ -48,7 +48,7 @@ describe("levels: the shape of a multi-level document", () => {
 
   it("points an error at the level the author wrote it on", () => {
     const doc = twoStoreys();
-    doc.levels.cima = { rooms: { quarto: { kind: "bedroom", poly: [[0, 0], [1, 1], [0, 1]] } } };
+    doc.levels.cima = { rooms: { quarto: { kind: "bedroom", poly: [[0, 0], [4, 0], [4, 3], [2, 3], [2, -1], [0, -1]] } } };
     assert.match(issuesOf(doc).join("\n"), /levels\.cima\.rooms\.quarto\.poly/);
   });
 

@@ -61,7 +61,7 @@ describe("edit: which walls a drawing may offer to drag", () => {
           (pt) => {
             const on = pt[axis]!;
             const at = pt[1 - axis]!;
-            return Math.abs(on - w.c) < 1e-6 && (at < w.from - 1e-6 || at > w.to + 1e-6);
+            return Math.abs(on - w.c!) < 1e-6 && (at < w.from - 1e-6 || at > w.to + 1e-6);
           },
         ),
       );
@@ -342,7 +342,7 @@ describe("edit: a rect-authored space is written back as a rect", () => {
     const text = load("casa-patio");
     const model = modelOf(text);
     const before = JSON.parse(text).outdoor.patio.rect as number[];
-    const wall = model.walls.find((w) => w.axis === "v" && Math.abs(w.c - before[0]!) < 1e-6)!;
+    const wall = model.walls.find((w) => w.axis === "v" && Math.abs(w.c! - before[0]!) < 1e-6)!;
     const d = draggableWalls(text, model).get(wall.id)!;
     const out = applyDrag(text, d, d.c + 0.3);
     const after = JSON.parse(out).outdoor.patio.rect as number[];

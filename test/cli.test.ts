@@ -46,13 +46,13 @@ describe("cli", () => {
     assert.equal(run(["missing.json"], fakeIo({}).io), 2);
   });
   it("exits 2 with the issue list on a schema error", () => {
-    const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [1, 1], [0, 1]] } } }) });
+    const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [4, 0], [4, 3], [2, 3], [2, -1], [0, -1]] } } }) });
     assert.equal(run(["plan.json"], t.io), 2);
     assert.match(t.err(), /rooms\.a\.poly/);
     assert.equal(t.out(), "", "text form belongs on stderr only; stdout must stay empty");
   });
   it("--json emits a JSON error envelope on stdout on a schema error, not text on stderr", () => {
-    const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [1, 1], [0, 1]] } } }) });
+    const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [4, 0], [4, 3], [2, 3], [2, -1], [0, -1]] } } }) });
     assert.equal(run(["plan.json", "--json"], t.io), 2);
     assert.equal(t.err(), "", "schema errors under --json must not also print text to stderr");
     const parsed = JSON.parse(t.out());

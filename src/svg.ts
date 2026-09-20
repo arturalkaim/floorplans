@@ -1,6 +1,7 @@
+import { geometryPath, normalOn, offsetGeometry, pointOn, wallSubGeometry } from "./derive.ts";
 import { doorSwing } from "./doors.ts";
 import { snap } from "./geometry.ts";
-import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, WallSegment } from "./types.ts";
+import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening } from "./types.ts";
 import { isStreet } from "./types.ts";
 
 export interface RenderOptions {
@@ -144,9 +145,7 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
       body += `<polygon points="${pts(ring)}" stroke-width="1.5" stroke-dasharray="6 4"/>`;
     for (const w of below.walls) {
       if (w.kind === "exterior") continue;
-      const p0 = at(w, w.from);
-      const p1 = at(w, w.to);
-      body += `<line x1="${px(X(p0[0]))}" y1="${px(Y(p0[1]))}" x2="${px(X(p1[0]))}" y2="${px(Y(p1[1]))}" stroke-width="1" stroke-dasharray="4 4"/>`;
+      body += `<path d="${geometryPath(w.geometry, X, Y, S)}" stroke-width="1" stroke-dasharray="4 4"/>`;
     }
     body += `</g>`;
   }
@@ -217,33 +216,70 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   }
 
   // ---- walls, split at openings; partitions first so exterior walls cover their ends ----
+  //
+  // Each run is one stroked <path>, butt-capped, its own geometry followed exactly: an
+  // arc is an `A` command, so a curved wall stays smooth at any zoom instead of showing
+  // the chords the topology was built from. The old trick — a <line> whose every true
+  // end was extended by half a thickness — closed a right angle exactly and nothing
+  // else, overshooting at 45° and leaving a notch at 150° (docs/gaps-design.md §1.3.7).
+  // What it was standing in for is the mitre at the junction, which is drawn here as the
+  // wedge two wall ends leave between them, at whatever angle and whatever two
+  // thicknesses they have. `test/svg-coverage.test.ts` measures that the paper covered is
+  // the same to within a square millimetre on every fixture.
   const openingsByWall = new Map<string, ResolvedOpening[]>();
   for (const o of lm.openings) (openingsByWall.get(o.wall.id) ?? openingsByWall.set(o.wall.id, []).get(o.wall.id)!).push(o);
   const wallOrder = [...lm.walls].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "partition" ? -1 : 1));
+  /** the true (un-cut) ends of every wall, so the junctions between them can be mitred */
+  const ends = new Map<string, Array<{ w: (typeof lm.walls)[number]; at: Pt; away: Pt }>>();
+  const endKey = (p: Pt) => `${px(p[0])},${px(p[1])}`;
   for (const w of wallOrder) {
     const t = L(w.thickness);
-    const ext = t / 2;
     const cuts = (openingsByWall.get(w.id) ?? []).map((o) => [o.from, o.to] as const).sort((a, b) => a[0] - b[0]);
     let cursor = w.from;
-    const runs: Array<[number, number, boolean, boolean]> = []; // from, to, extendStart, extendEnd
+    const runs: Array<[number, number, boolean, boolean]> = []; // from, to, trueStart, trueEnd
     for (const [a, b] of cuts) {
       if (a > cursor) runs.push([cursor, a, cursor === w.from, false]);
       cursor = Math.max(cursor, b);
     }
     if (cursor < w.to) runs.push([cursor, w.to, cursor === w.from, true]);
     if (cuts.length === 0) runs.splice(0, runs.length, [w.from, w.to, true, true]);
-    for (const [a, b, es, ee] of runs) {
-      // a real wall end extends by half its thickness to fill the corner; an opening jamb does not
-      const aa = (w.axis === "h" ? X(a) : Y(a)) - (es ? ext : 0);
-      const bb = (w.axis === "h" ? X(b) : Y(b)) + (ee ? ext : 0);
-      const c = w.axis === "h" ? Y(w.c) : X(w.c);
-      const opacity = w.kind === "exterior" ? "1" : ".9";
-      const tag = `data-wall="${w.id}" data-axis="${w.axis}" data-c="${w.c}"`;
+    const opacity = w.kind === "exterior" ? "1" : ".9";
+    const tag =
+      `data-wall="${w.id}"` + (w.axis === undefined ? "" : ` data-axis="${w.axis}" data-c="${w.c}"`);
+    for (const [a, b, ts, te] of runs) {
+      const g = wallSubGeometry(w, a, b);
       body +=
-        w.axis === "h"
-          ? `<line ${tag} x1="${px(aa)}" y1="${px(c)}" x2="${px(bb)}" y2="${px(c)}" stroke="var(--wall)" stroke-opacity="${opacity}" stroke-width="${px(t)}" stroke-linecap="butt"/>`
-          : `<line ${tag} x1="${px(c)}" y1="${px(aa)}" x2="${px(c)}" y2="${px(bb)}" stroke="var(--wall)" stroke-opacity="${opacity}" stroke-width="${px(t)}" stroke-linecap="butt"/>`;
+        `<path ${tag} d="${geometryPath(g, X, Y, S)}" fill="none" stroke="var(--wall)" stroke-opacity="${opacity}"` +
+        ` stroke-width="${px(t)}" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="8"/>`;
+      // record the two ends that a junction can be mitred at
+      for (const [isTrue, param, other] of [
+        [ts, a, Math.min(b, a + 0.001)],
+        [te, b, Math.max(a, b - 0.001)],
+      ] as const) {
+        if (!isTrue) continue;
+        const at = pointOn(w, param);
+        const near = pointOn(w, other);
+        const d: Pt = [at[0] - near[0], at[1] - near[1]];
+        const l = Math.hypot(d[0], d[1]) || 1;
+        const k = endKey(at);
+        (ends.get(k) ?? ends.set(k, []).get(k)!).push({ w, at, away: [d[0] / l, d[1] / l] });
+      }
     }
+  }
+  // the wedge two wall ends leave between them: mitred where the mitre is reasonable,
+  // bevelled where it would spike, and nothing at all where three or more walls meet,
+  // because their own bands already cover that junction
+  for (const list of ends.values()) {
+    if (list.length !== 2) continue;
+    const [p, q] = list as [(typeof list)[number], (typeof list)[number]];
+    const wedge = mitreWedge(
+      [X(p.at[0]), Y(p.at[1])],
+      p.away,
+      L(p.w.thickness) / 2,
+      q.away,
+      L(q.w.thickness) / 2,
+    );
+    if (wedge) body += `<polygon class="wall-join" points="${wedge.map(([x, y]) => `${px(x)},${px(y)}`).join(" ")}" fill="var(--wall)" fill-opacity="${p.w.kind === "exterior" || q.w.kind === "exterior" ? "1" : ".9"}" stroke="none"/>`;
   }
 
   // ---- openings ----
@@ -254,16 +290,18 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   for (const o of lm.openings) {
     const w = o.wall;
     const t = L(w.thickness);
-    const p0 = at(w, o.from);
-    const p1 = at(w, o.to);
+    const p0 = pointOn(w, o.from);
+    const p1 = pointOn(w, o.to);
     if (o.spec.type === "window") {
-      const off = t / 4;
-      const dx = w.axis === "h" ? 0 : off;
-      const dy = w.axis === "h" ? off : 0;
-      body += `<g class="window"><line x1="${px(X(p0[0]) - dx)}" y1="${px(Y(p0[1]) - dy)}" x2="${px(X(p1[0]) - dx)}" y2="${px(Y(p1[1]) - dy)}" stroke="var(--wall)" stroke-width="1"/>`;
-      body += `<line x1="${px(X(p0[0]) + dx)}" y1="${px(Y(p0[1]) + dy)}" x2="${px(X(p1[0]) + dx)}" y2="${px(Y(p1[1]) + dy)}" stroke="var(--wall)" stroke-width="1"/></g>`;
+      // two lines offset along the wall's own normal — concentric arcs on a curved wall
+      const off = w.thickness / 4;
+      const g = wallSubGeometry(w, o.from, o.to);
+      body += `<g class="window">`;
+      for (const s of [-1, 1])
+        body += `<path d="${geometryPath(offsetGeometry(g, s * off), X, Y, S)}" fill="none" stroke="var(--wall)" stroke-width="1"/>`;
+      body += `</g>`;
     } else if (o.spec.type === "cased") {
-      body += `<line x1="${px(X(p0[0]))}" y1="${px(Y(p0[1]))}" x2="${px(X(p1[0]))}" y2="${px(Y(p1[1]))}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/>`;
+      body += `<path d="${geometryPath(wallSubGeometry(w, o.from, o.to), X, Y, S)}" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/>`;
     } else {
       const s = doorSwing(o);
       if (!s) continue;
@@ -287,10 +325,15 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
       const toStreet = street(w.neg) || street(w.pos);
       if (toStreet && (o.spec.entrance || streetDoors === 1)) {
         const c = o.center;
-        const out: Pt = w.axis === "h" ? [0, street(w.neg) ? -1 : 1] : [street(w.neg) ? -1 : 1, 0];
+        // outward along the wall's own normal, away from whichever side the street is on
+        const n = normalOn(w, (o.from + o.to) / 2);
+        const sgn = street(w.neg) ? -1 : 1;
+        const out: Pt = [n[0] * sgn, n[1] * sgn];
         const lx = X(c[0]) + out[0] * (t / 2 + 14);
         const ly = Y(c[1]) + out[1] * (t / 2 + 14);
-        const rot = w.axis === "v" ? ` transform="rotate(-90 ${px(lx)} ${px(ly)})"` : "";
+        // keep the word readable: upright, unless the wall runs more north-south than east-west
+        const turn = Math.abs(out[0]) > Math.abs(out[1]) ? -90 : 0;
+        const rot = turn === 0 ? "" : ` transform="rotate(${turn} ${px(lx)} ${px(ly)})"`;
         body += `<text x="${px(lx)}" y="${px(ly + 3)}" text-anchor="middle" class="tag"${rot}>ENTRANCE</text>`;
       }
     }
@@ -398,9 +441,37 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   function text(x: number, y: number, s: string, cls: string, anchor = "middle") {
     return `<text x="${px(x)}" y="${px(y)}" text-anchor="${anchor}" class="${cls}">${esc(s)}</text>`;
   }
-  function at(w: WallSegment, t: number): Pt {
-    return w.axis === "h" ? [t, w.c] : [w.c, t];
-  }
+}
+
+/**
+ * The wedge two wall ends leave between them at a junction: the quadrilateral from the
+ * corner out to each butt cap's outer corner and on to where the two outer faces meet.
+ *
+ * INVARIANT: for two equal-thickness walls meeting at a right angle this is exactly the
+ * square that the old renderer filled by extending each end by half a thickness, which
+ * is what keeps every existing drawing's ink unchanged (test/svg-coverage.test.ts). At
+ * any other angle, or between two different thicknesses, it is the mitre and the old
+ * trick was not.
+ */
+function mitreWedge(
+  c: [number, number],
+  awayA: Pt,
+  hA: number,
+  awayB: Pt,
+  hB: number,
+): Array<[number, number]> | undefined {
+  const u: [number, number] = [awayA[0], awayA[1]];
+  const v: [number, number] = [-awayB[0], -awayB[1]];
+  const cr = u[0] * v[1] - u[1] * v[0];
+  if (Math.abs(cr) < 1e-9) return undefined; // collinear: the two bands already meet
+  const s = cr > 0 ? -1 : 1;
+  const a: [number, number] = [c[0] - u[1] * hA * s, c[1] + u[0] * hA * s];
+  const b: [number, number] = [c[0] - v[1] * hB * s, c[1] + v[0] * hB * s];
+  const den = u[0] * v[1] - u[1] * v[0];
+  const t = ((b[0] - a[0]) * v[1] - (b[1] - a[1]) * v[0]) / den;
+  const apex: [number, number] = [a[0] + u[0] * t, a[1] + u[1] * t];
+  const limit = 8 * Math.max(hA, hB);
+  return Math.hypot(apex[0] - c[0], apex[1] - c[1]) <= limit ? [c, a, apex, b] : [c, a, b];
 }
 
 function centroid(poly: Pt[]): Pt {

@@ -15,11 +15,22 @@ export type Poly = Array<[number, number]>;
 
 const NUM = /-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g;
 
-/** Every `<line …>` and `<path …>` tagged `data-wall`, as filled polygons. */
+/**
+ * Every piece of wall ink: the `<line>` runs the old renderer drew, the stroked `<path>`
+ * runs the new one draws, and the filled `<polygon class="wall-join">` wedges that fill
+ * a mitred junction — which is the ink the old renderer got by extending each run's end
+ * by half a thickness, and is therefore part of the same comparison.
+ */
 export function wallSolids(svg: string): Poly[] {
   const out: Poly[] = [];
   for (const m of svg.matchAll(/<line\b([^>]*\bdata-wall=[^>]*)\/>/g)) out.push(...lineSolid(m[1]!));
   for (const m of svg.matchAll(/<path\b([^>]*\bdata-wall=[^>]*)\/>/g)) out.push(...pathSolid(m[1]!));
+  for (const m of svg.matchAll(/<polygon\b[^>]*\bclass="wall-join"[^>]*\bpoints="([^"]*)"[^>]*\/>/g)) {
+    const nums = (m[1]!.match(NUM) ?? []).map(Number);
+    const poly: Poly = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) poly.push([nums[i]!, nums[i + 1]!]);
+    if (poly.length >= 3) out.push(poly);
+  }
   return out;
 }
 
@@ -189,17 +200,19 @@ function union(list: Array<[number, number]>): Array<[number, number]> {
 
 const measure = (list: Array<[number, number]>): number => list.reduce((s, [a, b]) => s + (b - a), 0);
 
-/** Length of the symmetric difference of two interval unions. */
-function symDiff(a: Array<[number, number]>, b: Array<[number, number]>): number {
+/** Length covered by exactly one of two interval unions, each direction separately. */
+function oneSided(a: Array<[number, number]>, b: Array<[number, number]>): [number, number] {
   const cuts = [...new Set([...a, ...b].flat())].sort((m, n) => m - n);
-  let d = 0;
+  let onlyA = 0;
+  let onlyB = 0;
   for (let i = 0; i + 1 < cuts.length; i++) {
     const mid = (cuts[i]! + cuts[i + 1]!) / 2;
     const inA = a.some(([p, q]) => mid > p && mid < q);
     const inB = b.some(([p, q]) => mid > p && mid < q);
-    if (inA !== inB) d += cuts[i + 1]! - cuts[i]!;
+    if (inA && !inB) onlyA += cuts[i + 1]! - cuts[i]!;
+    else if (inB && !inA) onlyB += cuts[i + 1]! - cuts[i]!;
   }
-  return d;
+  return [onlyA, onlyB];
 }
 
 export interface Coverage {
@@ -208,6 +221,10 @@ export interface Coverage {
   areaB: number;
   /** area covered by exactly one of them, in m² */
   difference: number;
+  /** area the first drawing inks and the second does not, in m² */
+  onlyA: number;
+  /** area the second inks and the first does not — ink that appeared from nowhere */
+  onlyB: number;
 }
 
 /**
@@ -219,7 +236,7 @@ export function compareWallCoverage(svgA: string, svgB: string, scale = 40, step
   const A = wallSolids(svgA);
   const B = wallSolids(svgB);
   const all = [...A, ...B];
-  if (all.length === 0) return { areaA: 0, areaB: 0, difference: 0 };
+  if (all.length === 0) return { areaA: 0, areaB: 0, difference: 0, onlyA: 0, onlyB: 0 };
   let y0 = Infinity;
   let y1 = -Infinity;
   for (const p of all)
@@ -229,14 +246,23 @@ export function compareWallCoverage(svgA: string, svgB: string, scale = 40, step
     }
   let areaA = 0;
   let areaB = 0;
-  let diff = 0;
+  let onlyA = 0;
+  let onlyB = 0;
   for (let y = y0 + step / 2; y < y1; y += step) {
     const ua = union(A.flatMap((p) => spans(p, y)));
     const ub = union(B.flatMap((p) => spans(p, y)));
     areaA += measure(ua) * step;
     areaB += measure(ub) * step;
-    diff += symDiff(ua, ub) * step;
+    const [a, b] = oneSided(ua, ub);
+    onlyA += a * step;
+    onlyB += b * step;
   }
   const px2 = scale * scale;
-  return { areaA: areaA / px2, areaB: areaB / px2, difference: diff / px2 };
+  return {
+    areaA: areaA / px2,
+    areaB: areaB / px2,
+    difference: (onlyA + onlyB) / px2,
+    onlyA: onlyA / px2,
+    onlyB: onlyB / px2,
+  };
 }

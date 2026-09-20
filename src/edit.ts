@@ -4,8 +4,17 @@
 import { metres, spliceAll } from "./jsonpos.ts";
 import type { JsonPath } from "./jsonpos.ts";
 import { levelOf } from "./svg.ts";
-import type { LevelModel, Model, Pt, WallSegment } from "./types.ts";
+import type { Axis, LevelModel, Model, Pt, Wall } from "./types.ts";
 import { ownerId } from "./types.ts";
+
+/**
+ * A wall that is a straight axis-parallel segment, and so can be moved by rewriting one
+ * coordinate. Angled and curved walls move along their own normal instead, which is a
+ * different edit (`handles`).
+ */
+type AxisWall = Wall & { axis: Axis; c: number };
+const axisWall = (w: Wall): AxisWall | undefined =>
+  w.axis !== undefined && w.c !== undefined ? (w as AxisWall) : undefined;
 
 /** Rooms and tracks may not be dragged below this, in metres. */
 const MIN_TRACK = 0.4;
@@ -142,7 +151,7 @@ function boundaries(tracks: number[]): number[] {
  * A wall on a track boundary moves by resizing the two tracks either side: one grows by
  * exactly what the other loses, so the grid still tiles and every other room stays put.
  */
-function fromGrid(doc: Doc, root: JsonPath, levels: string[], wall: WallSegment): Draggable | undefined {
+function fromGrid(doc: Doc, root: JsonPath, levels: string[], wall: AxisWall): Draggable | undefined {
   // A level either authors its own `layout` tracks or sits on the document's shared
   // track grid. Dragging a shared boundary moves that wall on every level using it, so
   // the status line has to say so: the surprise is the whole risk of sharing.
@@ -253,7 +262,7 @@ function fromGrid(doc: Doc, root: JsonPath, levels: string[], wall: WallSegment)
  * room has a vertex on this coordinate outside the wall's span, moving it would need the
  * edge split and new vertices inserted, which is a different operation than a drag.
  */
-function fromPolys(doc: Doc, root: JsonPath, wall: WallSegment): Draggable | undefined {
+function fromPolys(doc: Doc, root: JsonPath, wall: AxisWall): Draggable | undefined {
   const axis: 0 | 1 = wall.axis === "v" ? 0 : 1;
   const along = 1 - axis;
   let lower = -Infinity;
@@ -332,7 +341,11 @@ export function draggableWalls(text: string, model: Model, level?: string): Map<
   const shared = onSharedGrid(doc, model);
   const out = new Map<string, Draggable>();
   for (const wall of lm.walls) {
-    const d = fromGrid(doc, root, shared, wall) ?? fromPolys(doc, root, wall);
+    // an angled or curved wall is not a single coordinate, so it is not offered here;
+    // `wallHandles` moves it along its own normal instead
+    const aw = axisWall(wall);
+    if (!aw) continue;
+    const d = fromGrid(doc, root, shared, aw) ?? fromPolys(doc, root, aw);
     if (d && d.max > d.min) out.set(wall.id, d);
   }
   return out;

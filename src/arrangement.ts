@@ -240,6 +240,12 @@ export interface HalfEdge {
   face: number;
   /** the arc this edge lies on, when it does */
   circle: { c: [number, number]; r: number; arc: Arc } | undefined;
+  /**
+   * Which authored ring edges this piece is part of — both of them where two spaces
+   * share a wall. It is how a room's own edge is matched back to the walls running
+   * along it, which is what the per-edge offset distance needs.
+   */
+  srcs: Array<{ input: number; edge: number }>;
 }
 
 export interface Face {
@@ -268,14 +274,17 @@ const twinOf = (h: number) => h ^ 1;
 export function arrange(rings: MmRing[]): Arrangement {
   const segs = snapRound(segsOf(rings));
 
-  // unique undirected edges; an edge two spaces share appears once
-  const edges = new Map<string, Seg>();
+  // unique undirected edges; an edge two spaces share appears once, carrying both
+  const edges = new Map<string, { seg: Seg; srcs: Array<{ input: number; edge: number }> }>();
   for (const s of segs) {
-    const k = same(s.a, s.b) ? "" : keyOf(s.a, s.b);
-    if (k === "") continue;
+    if (same(s.a, s.b)) continue;
+    const k = keyOf(s.a, s.b);
     const had = edges.get(k);
-    if (!had) edges.set(k, s);
-    else if (!had.circle && s.circle) edges.set(k, s);
+    if (!had) edges.set(k, { seg: s, srcs: [{ input: s.input, edge: s.edge }] });
+    else {
+      if (!had.seg.circle && s.circle) had.seg = s;
+      if (!had.srcs.some((x) => x.input === s.input && x.edge === s.edge)) had.srcs.push({ input: s.input, edge: s.edge });
+    }
   }
 
   const index = new Map<string, number>();
@@ -290,12 +299,12 @@ export function arrange(rings: MmRing[]): Arrangement {
   };
 
   const half: HalfEdge[] = [];
-  for (const s of edges.values()) {
+  for (const { seg: s, srcs } of edges.values()) {
     const u = vert(s.a);
     const v = vert(s.b);
     const h = half.length;
-    half.push({ from: u, to: v, twin: h + 1, next: -1, face: -1, circle: s.circle });
-    half.push({ from: v, to: u, twin: h, next: -1, face: -1, circle: s.circle });
+    half.push({ from: u, to: v, twin: h + 1, next: -1, face: -1, circle: s.circle, srcs });
+    half.push({ from: v, to: u, twin: h, next: -1, face: -1, circle: s.circle, srcs });
   }
 
   // outgoing half-edges per vertex, by bearing
@@ -362,7 +371,7 @@ export function arrange(rings: MmRing[]): Arrangement {
     // cycle must also contain this one's bounding box and enclose more area — without
     // both guards the outer boundary of a ring of rooms would "land in" the hole it
     // encircles, whose own boundary contains that point.
-    const q = poleOfInaccessibility([pts[i]!]).at;
+    const q = interiorPoint([pts[i]!]);
     const twinCycle = cycleOf[twinOf(c[0]!)]!;
     let best = -1;
     cycles.forEach((d, j) => {
@@ -465,10 +474,37 @@ function outsidePoint(verts: P[]): [number, number] {
  * 0.3 mm across that lands outside, and the arrangement does produce faces that thin
  * where two rings very nearly coincide (docs/gaps-design.md §1.3.1 item 5).
  */
+/**
+ * A probe only has to be safely inside. The area centroid is inside a convex face —
+ * which is most of them — so it is tried first and costs one pass over the boundary; the
+ * quadtree search is for the faces where it is not, and it stops at 5 % of the clearance
+ * it has already found. The exact pole is wanted only where it is reported (§1.3.5).
+ */
 function facePole(f: Face, half: HalfEdge[], verts: P[]): [number, number] {
-  // a probe only has to be safely inside, so it stops at 5 % of the clearance it has
-  // already found; the exact pole is wanted only where it is reported (§1.3.5)
-  return poleOfInaccessibility(f.cycles.map((c) => cyclePoints(c, half, verts)), 1, 0.05).at;
+  return interiorPoint(f.cycles.map((c) => cyclePoints(c, half, verts)));
+}
+
+/** Any point safely inside these rings; the centroid when it is, the pole when it is not. */
+export function interiorPoint(rings: P[][]): [number, number] {
+  const c = areaCentroid(rings);
+  if (c && distanceToRings(c, rings) > 1) return c;
+  return poleOfInaccessibility(rings, 1, 0.05).at;
+}
+
+function areaCentroid(rings: P[][]): [number, number] | undefined {
+  let a2 = 0;
+  let cx = 0;
+  let cy = 0;
+  for (const r of rings)
+    for (let i = 0; i < r.length; i++) {
+      const p = r[i]!;
+      const q = r[(i + 1) % r.length]!;
+      const c = p[0] * q[1] - q[0] * p[1];
+      a2 += c;
+      cx += (p[0] + q[0]) * c;
+      cy += (p[1] + q[1]) * c;
+    }
+  return a2 === 0 ? undefined : [cx / (3 * a2), cy / (3 * a2)];
 }
 
 // ---------- the inscribed circle ----------
@@ -499,12 +535,21 @@ export function distToSeg(p: [number, number], a: [number, number], b: [number, 
 
 /**
  * The pole of inaccessibility: the centre of the largest circle that fits inside
- * `rings` (outer ring first, holes after). A quadtree refinement, as Mapbox's polylabel
- * does it, on a deterministic queue — no randomness, no dependence on input order.
+ * `rings` (outer ring first, holes after), and that circle's radius.
  *
- * Ties are broken by taking the centre of the cell that achieved the optimum, and cells
- * are searched in a fixed order, so a rectangle — whose optimum is a whole segment of
- * its medial axis — always yields the same answer.
+ * Two phases, because one does not do. The quadtree refinement — as Mapbox's polylabel
+ * does it, on a deterministic max-heap, no randomness and no dependence on input order —
+ * bounds the answer quickly but costs dearly to *place* it: along the medial axis of a
+ * long room the distance is flat, so every cell on a 12 m band has to be split down to
+ * the requested precision. Measured on casa-t3's 12.08 × 1.28 m corridor, 69 181 cells
+ * at half a millimetre against 4 317 at five. So the quadtree runs to a coarse bound,
+ * and a deterministic pattern search walks downhill from its winner to the requested
+ * precision in a few dozen evaluations more.
+ *
+ * The pattern search only ever increases the clearance, so the result is never worse
+ * than the quadtree's bound and is normally exact. Ties are broken by a fixed search
+ * order, so a rectangle — whose optimum is a whole segment of its medial axis — always
+ * yields the same answer.
  */
 export function poleOfInaccessibility(
   rings: Array<Array<[number, number]>>,
@@ -533,8 +578,44 @@ export function poleOfInaccessibility(
     d: number;
     max: number;
   }
-  const make = (x: number, y: number, half: number): Cell => {
-    const d = distanceToRings([x, y], rings);
+  // the boundary as a flat array, so the inner loop neither indexes nested arrays nor
+  // allocates: this is the hottest thing in the whole pipeline
+  const seg: number[] = [];
+  for (const ring of rings)
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i]!;
+      const b = ring[(i + 1) % ring.length]!;
+      seg.push(a[0], a[1], b[0], b[1]);
+    }
+  const clearance = (x: number, y: number): number => {
+    let best = Infinity;
+    for (let i = 0; i < seg.length; i += 4) {
+      const ax = seg[i]!;
+      const ay = seg[i + 1]!;
+      const dx = seg[i + 2]! - ax;
+      const dy = seg[i + 3]! - ay;
+      const l2 = dx * dx + dy * dy;
+      const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / l2));
+      const ex = x - ax - dx * t;
+      const ey = y - ay - dy * t;
+      const d2 = ex * ex + ey * ey;
+      if (d2 < best) best = d2;
+    }
+    return Math.sqrt(best);
+  };
+  const isInside = (x: number, y: number): boolean => {
+    let inside = false;
+    for (const ring of rings) if (pointInPolyMm([x, y], ring)) inside = !inside;
+    return inside;
+  };
+  /**
+   * `sure` says the point is known to be inside without testing: a child cell whose
+   * parent's clearance already covers it cannot have crossed the boundary, and the even-odd
+   * test is half the cost of the whole search.
+   */
+  const make = (x: number, y: number, half: number, sure = false): Cell => {
+    const c = clearance(x, y);
+    const d = sure || isInside(x, y) ? c : -c;
     return { x, y, half, d, max: d + half * Math.SQRT2 };
   };
   // a max-heap on `max`, ties broken by position, so the search order — and therefore
@@ -574,19 +655,55 @@ export function poleOfInaccessibility(
   const step = cellSize / 2;
   for (let x = x0; x < x1 + step; x += step)
     for (let y = y0; y < y1 + step; y += step) push(make(x + step / 2, y + step / 2, step / 2));
+  // Seed the incumbent with the area centroid when it is inside: a good lower bound is
+  // what prunes the queue, and for most rooms the centroid is already most of the answer.
   let best = make(x0 + w / 2, y0 + h / 2, 0);
+  const seed = areaCentroid(rings.map((r) => r.map(([x, y]) => [x, y] as P)));
+  if (seed) {
+    const c = make(seed[0], seed[1], 0);
+    if (c.d > best.d) best = c;
+  }
+  const coarse = Math.max(precision, cellSize / 200);
   let guard = 0;
   while (queue.length && guard++ < 200_000) {
     const c = pop();
     if (c.d > best.d) best = c;
-    if (c.max - best.d <= Math.max(precision, best.d * relative)) continue;
+    if (c.max - best.d <= Math.max(coarse, best.d * relative)) continue;
     const q = c.half / 2;
-    push(make(c.x - q, c.y - q, q));
-    push(make(c.x + q, c.y - q, q));
-    push(make(c.x - q, c.y + q, q));
-    push(make(c.x + q, c.y + q, q));
+    const sure = c.d > q * Math.SQRT2;
+    push(make(c.x - q, c.y - q, q, sure));
+    push(make(c.x + q, c.y - q, q, sure));
+    push(make(c.x - q, c.y + q, q, sure));
+    push(make(c.x + q, c.y + q, q, sure));
   }
-  return { at: [best.x, best.y], r: Math.max(0, best.d) };
+  // a caller that only wants a point safely inside stops here
+  if (relative > 0 || coarse <= precision) return { at: [best.x, best.y], r: Math.max(0, best.d) };
+
+  const around: ReadonlyArray<readonly [number, number]> = [
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+    [0, -1],
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
+  ];
+  let cur = best;
+  let reach = coarse;
+  for (let i = 0; i < 500 && reach > precision / 2; i++) {
+    let moved = false;
+    const sure = cur.d > reach * Math.SQRT2;
+    for (const [dx, dy] of around) {
+      const c = make(cur.x + dx * reach, cur.y + dy * reach, 0, sure);
+      if (c.d > cur.d) {
+        cur = c;
+        moved = true;
+      }
+    }
+    if (!moved) reach /= 2;
+  }
+  return { at: [cur.x, cur.y], r: Math.max(0, cur.d) };
 }
 
 // ---------- reading the arrangement ----------

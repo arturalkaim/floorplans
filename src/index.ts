@@ -17,7 +17,7 @@ import type { RenderOptions } from "./svg.ts";
 
 export { parse, PlanError, derive, checkRules, renderSvg, sortFindings };
 // the parser's own vocabularies, so documentation cannot drift from what it accepts
-export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES, VERTICAL_TYPES } from "./parse.ts";
+export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES, SWEEPS, VERTICAL_TYPES } from "./parse.ts";
 // the parser's own field table, so documentation cannot drift from what it accepts either —
 // `floorplan --schema` prints this
 export { SCHEMA } from "./parse.ts";

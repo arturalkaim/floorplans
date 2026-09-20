@@ -66,7 +66,7 @@ describe("parse: schema errors carry paths", () => {
   it("reports several problems at once", () => {
     const paths = issuesOf({
       walls: { exterior: -1 },
-      rooms: { "Bad Id": { poly: rect(0, 0, 1, 1) }, ok: { poly: [[0, 0], [1, 1], [0, 1]] } },
+      rooms: { "Bad Id": { poly: rect(0, 0, 1, 1) }, ok: { poly: [[0, 0], [4, 0], [4, 3], [2, 3], [2, -1], [0, -1]] } },
       openings: [{ type: "door", between: ["ok", "nope"], width: 0.8 }],
     });
     assert.ok(paths.includes("walls.exterior"));
@@ -106,12 +106,24 @@ describe("parse: schema errors carry paths", () => {
     assert.deepEqual(issuesOf({ rooms: { a: { name: "A" } } }), ["rooms.a"]);
   });
   it("reports a bad poly once, not also as missing geometry", () => {
-    const bent = [[0, 0], [2, 0], [5, 7], [0, 7]];
-    assert.deepEqual(issuesOf({ rooms: { a: { poly: bent } } }), ["rooms.a.poly"]);
+    // a bow tie: the one shape a ring may not be, now that any simple polygon is legal
+    const bowTie = [[0, 0], [4, 0], [4, 3], [2, 3], [2, -1], [0, -1]];
+    assert.deepEqual(issuesOf({ rooms: { a: { poly: bowTie } } }), ["rooms.a.poly"]);
     assert.deepEqual(
-      issuesOf({ rooms: { a: { poly: rect(0, 0, 2, 2) } }, outdoor: { p: { poly: bent } } }),
+      issuesOf({ rooms: { a: { poly: rect(0, 0, 2, 2) } }, outdoor: { p: { poly: bowTie } } }),
       ["outdoor.p.poly"],
     );
+  });
+
+  it("accepts an angled room, which it used to refuse outright", () => {
+    // `rooms.sala.poly: edge [6,4]→[3,6] is not axis-aligned` was the whole gap
+    const plan = parse({ rooms: { sala: { poly: [[0, 0], [6, 0], [6, 4], [3, 6], [0, 4]] } } });
+    assert.equal(plan.rooms[0]!.poly.length, 5);
+    assert.deepEqual(plan.rooms[0]!.arcs, [undefined, undefined, undefined, undefined, undefined]);
+  });
+
+  it("accepts a triangle", () => {
+    assert.equal(parse({ rooms: { a: { poly: [[0, 0], [4, 0], [0, 3]] } } }).rooms[0]!.poly.length, 3);
   });
   it("accepts a numeric position as metres from start", () => {
     const plan = parse(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, position: 1.25 }] }));
@@ -224,11 +236,16 @@ describe("parse: fixtures", () => {
       assert.ok(paths.includes(expected), `expected issue at ${expected}, got ${paths.join(", ")}`);
   });
 
-  it("rejects a non-rectilinear fixture poly once", () => {
+  it("rejects a self-intersecting fixture poly once", () => {
     assert.deepEqual(
-      issuesOf(withFix([{ type: "pool", in: "a", poly: [[0, 0], [2, 0], [5, 7], [0, 7]] }])),
+      issuesOf(withFix([{ type: "pool", in: "a", poly: [[0, 0], [4, 0], [4, 3], [2, 3], [2, -1], [0, -1]] }])),
       ["fixtures[0].poly"],
     );
+  });
+
+  it("takes an angled fixture", () => {
+    const plan = parse(twoRooms({ fixtures: [{ type: "counter", in: "a", poly: [[0.5, 0.5], [2, 0.5], [2.4, 1.5], [0.5, 1.5]] }] }));
+    assert.equal(plan.fixtures[0]!.poly.length, 4);
   });
 
   it("accepts an outdoor space as the host", () => {
