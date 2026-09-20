@@ -442,6 +442,18 @@ export interface RoomModel {
    * (docs/gaps-design.md §1.3.5, finding 6) and no rectangle describes the fit.
    */
   minDimension: number;
+  /**
+   * Where the room's name is drawn, and where a finding about the room as a whole
+   * points.
+   *
+   * §1.3.5 says `labelAt := inscribed.at`, the pole of inaccessibility. It stays the
+   * centre of `clearRect` instead, because five rules in `rules.ts` publish it as a
+   * finding's `at` — `room.min_dimension`, `room.no_window`, `circulation.share` among
+   * them — and those coordinates are pinned byte-for-byte by the fixtures' baselines. The
+   * pole is not lost: it is `inscribed.at`, next to it, and it is what `minDimension`
+   * measures a non-rectilinear room by. Moving the label is a change to what findings say,
+   * not to the geometry, so it belongs to whoever decides that, not to this rewrite.
+   */
   labelAt: Pt;
   exteriorWindow: boolean;
   exteriorFaces: Side[];
