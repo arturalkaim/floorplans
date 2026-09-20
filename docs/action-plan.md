@@ -103,3 +103,32 @@ handles; `overlay()` + `facesWhere()` instead of a Martínez–Rueda library.
   contract (W4a), `--schema` (W4b), app level switcher (W4c).
 - Deferred by the levels agent with reasons: `stair.no_void` (design wording would fire on
   every correct stair), `stair.no_landing`, `void.unaligned`; gallery openings onto voids.
+- W4c merged (playground/gallery level switcher, browser-verified on moradia-2-pisos and
+  broken-levels). W4a and W4b still running.
+- W4b merged (`SCHEMA` table drives `checkKeys`; `--schema` / `--schema=md`; reference page
+  renders it and throws on drift). 381 tests. `--schema` measures 2 459 tokens for 71 fields,
+  not the review's ≈600 — that estimate predates levels/vertical/voids/grid. A terser
+  presentation (types only, docs behind `--schema=md`) is a candidate follow-up.
+- W4a merged (`Finding.path`, string ids with a documented synthesis rule, findings-first
+  `--json` with `=all|schedule|walls`, `lint()` + `schema.*` findings, compact output).
+  casa-t3 `--json` 1 270 → 174 tokens. 432 tests. W5 DSL + terse `--schema` launched; W6
+  geometry core running.
+- W4d merged (terse `--schema` default: 568 tokens; `=full` 2 554; `=md`). 439 tests.
+  Remaining in flight: W5 DSL, W6 geometry core.
+- W5 merged (line DSL: `parseDsl`/`toDsl`, `fmt --to`, `set`/drags on `.dsl`, playground
+  toggle, `--schema=dsl`, authoring eval + slips probe that found two DSL defects). casa-t3
+  788 DSL vs 1 502 JSON. 539 tests. Cold-agent eval launched (sonnet, references only).
+- DSL follow-ups left by W5: `patch remove/append/insert` on DSL (refused, points at
+  `fmt --to json`); `--schema=dsl` at 1 388 tokens wants a terse form; `_note` keys have no
+  DSL spelling; arcs round-trip once W6 lands.
+- Cold-agent eval merged: JSON 20/20 first-time schema failures, DSL 0/20, tokens 8 124 vs
+  3 532. Root cause is the terse `--schema` reference, not JSON: `levels?: level` reads as an
+  array; the id regex and compass convention are unstated. W4e fixes the references; cold
+  eval re-run with a fresh agent afterwards.
+- W4e merged (cardinality in the terse schema, id regex, compass line, worked example,
+  `--schema=dsl` trimmed). `--schema` 1 035 tokens (616 without the example), `=dsl` 1 045.
+  551 tests. Second cold eval launched with a fresh agent and different briefs order.
+- Cold eval 2 merged: DSL 7/20 schema failures (5 = `--schema=dsl` lacks the vocabularies,
+  3 = level scoping shown only as a sentence), JSON 0/20 (with a DSL-first order effect).
+  Tokens DSL 3 205 vs JSON 7 993. W4f closes the 8 listed reference gaps; final paired cold
+  run (JSON-first + DSL-first, two fresh agents) after it.
