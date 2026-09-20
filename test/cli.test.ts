@@ -80,7 +80,8 @@ describe("cli", () => {
     assert.equal(formatFindings([]), "✓ no findings\n");
   });
   it("runs as a real process against the seed fixture", () => {
-    const res = spawnSync(process.execPath, ["src/cli.ts", "fixtures/casa-t3.json", "--lint"], { cwd: new URL("..", import.meta.url), encoding: "utf8" });
+    // src/cli.ts is IO-free and exports only `run`; src/bin.ts is the real entry point.
+    const res = spawnSync(process.execPath, ["src/bin.ts", "fixtures/casa-t3.json", "--lint"], { cwd: new URL("..", import.meta.url), encoding: "utf8" });
     assert.equal(res.status, 1, res.stderr);
     assert.match(res.stdout, /circulation\.share/);
   });

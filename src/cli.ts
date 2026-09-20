@@ -1,9 +1,9 @@
-#!/usr/bin/env node
 // floorplan <plan.json> [--out plan.svg] [--lint] [--json] [--scale N] [--theme auto|light|dark]
 //                       [--labels auto|full|index] [--areas clear|centreline|none] [--mark error|warning|info|none]
 // Exit codes: 0 clean (or only info), 1 findings at warning or above, 2 usage / parse error.
+// The executable entry point is bin.ts, which wires stdio/fs onto `run` unconditionally;
+// this module stays a plain, IO-free function so tests can drive it with a fake CliIo.
 
-import { readFileSync, writeFileSync } from "node:fs";
 import { floorplan, PlanError, worstSeverity } from "./index.ts";
 import type { Finding, Severity } from "./types.ts";
 import type { RenderOptions } from "./svg.ts";
@@ -121,15 +121,4 @@ function parseArgs(argv: string[]): Args | Error {
     else return new Error(`unexpected argument ${t}`);
   }
   return a;
-}
-
-const isMain = process.argv[1] !== undefined && /cli\.(ts|js)$/.test(process.argv[1]);
-if (isMain) {
-  const code = run(process.argv.slice(2), {
-    stdout: (s) => process.stdout.write(s),
-    stderr: (s) => process.stderr.write(s),
-    readFile: (p) => readFileSync(p, "utf8"),
-    writeFile: (p, s) => writeFileSync(p, s),
-  });
-  process.exitCode = code;
 }

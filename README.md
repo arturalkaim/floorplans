@@ -12,7 +12,7 @@ house before you draw it. "Mermaid for floor plans."
 npm install          # dev deps only (typescript)
 npm run check        # typecheck + tests (node --test, 84 tests)
 npm run examples     # renders fixtures/*.json → examples/*.svg
-node src/cli.ts fixtures/casa-t3.json --out casa.svg --lint
+node src/bin.ts fixtures/casa-t3.json --out casa.svg --lint
 ```
 
 ## Playground app
@@ -276,7 +276,8 @@ src/catalogue.ts  the rule catalogue: what the documentation reads
 src/format.ts     canonical formatting for plan documents
 src/jsonpos.ts    JSON with source positions, to edit one value in place
 src/edit.ts       which walls can be dragged, and what moving one writes
-src/cli.ts        command line
+src/cli.ts        command line (IO-free; takes a CliIo so tests can fake stdio/fs)
+src/bin.ts        the published executable ("bin" in package.json); wires real stdio/fs onto cli.ts
 app/              the playground (React, TanStack Router, Vite)
 fixtures/         casa-t3 (seed house), apartment-t2 (grid), cabin,
                   casa-patio (courtyard), quinta (garden + pool + shack),

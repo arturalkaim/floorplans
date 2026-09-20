@@ -19,7 +19,8 @@ export const PLANS: Array<[string, string]> = [
   ["broken", "Broken on purpose"],
 ];
 
-/** Every dist module the page imports; cli.js is deliberately absent (it needs node:*). */
+/** Every dist module the page imports; cli.js and bin.js are deliberately absent
+ *  (bin.js needs node:fs; cli.js exists only to be wired up by it). */
 const LIB = ["index", "derive", "parse", "rules", "svg", "geometry", "doors", "types"];
 
 export function buildDemo(outDir: string = out) {
