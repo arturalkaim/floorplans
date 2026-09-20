@@ -309,27 +309,12 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
     } else if (o.spec.type === "cased") {
       body += `<path d="${geometryPath(wallSubGeometry(w, o.from, o.to), X, Y, S)}" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/>`;
     } else {
-      const s = doorSwing(o);
-      if (!s) continue;
-      const r = L(o.to - o.from);
-      body += `<g class="door"><path d="M${px(X(s.closed[0]))} ${px(Y(s.closed[1]))} A${px(r)} ${px(r)} 0 0 ${s.sweep} ${px(X(s.open[0]))} ${px(Y(s.open[1]))}" fill="none" stroke="var(--muted)" stroke-width="1"/>`;
-      const [hx, hy] = [X(s.hinge[0]), Y(s.hinge[1])];
-      const [ox, oy] = [X(s.open[0]), Y(s.open[1])];
-      body += `<line x1="${px(hx)}" y1="${px(hy)}" x2="${px(ox)}" y2="${px(oy)}" stroke="var(--wall)" stroke-width="2"/>`;
-      if (o.spec.glazed) {
-        // D1: a short tick across the leaf, at its midpoint, marks the glazing
-        const leafLen = Math.hypot(ox - hx, oy - hy) || 1;
-        const nx = (-(oy - hy) / leafLen) * 4;
-        const ny = ((ox - hx) / leafLen) * 4;
-        const mx = (hx + ox) / 2;
-        const my = (hy + oy) / 2;
-        body += `<line x1="${px(mx - nx)}" y1="${px(my - ny)}" x2="${px(mx + nx)}" y2="${px(my + ny)}" stroke="var(--wall)" stroke-width="1"/>`;
-      }
-      body += `</g>`;
       // only a door to the street is an entrance: one onto an enclosed courtyard is an
-      // exterior door that leads nowhere, so it gets no tag
-      const toStreet = street(w.neg) || street(w.pos);
-      if (toStreet && (o.spec.entrance || streetDoors === 1)) {
+      // exterior door that leads nowhere, so it gets no tag. Shared by the sliding and
+      // swung-leaf cases below, which differ only in what they draw for the leaf itself.
+      const addEntranceTag = () => {
+        const toStreet = street(w.neg) || street(w.pos);
+        if (!toStreet || !(o.spec.entrance || streetDoors === 1)) return;
         const c = o.center;
         // outward along the wall's own normal, away from whichever side the street is on
         const n = normalOn(w, (o.from + o.to) / 2);
@@ -341,6 +326,57 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
         const turn = Math.abs(out[0]) > Math.abs(out[1]) ? -90 : 0;
         const rot = turn === 0 ? "" : ` transform="rotate(${turn} ${px(lx)} ${px(ly)})"`;
         body += `<text x="${px(lx)}" y="${px(ly + 3)}" text-anchor="middle" class="tag"${rot}>ENTRANCE</text>`;
+      };
+      if (o.spec.sliding) {
+        // Sliding: two panels riding parallel tracks along the wall, each offset a
+        // quarter-thickness either side of the centreline — the same offset a window's
+        // glazing lines use, so the drawing reads as glass on a track rather than a leaf.
+        // No hinge, no arc: derive.ts leaves ResolvedOpening.hinge/swingRoom undefined for
+        // a sliding door, so doorSwing() (src/doors.ts) already returns undefined for it.
+        const off = w.thickness / 4;
+        const overlap = 0.1;
+        const panelLen = (o.to - o.from) / 2 + overlap;
+        body += `<g class="door">`;
+        for (const [a, b, side] of [
+          [o.from, o.from + panelLen, -1],
+          [o.to - panelLen, o.to, 1],
+        ] as const) {
+          const g = offsetGeometry(wallSubGeometry(w, a, b), side * off);
+          body += `<path d="${geometryPath(g, X, Y, S)}" fill="none" stroke="var(--wall)" stroke-width="1.5"/>`;
+        }
+        if (o.spec.glazed) {
+          // D1: the same glazing tick, at the opening's centre and across the wall's own
+          // tangent (there is no leaf vector to take it from, as the swung-door case does).
+          const [hx, hy] = [X(p0[0]), Y(p0[1])];
+          const [ox, oy] = [X(p1[0]), Y(p1[1])];
+          const leafLen = Math.hypot(ox - hx, oy - hy) || 1;
+          const nx = (-(oy - hy) / leafLen) * 4;
+          const ny = ((ox - hx) / leafLen) * 4;
+          const mx = X(o.center[0]);
+          const my = Y(o.center[1]);
+          body += `<line x1="${px(mx - nx)}" y1="${px(my - ny)}" x2="${px(mx + nx)}" y2="${px(my + ny)}" stroke="var(--wall)" stroke-width="1"/>`;
+        }
+        body += `</g>`;
+        addEntranceTag();
+      } else {
+        const s = doorSwing(o);
+        if (!s) continue;
+        const r = L(o.to - o.from);
+        body += `<g class="door"><path d="M${px(X(s.closed[0]))} ${px(Y(s.closed[1]))} A${px(r)} ${px(r)} 0 0 ${s.sweep} ${px(X(s.open[0]))} ${px(Y(s.open[1]))}" fill="none" stroke="var(--muted)" stroke-width="1"/>`;
+        const [hx, hy] = [X(s.hinge[0]), Y(s.hinge[1])];
+        const [ox, oy] = [X(s.open[0]), Y(s.open[1])];
+        body += `<line x1="${px(hx)}" y1="${px(hy)}" x2="${px(ox)}" y2="${px(oy)}" stroke="var(--wall)" stroke-width="2"/>`;
+        if (o.spec.glazed) {
+          // D1: a short tick across the leaf, at its midpoint, marks the glazing
+          const leafLen = Math.hypot(ox - hx, oy - hy) || 1;
+          const nx = (-(oy - hy) / leafLen) * 4;
+          const ny = ((ox - hx) / leafLen) * 4;
+          const mx = (hx + ox) / 2;
+          const my = (hy + oy) / 2;
+          body += `<line x1="${px(mx - nx)}" y1="${px(my - ny)}" x2="${px(mx + nx)}" y2="${px(my + ny)}" stroke="var(--wall)" stroke-width="1"/>`;
+        }
+        body += `</g>`;
+        addEntranceTag();
       }
     }
   }

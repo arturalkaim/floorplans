@@ -166,6 +166,11 @@ export interface Opening {
   swingInto: string; // doors only: one of the ids in `between`
   entrance: boolean; // doors only: marks the main entrance
   glazed: boolean; // doors only: a glazed door counts as daylight, same as a window
+  /**
+   * doors only: slides along the wall instead of swinging. No hinge, no swing side, no
+   * arc — it can never hit a fixture. `hinge`/`swingInto` conflict with it (schema.conflict).
+   */
+  sliding: boolean;
 }
 
 /**

@@ -253,6 +253,21 @@ describe("rules: fixtures", () => {
     assert.deepEqual(only(clear, "door.swing_hits_fixture"), []);
   });
 
+  it("the same fixture in the same spot never hits a sliding door: no leaf, no swing", () => {
+    // same a|b door and the same fixture as "door.swing_hits_fixture when a fixture stands
+    // in the leaf's path" above, `sliding: true` the only difference
+    const sliding = run(twoRooms({
+      openings: [
+        { type: "door", between: ["exterior", "a"], on: { room: "a", side: "west" }, width: 0.9, entrance: true },
+        { type: "door", between: ["a", "b"], width: 0.8, sliding: true },
+        { type: "window", between: ["exterior", "a"], on: { room: "a", side: "south" }, width: 1.2 },
+        { type: "window", between: ["exterior", "b"], on: { room: "b", side: "east" }, width: 1.2 },
+      ],
+      fixtures: [{ type: "bath", in: "b", at: [4.2, 1.2], size: [0.5, 0.5] }],
+    }));
+    assert.deepEqual(only(sliding, "door.swing_hits_fixture"), []);
+  });
+
   it("fixture.clearance when you cannot walk between two fixtures", () => {
     const tight = run(twoRooms({ fixtures: [
       { type: "counter", in: "a", at: [0.2, 0.2], size: [1.0, 0.6] },

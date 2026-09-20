@@ -1546,15 +1546,19 @@ function resolveOpening(spec: Opening, walls: Wall[], findings: Finding[]): Reso
       }
     }
   }
-  const isDoor = spec.type === "door";
+  // INVARIANT: a sliding door has no hinge and no swing room. `doorSwing` (src/doors.ts)
+  // treats an undefined hinge as "no swing geometry", so every swing-only finding
+  // (door.swing_collision, door.swing_hits_fixture) already skips a sliding door for
+  // free — it never resolves a sector for one to test.
+  const swings = spec.type === "door" && !spec.sliding;
   return {
     spec,
     wall,
     from,
     to,
     center: pointOn(wall, centre),
-    hinge: isDoor ? pointOn(wall, spec.hinge === "start" ? from : to) : undefined,
-    swingRoom: isDoor ? spec.swingInto : undefined,
+    hinge: swings ? pointOn(wall, spec.hinge === "start" ? from : to) : undefined,
+    swingRoom: swings ? spec.swingInto : undefined,
   };
 }
 

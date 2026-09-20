@@ -698,6 +698,7 @@ and `arc.too_shallow` says so.
 | `swingInto` | doors: room the leaf opens into (default: the room in `between`, never the street or a terrace) |
 | `entrance` | doors: mark the main entrance. It must lead to the street, or you get `entrance.not_street` |
 | `glazed` | doors: `true` for a glazed door (default `false`) — counts as daylight for `habitable.no_window`, same as a window |
+| `sliding` | doors: `true` for a door that slides along the wall (default `false`) — no hinge, no swing side, no arc, and it can never trigger `door.swing_hits_fixture`. Conflicts with `hinge`/`swingInto` |
 
 An **entrance** is a door to the street: to `"exterior"`, or to an outdoor space the
 border flood fill reaches. A door onto an enclosed courtyard is a perfectly good door —
@@ -984,7 +985,7 @@ layout [cols <n>,…] [rows <n>,…]
     an ASCII picture placing already-declared spaces on the track grid; the same id in several cells is one space spanning them, "." is empty
 
 <type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at <x>,<y>]  w<width>
-        [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [id:<id>]
+        [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [sliding] [id:<id>]
     one opening. `<room>[.<side>]` alone is short for `exterior><room>` with an `on`; that implicit `on` cannot combine with an explicit `at` — same rule as JSON's oneOf: "on"/"position" xor "at"
 
 fixture <type> in:<space> (at <x>,<y> size <w>x<h> | poly <x>,<y> …) ["Name"] [depth:<n>] [id:<id>]
@@ -1007,7 +1008,7 @@ a poly element is a corner or an arc to it:
     arc <x>,<y> r<radius> [cw|ccw] [large]
 ```
 
-Every field of the JSON schema, and the token that writes it — all 77 of them, and
+Every field of the JSON schema, and the token that writes it — all 78 of them, and
 `test/dsl-schema.test.ts` fails if the parser grows a field with no spelling here.
 
 | field | token |
@@ -1066,6 +1067,7 @@ Every field of the JSON schema, and the token that writes it — all 77 of them,
 | `opening.swingInto` | `swing:<space>` |
 | `opening.entrance` | `entrance` |
 | `opening.glazed` | `glazed` |
+| `opening.sliding` | `sliding` |
 | `opening.on.room` | `on:<room>` |
 | `opening.on.side` | `on:<room>.<side>` |
 | `opening.on.near` | `near:<x>,<y>` |

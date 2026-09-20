@@ -216,7 +216,7 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
     statement: "door | window | cased",
     syntax:
       "<type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at <x>,<y>]  w<width>\n" +
-      "        [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [id:<id>]",
+      "        [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [sliding] [id:<id>]",
     // The `<room>[.<side>]` short form's implicit `on` cannot combine with an explicit
     // `at` — the same exclusion JSON's `oneOf: "on"/"position" xor "at"` already states, but
     // nothing on the DSL side did (docs/eval/cold2/cold-run.md gap 5): brief 1's cold-agent
@@ -243,6 +243,7 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
       { token: "swing:<space>", field: "opening.swingInto", required: false, doc: "doors only; which side the leaf sweeps" },
       { token: "entrance", field: "opening.entrance", required: false, doc: "doors only; marks the main entrance" },
       { token: "glazed", field: "opening.glazed", required: false, doc: "doors only; counts as daylight" },
+      { token: "sliding", field: "opening.sliding", required: false, doc: "doors only; slides along the wall — no hinge, no swing; conflicts with hinge:/swing:" },
       { token: "id:<id>", field: "opening.id", required: false, doc: "authored id; otherwise one is synthesised" },
     ],
   },
@@ -1211,7 +1212,7 @@ export function parseDsl(text: string): DslDocument {
             cursor.i++;
             continue;
           }
-          const flag = ["entrance", "glazed"].find((f) => t.text === f || t.text === `${f}:true` || t.text === `${f}:false`);
+          const flag = ["entrance", "glazed", "sliding"].find((f) => t.text === f || t.text === `${f}:true` || t.text === `${f}:false`);
           if (flag) {
             o[flag] = readFlag(t, flag, `${base}.${flag}`);
             cursor.i++;
@@ -1579,6 +1580,7 @@ function openingLine(value: unknown): string {
   if (o["swingInto"] !== undefined) s += ` swing:${String(o["swingInto"])}`;
   s += flagText(o["entrance"], "entrance");
   s += flagText(o["glazed"], "glazed");
+  s += flagText(o["sliding"], "sliding");
   if (o["id"] !== undefined) s += ` id:${String(o["id"])}`;
   return s;
 }

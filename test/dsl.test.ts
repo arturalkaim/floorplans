@@ -103,6 +103,15 @@ describe("the grammar: one entity per line", () => {
     });
   });
 
+  it("reads and prints a sliding door: no hinge, no swing, still entrance and glazed", () => {
+    const line = "door deck w2.4 entrance glazed sliding";
+    const d = doc(line);
+    assert.deepEqual(d, {
+      openings: [{ type: "door", between: ["exterior", "deck"], width: 2.4, entrance: true, glazed: true, sliding: true }],
+    });
+    assert.equal(toDsl(d), `${line}\n`);
+  });
+
   it("measures @-<d> from the run's end and @<d> from its start", () => {
     assert.deepEqual((doc("door a>b @-0.7 w1")["openings"] as Array<Record<string, unknown>>)[0]!["position"], { from: "end", distance: 0.7 });
     assert.equal((doc("door a>b @0.7 w1")["openings"] as Array<Record<string, unknown>>)[0]!["position"], 0.7);
@@ -218,6 +227,18 @@ describe("errors carry the line, and every bad line is reported", () => {
     // one schema checker's business, and its path resolves back to the line
     const r = lint("room a rect 0,0 4x3\ndoor hall w0.8");
     assert.deepEqual(r.findings.map((f) => [f.rule, f.path, f.line]), [["schema.reference", "openings[0].between[1]", 2]]);
+  });
+
+  it("reports the sliding/hinge and sliding/swing conflicts from the DSL path too, with their line", () => {
+    // parse.ts's checkKeys-driven schema conflicts are free from the DSL side: readSource()
+    // compiles the same doc parse() validates, so no DSL-specific check was needed for this.
+    const hinge = lint("room a living rect 0,0 4x3\nroom b office rect 4,0 3x3\ndoor a>b w0.8 hinge:end sliding");
+    assert.deepEqual(hinge.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "openings[0].hinge", 3]]);
+    assert.equal(hinge.findings[0]!.message, 'a sliding door has no hinge; drop "hinge" or "sliding"');
+
+    const swing = lint("room a living rect 0,0 4x3\nroom b office rect 4,0 3x3\ndoor a>b w0.8 swing:b sliding");
+    assert.deepEqual(swing.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "openings[0].swingInto", 3]]);
+    assert.equal(swing.findings[0]!.message, 'a sliding door has no swing; drop "swingInto" or "sliding"');
   });
 });
 

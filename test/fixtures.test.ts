@@ -217,3 +217,27 @@ describe("svg: a glazed door gets a glazing line across its leaf (D1)", () => {
   // casa-t3 has no glazed doors, so its own snapshot test (above, "fixture: casa-t3") is
   // the check that this feature leaves it byte-identical.
 });
+
+describe("svg: a sliding door draws two panels instead of a leaf and an arc", () => {
+  const base = {
+    rooms: { a: { kind: "living", poly: [[0, 0], [4, 0], [4, 4], [0, 4]] } },
+    openings: [{ type: "door", between: ["exterior", "a"], on: { room: "a", side: "south" }, width: 0.9, entrance: true, sliding: true }],
+  };
+  const doorGroup = (svg: string) => svg.match(/<g class="door">[\s\S]*?<\/g>/)![0];
+
+  it("emits two panel <path> elements and no swing arc", () => {
+    const svg = renderSvg(analyze(parse(base)).model);
+    const group = doorGroup(svg);
+    assert.equal((group.match(/<path/g) ?? []).length, 2, "two panels, one per side of the centreline");
+    assert.ok(!group.includes(" A"), "a sliding door has no arc: swing geometry never applies to it");
+  });
+
+  it("still gets a glazing tick when glazed, and still tags the entrance", () => {
+    const svg = renderSvg(analyze(parse({ ...base, openings: [{ ...base.openings[0], glazed: true }] })).model);
+    const group = doorGroup(svg);
+    assert.equal((group.match(/<line/g) ?? []).length, 1); // the glazing tick — there is no leaf line to add it to
+    assert.match(svg, /ENTRANCE/);
+  });
+  // casa-t3 has no sliding doors, so its own snapshot test (above, "fixture: casa-t3") is
+  // the check that this feature leaves it byte-identical.
+});

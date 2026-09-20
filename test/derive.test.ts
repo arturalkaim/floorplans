@@ -290,6 +290,13 @@ describe("doorSwing", () => {
     const { model } = analyze(twoRooms());
     assert.equal(doorSwing(model.openings.find((o) => o.spec.type === "window")!), undefined);
   });
+  it("is undefined for a sliding door: no hinge, no swing room to resolve", () => {
+    const { model } = analyze(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, sliding: true }] }));
+    const resolved = model.openings.find((o) => o.spec.type === "door")!;
+    assert.equal(resolved.hinge, undefined);
+    assert.equal(resolved.swingRoom, undefined);
+    assert.equal(doorSwing(resolved), undefined);
+  });
 });
 
 describe("derive: outdoor space is open sky", () => {

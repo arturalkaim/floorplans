@@ -546,3 +546,48 @@ describe("parse: opening `glazed`", () => {
     assert.deepEqual(issues, [{ path: "openings[0].glazed", message: "only valid on doors", kind: "conflict" }]);
   });
 });
+
+describe("parse: opening `sliding`", () => {
+  it("defaults to false and is a known key", () => {
+    const plan = parse(twoRooms());
+    assert.equal(plan.openings[0]!.sliding, false);
+  });
+
+  it("accepts true on a door", () => {
+    const plan = parse(twoRooms({ openings: [{ type: "door", between: ["exterior", "a"], on: { room: "a", side: "west" }, width: 0.9, sliding: true }] }));
+    assert.equal(plan.openings[0]!.sliding, true);
+    // a sliding door still leaves the door-only defaults alone when nothing conflicts
+    assert.equal(plan.openings[0]!.hinge, "start");
+  });
+
+  it("rejects a non-boolean value", () => {
+    assert.deepEqual(
+      issuesOf(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, sliding: "yes" }] })),
+      ["openings[0].sliding"],
+    );
+  });
+
+  it("is only valid on doors (window and cased)", () => {
+    const window = issueListOf(twoRooms({ openings: [{ type: "window", between: ["exterior", "a"], on: { room: "a", side: "north" }, width: 1, sliding: true }] }));
+    assert.deepEqual(window, [{ path: "openings[0].sliding", message: "only valid on doors", kind: "conflict" }]);
+
+    const cased = issueListOf(twoRooms({ openings: [{ type: "cased", between: ["a", "b"], width: 0.9, sliding: true }] }));
+    assert.deepEqual(cased, [{ path: "openings[0].sliding", message: "only valid on doors", kind: "conflict" }]);
+  });
+
+  it("conflicts with hinge: a sliding door has no leaf to hang", () => {
+    const issues = issueListOf(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, sliding: true, hinge: "end" }] }));
+    assert.deepEqual(issues, [{ path: "openings[0].hinge", message: 'a sliding door has no hinge; drop "hinge" or "sliding"', kind: "conflict" }]);
+  });
+
+  it("conflicts with swingInto: a sliding door has no swing", () => {
+    const issues = issueListOf(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, sliding: true, swingInto: "a" }] }));
+    assert.deepEqual(issues, [{ path: "openings[0].swingInto", message: 'a sliding door has no swing; drop "swingInto" or "sliding"', kind: "conflict" }]);
+  });
+
+  it("may combine with entrance and glazed, which are unrelated to the swing", () => {
+    const plan = parse(twoRooms({ openings: [{ type: "door", between: ["exterior", "a"], on: { room: "a", side: "west" }, width: 0.9, sliding: true, entrance: true, glazed: true }] }));
+    const o = plan.openings[0]!;
+    assert.deepEqual({ sliding: o.sliding, entrance: o.entrance, glazed: o.glazed }, { sliding: true, entrance: true, glazed: true });
+  });
+});

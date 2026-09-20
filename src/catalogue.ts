@@ -62,7 +62,7 @@ export const RULES: readonly RuleDoc[] = [
   { id: "room.acute_corner", severity: "info", catches: "a corner under 25°: the mitred wall faces meet so far along each arm that the point of the room is wall rather than floor" },
   { id: "door.min_width", severity: "warning", catches: "a door is narrower than its role wants", option: "doorMinWidth" },
   { id: "fixture.clearance", severity: "warning", catches: "the gap between two fixtures is too narrow to walk through", option: "minClearance" },
-  { id: "door.swing_hits_fixture", severity: "warning", catches: "a door leaf sweeps into a fixture" },
+  { id: "door.swing_hits_fixture", severity: "warning", catches: "a door leaf sweeps into a fixture; never fires for a sliding door, which has no leaf swing" },
   { id: "entrance.not_street", severity: "warning", catches: "a door marked `\"entrance\": true` does not lead to the street — it opens onto an enclosed courtyard, or onto another room" },
   { id: "circulation.share", severity: "info", catches: "halls and corridors take more of the interior than expected", option: "circulationShare" },
   { id: "privacy.bedroom_off_living", severity: "info", catches: "a bedroom opens directly off the living room" },

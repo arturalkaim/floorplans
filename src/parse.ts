@@ -270,8 +270,9 @@ export const SCHEMA: readonly ObjectDoc[] = [
       { name: "swingInto", type: "string", required: false, doc: "doors only: which between space the leaf swings into; default the room side" },
       { name: "entrance", type: "boolean", required: false, doc: "doors only: marks the main entrance; default false" },
       { name: "glazed", type: "boolean", required: false, doc: "doors only: counts as daylight like a window; default false" },
+      { name: "sliding", type: "boolean", required: false, doc: "doors only: slides along the wall: no hinge, no swing, never hits a fixture; default false" },
     ],
-    oneOf: ['"on"/"position" xor "at"'],
+    oneOf: ['"on"/"position" xor "at"', '"sliding" xor "hinge"/"swingInto"'],
   },
   {
     object: "opening.on",
@@ -1036,6 +1037,7 @@ function parseLevelContent(
     let swingInto = roomIds.has(b) ? b : a;
     let entrance = false;
     let glazed = false;
+    let sliding = false;
     if (type === "door") {
       if (o["hinge"] !== undefined) {
         if (o["hinge"] === "start" || o["hinge"] === "end") hinge = o["hinge"];
@@ -1053,8 +1055,15 @@ function parseLevelContent(
         if (typeof o["glazed"] === "boolean") glazed = o["glazed"];
         else bad(`${p}.glazed`, "must be boolean");
       }
+      if (o["sliding"] !== undefined) {
+        if (typeof o["sliding"] === "boolean") sliding = o["sliding"];
+        else bad(`${p}.sliding`, "must be boolean");
+      }
+      // a sliding door has no leaf swing, so a hinge or a swing-into side can never apply
+      if (sliding && o["hinge"] !== undefined) bad(`${p}.hinge`, 'a sliding door has no hinge; drop "hinge" or "sliding"', "conflict");
+      if (sliding && o["swingInto"] !== undefined) bad(`${p}.swingInto`, 'a sliding door has no swing; drop "swingInto" or "sliding"', "conflict");
     } else {
-      for (const k of ["hinge", "swingInto", "entrance", "glazed"]) if (o[k] !== undefined) bad(`${p}.${k}`, `only valid on doors`, "conflict");
+      for (const k of ["hinge", "swingInto", "entrance", "glazed", "sliding"]) if (o[k] !== undefined) bad(`${p}.${k}`, `only valid on doors`, "conflict");
     }
 
     // sorted, so swapping `between` renames nothing: it is the same wall either way
@@ -1076,6 +1085,7 @@ function parseLevelContent(
       swingInto,
       entrance,
       glazed,
+      sliding,
     });
   });
 
