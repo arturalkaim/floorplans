@@ -148,3 +148,14 @@ handles; `overlay()` + `facesWhere()` instead of a Martínez–Rueda library.
   edge), quinta's `w23` drag target, and every drawing's wall elements (same ink, to the
   square millimetre on casa-t3, casa-piscina and cabin; the rest lose only the spur a
   0.30 m wall poked past a 0.12 m one).
+- Final paired cold eval merged (`cold3a` JSON-first, `cold3b` DSL-first): JSON 0/20 + 0/20
+  schema failures; DSL 3/20 + 4/20, every one the same cause — statements indented under a
+  `level` header, as the reference's own example pictured. Tokens: DSL 4 678 / 3 937 vs JSON
+  10 751 / 10 889 (≈2.5×). W4g makes the parser accept indented statements and fixes the
+  example; the seven failing first attempts are re-linted after it lands.
+- W4g merged (`564c9ea`): the DSL parser accepts statements indented under a `level`; the
+  reference example no longer pictures them indented. Re-linting the seven first attempts
+  that failed in the final cold evals: 0 `schema.*` findings on all seven — post-fix, both
+  syntaxes are 0/40 on first-time schema errors from the references alone. 707 tests,
+  `check:all` green. Programme complete; 22 merged agent worktrees remain under
+  `.claude/worktrees/` for the owner to remove.
