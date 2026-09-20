@@ -26,6 +26,8 @@
 // picture whose rows must line up under each other, so its strings print one per line —
 // exactly as a point stays on one line because it is a row.
 
+import { isDslText, parseDsl, toDsl } from "./dsl.ts";
+
 export interface FormatOptions {
   /** spaces per block level (default 2) */
   indent?: number;
@@ -97,6 +99,13 @@ export function formatPlan(value: unknown, opts: FormatOptions = {}): string {
   return emit(value, 0, undefined, true) + "\n";
 }
 
-/** Reformat source text; throws whatever JSON.parse throws when the text is not valid. */
+/**
+ * Reformat source text into canonical form, in whichever syntax it is already written —
+ * the same sniffing every other entry point does (`isDslText`; see src/index.ts's
+ * `source()` and the CLI's `runFmt`), so this text-to-text round trip needs no syntax flag
+ * either. Throws whatever the read throws when the text is not valid: `JSON.parse`'s error
+ * for JSON, a `DslError` for the DSL. `opts` only affects the JSON form — the DSL has one
+ * canonical layout, with no indent to configure.
+ */
 export const formatText = (text: string, opts?: FormatOptions): string =>
-  formatPlan(JSON.parse(text), opts);
+  isDslText(text) ? toDsl(parseDsl(text).doc) : formatPlan(JSON.parse(text), opts);

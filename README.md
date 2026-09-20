@@ -488,9 +488,12 @@ be a ring, and a single ring cannot express a hole.
 
 ### Canonical form — how a plan should be written
 
-`formatText(source)` puts a document into the canonical form, and every fixture in this
-repository is byte-identical to its own canonical form (a test enforces it). The form is
-chosen for the reader who pays per token:
+`formatText(source)` puts a document into the canonical form, in whichever syntax `source`
+is already written — the same sniffing `parse()`, `floorplan()` and `floorplan fmt` do — and
+every fixture in this repository is byte-identical to its own canonical form (a test
+enforces it). What follows is JSON's canonical form; the DSL's is "The line DSL" further
+down and has its own canonical printer, `toDsl`. The form is chosen for the reader who pays
+per token:
 
 - **One entity per line, regardless of width.** A room, an outdoor space, an opening or a
   fixture is exactly one line and is never wrapped. That is what makes a plan skimmable,
