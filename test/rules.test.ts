@@ -82,6 +82,62 @@ describe("rules: light", () => {
     const without = run(plan(undefined));
     assert.ok(has(without, "tiling.gap"));
   });
+  it("a glazed exterior door counts as daylight, same as a window (D1)", () => {
+    const plan = {
+      rooms: { a: { kind: "living", poly: rect(0, 0, 4, 4) } },
+      openings: [{ type: "door", between: ["exterior", "a"], on: { room: "a", side: "south" }, width: 0.9, entrance: true, glazed: true }],
+    };
+    const { model, findings } = analyze(parse(plan));
+    assert.equal(model.rooms[0]!.exteriorWindow, true);
+    assert.ok(!has(findings, "habitable.no_window"));
+  });
+  it("the same door without glazed fails habitable.no_window", () => {
+    const plan = {
+      rooms: { a: { kind: "living", poly: rect(0, 0, 4, 4) } },
+      openings: [{ type: "door", between: ["exterior", "a"], on: { room: "a", side: "south" }, width: 0.9, entrance: true }],
+    };
+    const { model, findings } = analyze(parse(plan));
+    assert.equal(model.rooms[0]!.exteriorWindow, false);
+    assert.ok(has(findings, "habitable.no_window"));
+  });
+  it("a glazed interior door does not count as daylight", () => {
+    const plan = {
+      rooms: { a: { kind: "living", poly: rect(0, 0, 4, 4) }, b: { kind: "hall", poly: rect(4, 0, 2, 4) } },
+      openings: [
+        { type: "door", between: ["exterior", "b"], on: { room: "b", side: "south" }, width: 0.9, entrance: true },
+        { type: "door", between: ["a", "b"], width: 0.9, glazed: true },
+      ],
+    };
+    const { model, findings } = analyze(parse(plan));
+    const roomA = model.rooms.find((m) => m.room.id === "a")!;
+    assert.equal(roomA.exteriorWindow, false);
+    assert.ok(has(findings, "habitable.no_window"));
+  });
+  it("a glazed door onto a courtyard counts as daylight too", () => {
+    const plan = {
+      walls: { exterior: 0.3, partition: 0.12 },
+      rooms: {
+        hall: { kind: "hall", poly: rect(0, 0, 3, 1) },
+        bed: { kind: "bedroom", poly: rect(0, 1, 1, 1) },
+        kit: { kind: "kitchen", poly: rect(2, 1, 1, 1) },
+        liv: { kind: "living", poly: rect(0, 2, 3, 1) },
+      },
+      outdoor: { patio: { poly: rect(1, 1, 1, 1) } },
+      openings: [
+        { type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "north" }, width: 0.9, entrance: true },
+        { type: "door", between: ["hall", "bed"], width: 0.8 },
+        { type: "door", between: ["hall", "kit"], width: 0.8 },
+        { type: "door", between: ["kit", "liv"], width: 0.8 },
+        // bed's ONLY daylight is a glazed door onto the courtyard, not a window
+        { type: "door", between: ["patio", "bed"], on: { room: "bed", side: "east" }, width: 0.6, glazed: true },
+        { type: "window", between: ["exterior", "kit"], on: { room: "kit", side: "east" }, width: 0.6 },
+        { type: "window", between: ["exterior", "liv"], on: { room: "liv", side: "south" }, width: 1.2 },
+      ],
+    };
+    const f = run(plan);
+    assert.ok(!has(f, "habitable.no_window"), "glazed door onto courtyard lights the bedroom");
+    assert.ok(!has(f, "tiling.gap"));
+  });
   it("wet.no_window is a warning and habitable wins over wet", () => {
     const f = run({
       rooms: { a: { kind: "living", poly: rect(0, 0, 4, 3) }, w: { kind: "wc", poly: rect(4, 0, 2, 3) } },
@@ -248,6 +304,14 @@ describe("rules: a pool is a pool wherever it stands", () => {
   it("a fixture escaping its outdoor space is still an error", () => {
     const f = run({ ...plan, fixtures: [{ type: "pool", in: "deck", at: [1, 4.5], size: [3, 9] }] });
     assert.equal(only(f, "fixture.outside_space").length, 1);
+  });
+
+  it("the escaping fixture is not deducted from the deck's usable area (D3)", () => {
+    const escaping = { ...plan, fixtures: [{ type: "pool", in: "deck", at: [1, 4.5], size: [3, 9] }] };
+    const { model } = analyze(parse(escaping));
+    const deck = schedule(model).outdoor.find((o) => o.id === "deck")!;
+    assert.equal(deck.fixtureArea, 0);
+    assert.equal(deck.usableArea, deck.area);
   });
 
   it("does not report the deck itself as a gap or a room", () => {

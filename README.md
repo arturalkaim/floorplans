@@ -93,6 +93,8 @@ else changes; on one that did not, the paths are the ones they always were.
 floorplan <plan.json> [--out plan.svg] [--level id] [--lint] [--json] [--scale N]
                       [--theme auto|light|dark] [--labels auto|full|index]
                       [--areas clear|centreline|none] [--mark error|warning|info|none]
+floorplan set <plan.json> <path> <value> [--json] [--dry-run]
+floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
 ```
 
 Exit codes: `0` clean or info only, `1` findings at warning or above, `2` usage or schema error.
@@ -106,6 +108,49 @@ gains `levels[]` and `building`, both only on a document that authored `levels`.
 
 On a schema error (exit `2`), `--json` prints `{"error":{"issues":[{"path","message"}]}}`
 to stdout instead of the text form on stderr; without `--json` the text form is unchanged.
+
+### `set` and `patch`: editing without re-emitting the document
+
+Re-emitting a whole plan to move one door costs on the order of 2000 tokens for a
+house-sized document; a splice costs about 20, regardless of plan size — so `set` and
+`patch` are how an agent should make small edits, not printing and rewriting the JSON.
+
+`set` changes one value at a path (the same dotted/bracketed form `pathToString` prints,
+e.g. `openings[3].position`, `rooms.sala.poly[2][0]`, `layout.cols[1]` — and, on a
+document that authored `levels`, `levels.piso1.rooms.suite.rect[3]`):
+
+```
+floorplan set plan.json openings[3].position 2.1
+floorplan set plan.json rooms.sala.name Sala        # not valid JSON → treated as the string "Sala"
+floorplan set plan.json openings[3].position 2.1 --dry-run   # preview the new text, don't write
+```
+
+`patch` applies several operations at once, all-or-nothing — if any op fails, nothing is
+written and the CLI reports which one and why:
+
+```
+floorplan patch plan.json patch.json
+floorplan patch plan.json --patch -    # read the patch document from stdin
+```
+
+`patch.json` is a JSON array of `{ "op": "set" | "remove" | "append" | "insert", "path": "...", "value"?: <any>, "key"?: "..." }`
+(`op` defaults to `"set"`). `remove` deletes an array element or object member;
+`append` adds a new array element after the last one; `insert` adds `key: value` to an
+object (e.g. a new room in `rooms`). Example, deleting one opening and adding a room in
+one call:
+
+```json
+[
+  { "op": "remove", "path": "openings[9]" },
+  { "op": "insert", "path": "rooms", "key": "garagem", "value": { "name": "Garagem", "kind": "garage", "poly": [[0, -3], [4.6, -3], [4.6, 0], [0, 0]] } }
+]
+```
+
+Both verbs run the full pipeline on the result before writing anything: a change that
+fails schema validation (`PlanError`) leaves the file untouched and reports the error
+(as the JSON envelope above under `--json`) with exit `2`; a change that validates but
+still has findings is written, and those findings are printed exactly as `--lint` would
+(or as `--json`, alongside `schedule`).
 
 ## Library
 
@@ -377,16 +422,27 @@ are rectangles, and writing them as `rect` costs 186 tokens less.
 | `between` | the two spaces the opening joins: room ids, an outdoor space id, or `"exterior"` for the street. At least one end must be a room — nothing is built between two outdoor spaces |
 | `on` | disambiguates when the pair shares several walls: `{ "room", "side": north\|south\|east\|west, "near": [x,y] }` |
 | `position` | `"center"` (default), a number (metres from the wall's start to the opening centre), or `{ "from": "start"\|"end", "distance" }` |
+| `at` | `[x, y]`: place the opening by an absolute point instead of `on` + `position` — picks the nearest wall between the two spaces in `between` and projects the point onto it |
 | `width` | metres |
 | `hinge` | doors: `"start"` or `"end"` jamb. Walls run west→east and north→south. |
 | `swingInto` | doors: room the leaf opens into (default: the room in `between`, never the street or a terrace) |
 | `entrance` | doors: mark the main entrance. It must lead to the street, or you get `entrance.not_street` |
+| `glazed` | doors: `true` for a glazed door (default `false`) — counts as daylight for `habitable.no_window`, same as a window |
 
 An **entrance** is a door to the street: to `"exterior"`, or to an outdoor space the
 border flood fill reaches. A door onto an enclosed courtyard is a perfectly good door —
 it is allowed, it joins the two spaces in the access graph, and it never satisfies
 `entrance.missing`. `reach.unreachable` walks from the street the same way, so a room you
 can only get to by crossing a courtyard is reachable exactly when the courtyard is.
+
+`at` is mutually exclusive with `on` and `position`, exactly as a room's `poly` and `rect`
+are; giving both is `has both "at" and "on"/"position"; use one`. It is the selector that
+survives angled walls — `on.side` asks which compass side a *derived* wall segment starts
+from, which has no meaning once walls stop being axis-aligned, while `at` just names a
+point and lets the library find the nearest wall. If that point is farther from every
+candidate wall than half its thickness plus a small tolerance, that is `opening.off_wall`,
+naming the nearest wall and the distance; a point equidistant from two candidates is
+`wall.ambiguous`, exactly as an unresolved `on` would be.
 
 ### Fixtures
 
@@ -416,6 +472,12 @@ an interior pool stops counting as floor you can stand on; outdoor spaces net of
 fixtures the same way, giving a deck's area clear of its pool. `schedule.waterArea`
 totals the pools wherever they stand.
 
+`fixtureArea` only deducts a fixture that is **fully inside** the room or outdoor space
+named in `in`; one that straddles or misses the boundary deducts nothing there —
+`fixture.outside_space` already says why — rather than silently reducing usable floor by
+its whole area. Deducting just the overlapping sliver of a straddling fixture needs exact
+polygon intersection, which the geometry core will add; this is the stopgap until then.
+
 A pool is a `pool` whether it sits in a spa room or on a terrace — that is why `in`
 accepts an outdoor id. Model the terrace as the `outdoor` space and the water as a
 fixture standing on it, rather than calling the pool itself an outdoor space; otherwise
@@ -431,12 +493,13 @@ block.
 | Rule | Severity | Catches |
 |---|---|---|
 | `tiling.gap` / `tiling.overlap` | error | hole in the plan / two rooms share area |
-| `wall.unresolved` / `wall.ambiguous` | error | opening names rooms with no (or several) shared walls |
+| `wall.unresolved` / `wall.ambiguous` | error | opening names rooms with no (or several) shared walls, or `at` names a point equidistant from more than one |
 | `opening.overflow` / `opening.collision` | error | opening wider than its wall / two openings overlap |
+| `opening.off_wall` | error | an opening's `at` point is farther from the nearest wall than half its thickness plus a small tolerance |
 | `window.not_exterior` | error | window on an interior wall |
 | `entrance.missing` | error | no door leads to the street |
 | `space.no_access` / `reach.unreachable` | error | room without a door / not reachable from the street |
-| `habitable.no_window` / `wet.no_window` | warning | living space without daylight / WC needing extraction |
+| `habitable.no_window` / `wet.no_window` | warning | living space without a window or glazed exterior door / WC needing extraction |
 | `wet.opens_to_kitchen` | warning | WC door straight into a kitchen |
 | `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |
@@ -490,7 +553,7 @@ src/rules.ts      semantic rules over the model
 src/svg.ts        Model → SVG string (+ the projection, for hit-testing)
 src/catalogue.ts  the rule catalogue: what the documentation reads
 src/format.ts     canonical formatting for plan documents
-src/jsonpos.ts    JSON with source positions, to edit one value in place
+src/jsonpos.ts    JSON with source positions, to splice/remove/append/insert in place
 src/edit.ts       which walls can be dragged, and what moving one writes
 src/cli.ts        command line (IO-free; takes a CliIo so tests can fake stdio/fs)
 src/bin.ts        the published executable ("bin" in package.json); wires real stdio/fs onto cli.ts

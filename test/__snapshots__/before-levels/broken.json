@@ -111,7 +111,7 @@
     {
       "rule": "habitable.no_window",
       "severity": "warning",
-      "message": "Bedroom is habitable but has no exterior window (it has an exterior wall on the south)",
+      "message": "Bedroom is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the south)",
       "rooms": [
         "bed"
       ],
@@ -123,7 +123,7 @@
     {
       "rule": "habitable.no_window",
       "severity": "warning",
-      "message": "Kitchen is habitable but has no exterior window (it has an exterior wall on the south)",
+      "message": "Kitchen is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the south)",
       "rooms": [
         "kitchen"
       ],
@@ -135,7 +135,7 @@
     {
       "rule": "habitable.no_window",
       "severity": "warning",
-      "message": "Study is habitable but has no exterior window (it has an exterior wall on the south)",
+      "message": "Study is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the south)",
       "rooms": [
         "study"
       ],

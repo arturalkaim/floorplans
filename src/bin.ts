@@ -11,4 +11,5 @@ process.exitCode = run(process.argv.slice(2), {
   stderr: (s) => process.stderr.write(s),
   readFile: (p) => readFileSync(p, "utf8"),
   writeFile: (p, s) => writeFileSync(p, s),
+  readStdin: () => readFileSync(0, "utf8"),
 });

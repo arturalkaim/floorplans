@@ -566,7 +566,7 @@ function parseLevelContent(
       bad(p, "must be an object");
       return;
     }
-    checkKeys(p, o, ["type", "between", "width", "position", "on", "hinge", "swingInto", "entrance"], bad);
+    checkKeys(p, o, ["type", "between", "width", "position", "on", "at", "hinge", "swingInto", "entrance", "glazed"], bad);
     const type = o["type"];
     if (!OPENING_TYPES.has(type as string)) {
       bad(`${p}.type`, `must be one of door, window, cased`);
@@ -591,34 +591,48 @@ function parseLevelContent(
     const width = o["width"];
     if (!isNum(width) || width <= 0) bad(`${p}.width`, "must be a positive number (metres)");
 
-    let position: Opening["position"] = "center";
-    const pos = o["position"];
-    if (pos === undefined || pos === "center") position = "center";
-    else if (isNum(pos)) position = { from: "start", distance: snap(pos) };
-    else if (isObj(pos)) {
-      checkKeys(`${p}.position`, pos, ["from", "distance"], bad);
-      if ((pos["from"] === "start" || pos["from"] === "end") && isNum(pos["distance"]) && pos["distance"] >= 0)
-        position = { from: pos["from"] as Jamb, distance: snap(pos["distance"]) };
-      else bad(`${p}.position`, '"center", a number (metres from start to centre) or { from: "start"|"end", distance }');
-    } else bad(`${p}.position`, '"center", a number (metres from start to centre) or { from: "start"|"end", distance }');
+    // `at` is absolute placement: an alternative to `on` + `position`, mutually exclusive
+    // with both, exactly as a room's `poly` and `rect` are one or the other.
+    const hasAt = o["at"] !== undefined;
+    const hasOn = o["on"] !== undefined;
+    const hasPosition = o["position"] !== undefined;
+    if (hasAt && (hasOn || hasPosition)) bad(p, 'has both "at" and "on"/"position"; use one');
 
+    let position: Opening["position"] = "center";
     let on: Opening["on"];
-    if (o["on"] !== undefined) {
-      const s = o["on"];
-      if (isObj(s)) checkKeys(`${p}.on`, s, ["room", "side", "near"], bad);
-      if (!isObj(s) || typeof s["room"] !== "string" || (s["room"] !== a && s["room"] !== b) || s["room"] === "exterior")
-        bad(`${p}.on.room`, "must name one of the spaces in `between`, and not \"exterior\"");
-      else {
-        const side = s["side"];
-        if (side !== undefined && !SIDES.has(side as string)) bad(`${p}.on.side`, "north | south | east | west");
-        const near = s["near"];
-        if (near !== undefined && !(Array.isArray(near) && near.length === 2 && isNum(near[0]) && isNum(near[1])))
-          bad(`${p}.on.near`, "must be [x, y]");
-        on = {
-          room: s["room"],
-          side: SIDES.has(side as string) ? (side as Side) : undefined,
-          near: Array.isArray(near) ? ([snap(near[0]), snap(near[1])] as Pt) : undefined,
-        };
+    let at: Opening["at"];
+    if (hasAt) {
+      const av = o["at"];
+      if (Array.isArray(av) && av.length === 2 && isNum(av[0]) && isNum(av[1])) at = [snap(av[0]), snap(av[1])];
+      else bad(`${p}.at`, "must be [x, y] numbers");
+    } else {
+      const pos = o["position"];
+      if (pos === undefined || pos === "center") position = "center";
+      else if (isNum(pos)) position = { from: "start", distance: snap(pos) };
+      else if (isObj(pos)) {
+        checkKeys(`${p}.position`, pos, ["from", "distance"], bad);
+        if ((pos["from"] === "start" || pos["from"] === "end") && isNum(pos["distance"]) && pos["distance"] >= 0)
+          position = { from: pos["from"] as Jamb, distance: snap(pos["distance"]) };
+        else bad(`${p}.position`, '"center", a number (metres from start to centre) or { from: "start"|"end", distance }');
+      } else bad(`${p}.position`, '"center", a number (metres from start to centre) or { from: "start"|"end", distance }');
+
+      if (o["on"] !== undefined) {
+        const s = o["on"];
+        if (isObj(s)) checkKeys(`${p}.on`, s, ["room", "side", "near"], bad);
+        if (!isObj(s) || typeof s["room"] !== "string" || (s["room"] !== a && s["room"] !== b) || s["room"] === "exterior")
+          bad(`${p}.on.room`, "must name one of the spaces in `between`, and not \"exterior\"");
+        else {
+          const side = s["side"];
+          if (side !== undefined && !SIDES.has(side as string)) bad(`${p}.on.side`, "north | south | east | west");
+          const near = s["near"];
+          if (near !== undefined && !(Array.isArray(near) && near.length === 2 && isNum(near[0]) && isNum(near[1])))
+            bad(`${p}.on.near`, "must be [x, y]");
+          on = {
+            room: s["room"],
+            side: SIDES.has(side as string) ? (side as Side) : undefined,
+            near: Array.isArray(near) ? ([snap(near[0]), snap(near[1])] as Pt) : undefined,
+          };
+        }
       }
     }
 
@@ -626,6 +640,7 @@ function parseLevelContent(
     // a leaf sweeps indoors by default: never out into the street, nor onto a terrace
     let swingInto = roomIds.has(b) ? b : a;
     let entrance = false;
+    let glazed = false;
     if (type === "door") {
       if (o["hinge"] !== undefined) {
         if (o["hinge"] === "start" || o["hinge"] === "end") hinge = o["hinge"];
@@ -639,8 +654,12 @@ function parseLevelContent(
         if (typeof o["entrance"] === "boolean") entrance = o["entrance"];
         else bad(`${p}.entrance`, "must be boolean");
       }
+      if (o["glazed"] !== undefined) {
+        if (typeof o["glazed"] === "boolean") glazed = o["glazed"];
+        else bad(`${p}.glazed`, "must be boolean");
+      }
     } else {
-      for (const k of ["hinge", "swingInto", "entrance"]) if (o[k] !== undefined) bad(`${p}.${k}`, `only valid on doors`);
+      for (const k of ["hinge", "swingInto", "entrance", "glazed"]) if (o[k] !== undefined) bad(`${p}.${k}`, `only valid on doors`);
     }
 
     openings.push({
@@ -649,10 +668,12 @@ function parseLevelContent(
       between: [a, b],
       on,
       position,
+      at,
       width: isNum(width) ? snap(width) : 0,
       hinge,
       swingInto,
       entrance,
+      glazed,
     });
   });
 

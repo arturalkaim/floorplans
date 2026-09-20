@@ -29,6 +29,7 @@ describe("levels: schedule and CLI", () => {
       writeFile: (p, s) => {
         written[p] = s;
       },
+      readStdin: () => "",
     };
     return { io, out: () => out.join(""), err: () => err.join(""), written };
   }

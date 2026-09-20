@@ -7,7 +7,7 @@
 // or in one go: floorplan(json) → { plan, model, findings, svg, schedule }
 
 import { derive } from "./derive.ts";
-import { shoelace } from "./geometry.ts";
+import { polyInside, shoelace } from "./geometry.ts";
 import { parse, PlanError } from "./parse.ts";
 import { checkRules, sortFindings } from "./rules.ts";
 import { renderSvg } from "./svg.ts";
@@ -36,7 +36,18 @@ export type { Projection } from "./svg.ts";
 export type { RuleDoc } from "./catalogue.ts";
 // authoring support: keep a document canonical, and edit one value in place
 export { formatPlan, formatText } from "./format.ts";
-export { JsonPosError, metres, nodeAt, parseWithPositions, pathToString, spliceAll, spliceAt } from "./jsonpos.ts";
+export {
+  appendAt,
+  insertKey,
+  JsonPosError,
+  metres,
+  nodeAt,
+  parseWithPositions,
+  pathToString,
+  removeAt,
+  spliceAll,
+  spliceAt,
+} from "./jsonpos.ts";
 export type { FormatOptions } from "./format.ts";
 export type { JsonKind, JsonNode, JsonPath } from "./jsonpos.ts";
 export type * from "./types.ts";
@@ -127,7 +138,16 @@ function levelSchedule(lm: LevelModel): LevelSchedule {
     waterArea: round(lm.fixtures.filter((f) => f.fixture.type === "pool").reduce((s, f) => s + f.area, 0)),
     outdoor: lm.level.outdoor.map((o) => {
       const area = Math.abs(polyArea(o.poly));
-      const fixtureArea = round(lm.fixtures.filter((f) => f.fixture.in === o.id).reduce((s, f) => s + f.area, 0));
+      // INVARIANT: deducts only fixtures fully contained in the outdoor space's own polygon
+      // (D3, same stopgap as RoomModel.fixtureArea in derive.ts) — one straddling the
+      // boundary deducts nothing here, and fixture.outside_space already told the author
+      // why. The exact intersection waits for the geometry core (docs/gaps-design.md
+      // §1.3.2).
+      const fixtureArea = round(
+        lm.fixtures
+          .filter((f) => f.fixture.in === o.id && polyInside(f.fixture.poly, o.poly))
+          .reduce((s, f) => s + f.area, 0),
+      );
       return {
         id: o.id,
         name: o.name,

@@ -297,12 +297,17 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
     bbox: bbox(fixture.poly),
     area: snap(Math.abs(shoelace(fixture.poly))),
   }));
+  // Fixtures fully inside their own host's polygon: fixtureAreaOf below deducts only these
+  // (D3), sharing the same containment check that raises fixture.outside_space.
+  const containedFixtures = new Set<number>();
   for (const fm of fixtureModels) {
     // a vertical element's footprint is checked by `stair.no_arrival`, which says the same
     // thing about the same geometry but names the element the author can actually edit
     if (fm.fixture.vertical !== undefined) continue;
     const host = hostPoly.get(fm.fixture.in);
-    if (host && !polyInside(fm.fixture.poly, host)) {
+    const inside = host !== undefined && polyInside(fm.fixture.poly, host);
+    if (inside) containedFixtures.add(fm.fixture.index);
+    else if (host) {
       findings.push({
         rule: "fixture.outside_space",
         severity: "error",
@@ -329,8 +334,17 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
       });
     }
   }
+  // INVARIANT: deducts only fixtures fully contained in the room's own polygon (D3). The
+  // exact fix — deducting just the overlapping area for a straddling fixture — needs face
+  // classification from the geometry core and waits for it (docs/gaps-design.md §1.3.2);
+  // this stopgap is the common case (nothing straddles today) and is not thrown away when
+  // that lands, it is subsumed by it.
   const fixtureAreaOf = (id: string) =>
-    snap(fixtureModels.filter((m) => m.fixture.in === id).reduce((t, m) => t + m.area, 0));
+    snap(
+      fixtureModels
+        .filter((m) => m.fixture.in === id && containedFixtures.has(m.fixture.index))
+        .reduce((t, m) => t + m.area, 0),
+    );
 
   // floor standing under a fixture is not floor you can use
   const occupied: boolean[][] = [];
@@ -448,6 +462,13 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
         const m = r === undefined ? undefined : byId.get(r);
         if (m) m.exteriorWindow = true;
       }
+    } else if (o.spec.type === "door" && o.spec.glazed && o.wall.kind === "exterior") {
+      // D1: a glazed exterior door is daylight too, exactly like a window — including onto
+      // a courtyard, which is open sky (isOpenSky). A glazed *interior* door (wall.kind !==
+      // "exterior") never reaches here, so it never counts.
+      const r = ownerId(isOpenSky(o.wall.neg) ? o.wall.pos : o.wall.neg);
+      const m = r === undefined ? undefined : byId.get(r);
+      if (m) m.exteriorWindow = true;
     }
   }
 
@@ -628,38 +649,70 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
     const hint = a === "exterior" ? `${b} touches: ${neighbours(b)}` : b === "exterior" ? `${a} touches: ${neighbours(a)}` : `${a} touches: ${neighbours(a)}; ${b} touches: ${neighbours(b)}`;
     return fail("wall.unresolved", `opening #${spec.index} (${spec.type}): ${refLabel(a)} and ${refLabel(b)} share no wall. ${hint}`);
   }
-  if (spec.on) {
-    const { room, side, near } = spec.on;
-    if (side) cands = cands.filter((w) => sideOf(w, room) === side);
-    if (cands.length === 0) return fail("wall.unresolved", `opening #${spec.index}: ${room} has no wall to ${refLabel(a === room ? b : a)} on its ${side} side`);
-    if (near && cands.length > 1) {
-      cands.sort((w1, w2) => distToWall(near, w1) - distToWall(near, w2));
-      cands = [cands[0]!];
+  let centre: number;
+  if (spec.at) {
+    // `at` chooses the nearest candidate wall by point-to-wall distance and projects the
+    // point onto it to get the centre — the selector that survives angled walls
+    // (agent-review.md §B5): unlike on.side, it never asks the author to reason about a
+    // derived segment's orientation or which end is its start.
+    const at = spec.at;
+    const dists = cands.map((w) => ({ w, d: distToWall(at, w) }));
+    const minD = Math.min(...dists.map((x) => x.d));
+    const nearest = dists.filter((x) => eq(x.d, minD));
+    if (nearest.length > 1) {
+      const desc = nearest.map((x) => `${describe(x.w)} (${snap(x.d)} m)`).join("; ");
+      return fail(
+        "wall.ambiguous",
+        `opening #${spec.index}: point (${at[0]}, ${at[1]}) is equidistant from ${nearest.length} wall segments (${desc}); move it, or use "on" instead of "at" to disambiguate`,
+      );
     }
-  }
-  if (cands.length > 1) {
-    const roomRef = a === "exterior" ? b : a;
-    const desc = cands.map((w) => `${sideOf(w, roomRef)} ${describe(w)}`).join("; ");
-    return fail(
-      "wall.ambiguous",
-      `opening #${spec.index}: ${refLabel(a)} and ${refLabel(b)} share ${cands.length} wall segments (${desc}); add "on": { "room": "${roomRef}", "side": … } or "near": [x, y]`,
-    );
+    const nearWall = nearest[0]!.w;
+    const tol = 0.05;
+    const limit = nearWall.thickness / 2 + tol;
+    if (minD > limit) {
+      return fail(
+        "opening.off_wall",
+        `opening #${spec.index}: point (${at[0]}, ${at[1]}) is ${snap(minD)} m from the nearest wall (${describe(nearWall)}), farther than half its thickness plus tolerance (${snap(limit)} m)`,
+      );
+    }
+    cands = [nearWall];
+    const along = nearWall.axis === "h" ? at[0] : at[1];
+    centre = Math.max(nearWall.from, Math.min(nearWall.to, along));
+  } else {
+    if (spec.on) {
+      const { room, side, near } = spec.on;
+      if (side) cands = cands.filter((w) => sideOf(w, room) === side);
+      if (cands.length === 0) return fail("wall.unresolved", `opening #${spec.index}: ${room} has no wall to ${refLabel(a === room ? b : a)} on its ${side} side`);
+      if (near && cands.length > 1) {
+        cands.sort((w1, w2) => distToWall(near, w1) - distToWall(near, w2));
+        cands = [cands[0]!];
+      }
+    }
+    if (cands.length > 1) {
+      const roomRef = a === "exterior" ? b : a;
+      const desc = cands.map((w) => `${sideOf(w, roomRef)} ${describe(w)}`).join("; ");
+      return fail(
+        "wall.ambiguous",
+        `opening #${spec.index}: ${refLabel(a)} and ${refLabel(b)} share ${cands.length} wall segments (${desc}); add "on": { "room": "${roomRef}", "side": … } or "near": [x, y]`,
+      );
+    }
+    const wall = cands[0]!;
+    const len = wall.to - wall.from;
+    centre =
+      spec.position === "center"
+        ? wall.from + len / 2
+        : spec.position.from === "start"
+          ? wall.from + spec.position.distance
+          : wall.to - spec.position.distance;
   }
   const wall = cands[0]!;
-  const len = wall.to - wall.from;
-  const centre =
-    spec.position === "center"
-      ? wall.from + len / 2
-      : spec.position.from === "start"
-        ? wall.from + spec.position.distance
-        : wall.to - spec.position.distance;
   const from = snap(centre - spec.width / 2);
   const to = snap(centre + spec.width / 2);
   if (from < wall.from - MM || to > wall.to + MM) {
     findings.push({
       rule: "opening.overflow",
       severity: "error",
-      message: `opening #${spec.index} (${spec.type}, ${spec.width} m) does not fit the ${snap(len)} m wall between ${label(wall.neg)} and ${label(wall.pos)} at that position`,
+      message: `opening #${spec.index} (${spec.type}, ${spec.width} m) does not fit the ${snap(wall.to - wall.from)} m wall between ${label(wall.neg)} and ${label(wall.pos)} at that position`,
       at: pointOn(wall, centre),
       opening: spec.index,
     });

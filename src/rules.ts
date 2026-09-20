@@ -233,7 +233,7 @@ function levelRules(
       push({
         rule: "habitable.no_window",
         severity: "warning",
-        message: `${m.room.name} is habitable but has no exterior window${m.exteriorFaces.length ? ` (it has an exterior wall on the ${m.exteriorFaces.join("/")})` : " and no exterior wall to put one on"}`,
+        message: `${m.room.name} is habitable but has no exterior window or glazed exterior door${m.exteriorFaces.length ? ` (it has an exterior wall on the ${m.exteriorFaces.join("/")})` : " and no exterior wall to put one on"}`,
         rooms: [m.room.id],
         at: m.labelAt,
       });

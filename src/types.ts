@@ -93,10 +93,14 @@ export interface Opening {
   between: [string, string]; // room ids, outdoor space ids, or the literal "exterior"
   on: WallSelector | undefined;
   position: "center" | OpeningPosition;
+  /** absolute placement: [x, y] on the nearest wall between the two spaces in `between`.
+   * Mutually exclusive with `on` and `position` — the selector that survives angled walls. */
+  at: Pt | undefined;
   width: number;
   hinge: Jamb; // doors only
   swingInto: string; // doors only: one of the ids in `between`
   entrance: boolean; // doors only: marks the main entrance
+  glazed: boolean; // doors only: a glazed door counts as daylight, same as a window
 }
 
 /**
