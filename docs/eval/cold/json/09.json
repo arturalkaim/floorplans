@@ -1,0 +1,25 @@
+{
+  "title": "Courtyard House",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Room North", "kind": "living", "rect": [3, 0, 4, 3], "habitable": true },
+        { "name": "Room South", "kind": "bedroom", "rect": [3, 7, 4, 3], "habitable": true },
+        { "name": "Room West", "kind": "kitchen", "rect": [0, 3, 3, 4] },
+        { "name": "Room East", "kind": "bedroom", "rect": [7, 3, 3, 4], "habitable": true }
+      ],
+      "outdoor": [
+        { "name": "Courtyard", "rect": [3, 3, 4, 4], "covered": false }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Room North", "Courtyard"], "on": { "room": "Room North", "side": "south" }, "width": 1.5 },
+        { "type": "door", "between": ["Room South", "Courtyard"], "on": { "room": "Room South", "side": "north" }, "width": 1.5 },
+        { "type": "door", "between": ["Room West", "Courtyard"], "on": { "room": "Room West", "side": "east" }, "width": 1.5 },
+        { "type": "door", "between": ["Room East", "Courtyard"], "on": { "room": "Room East", "side": "west" }, "width": 1.5 }
+      ]
+    }
+  ]
+}

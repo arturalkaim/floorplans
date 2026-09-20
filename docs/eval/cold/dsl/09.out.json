@@ -1,0 +1,11 @@
+{
+  "summary": {"error":1,"warning":5,"info":0},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"levels.ground.openings","line":3},
+    {"rule":"habitable.no_window","severity":"warning","message":"Room North is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"levels.ground.rooms.room_north","rooms":["room_north"],"at":[5,1.5],"level":"ground","line":5},
+    {"rule":"habitable.no_window","severity":"warning","message":"Room South is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"levels.ground.rooms.room_south","rooms":["room_south"],"at":[5,8.5],"level":"ground","line":6},
+    {"rule":"habitable.no_window","severity":"warning","message":"Room West is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"levels.ground.rooms.room_west","rooms":["room_west"],"at":[1.5,5],"level":"ground","line":7},
+    {"rule":"habitable.no_window","severity":"warning","message":"Room East is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"levels.ground.rooms.room_east","rooms":["room_east"],"at":[8.5,5],"level":"ground","line":8},
+    {"rule":"room.min_dimension","severity":"warning","message":"Room North (living): 2.7 m at its narrowest; comfort minimum is 3 m (clear floor 3.7 × 2.7 m)","path":"levels.ground.rooms.room_north.rect","rooms":["room_north"],"at":[5,1.5],"measured":2.7,"minimum":3,"rect":[3.15,0.15,3.7,2.7],"level":"ground","line":5}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "summary": {"error":5,"warning":4,"info":0},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"levels.ground.openings","line":5},
+    {"rule":"space.no_access","severity":"error","message":"Living has no door or cased opening","path":"levels.ground.rooms.living","rooms":["living"],"at":[2,2],"level":"ground","line":7},
+    {"rule":"space.no_access","severity":"error","message":"Kitchen has no door or cased opening","path":"levels.ground.rooms.kitchen","rooms":["kitchen"],"at":[6,2],"level":"ground","line":8},
+    {"rule":"space.no_access","severity":"error","message":"Bedroom has no door or cased opening","path":"levels.ground.rooms.bedroom","rooms":["bedroom"],"at":[2,6],"level":"ground","line":9},
+    {"rule":"space.no_access","severity":"error","message":"Bathroom has no door or cased opening","path":"levels.ground.rooms.bathroom","rooms":["bathroom"],"at":[6,6],"level":"ground","line":10},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/west)","path":"levels.ground.rooms.living","rooms":["living"],"at":[2,2],"level":"ground","line":7},
+    {"rule":"habitable.no_window","severity":"warning","message":"Kitchen is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/east)","path":"levels.ground.rooms.kitchen","rooms":["kitchen"],"at":[6,2],"level":"ground","line":8},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the south/west)","path":"levels.ground.rooms.bedroom","rooms":["bedroom"],"at":[2,6],"level":"ground","line":9},
+    {"rule":"wet.no_window","severity":"warning","message":"Bathroom has no exterior window; plan mechanical extraction","path":"levels.ground.rooms.bathroom","rooms":["bathroom"],"at":[6,6],"level":"ground","line":10}
+  ]
+}

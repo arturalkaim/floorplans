@@ -1,0 +1,7 @@
+{
+  "summary": {"error":0,"warning":2,"info":0},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"Office is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the south/east)","path":"levels.ground.rooms.office","rooms":["office"],"at":[5,5],"level":"ground","line":6},
+    {"rule":"room.min_dimension","severity":"warning","message":"Office (office): 1.79 m at its narrowest; comfort minimum is 2 m (clear floor 1.79 × 1.79 m)","path":"levels.ground.rooms.office.rect","rooms":["office"],"at":[5,5],"measured":1.79,"minimum":2,"rect":[4.06,4.06,1.79,1.79],"level":"ground","line":6}
+  ]
+}

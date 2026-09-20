@@ -1,0 +1,24 @@
+{
+  "title": "Long Narrow House",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Hall", "kind": "hall", "rect": [0, 0, 2, 4], "circulation": true },
+        { "name": "Living", "kind": "living", "rect": [2, 0, 3, 4], "habitable": true },
+        { "name": "Kitchen", "kind": "kitchen", "rect": [5, 0, 3, 4] },
+        { "name": "Bedroom", "kind": "bedroom", "rect": [8, 0, 3, 4], "habitable": true },
+        { "name": "Bathroom", "kind": "bath", "rect": [11, 0, 2, 4], "wet": true }
+      ],
+      "openings": [
+        { "id": "front-door", "type": "door", "between": ["Hall"], "on": { "room": "Hall", "side": "west" }, "width": 0.9, "entrance": true },
+        { "type": "door", "between": ["Hall", "Living"], "on": { "room": "Hall", "side": "east" }, "width": 0.9 },
+        { "type": "door", "between": ["Living", "Kitchen"], "on": { "room": "Living", "side": "east" }, "width": 0.9 },
+        { "type": "door", "between": ["Kitchen", "Bedroom"], "on": { "room": "Kitchen", "side": "east" }, "width": 0.9 },
+        { "type": "door", "between": ["Bedroom", "Bathroom"], "on": { "room": "Bedroom", "side": "east" }, "width": 0.8 }
+      ]
+    }
+  ]
+}

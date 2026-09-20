@@ -1,0 +1,23 @@
+{
+  "title": "Cottage With A Porch",
+  "units": "m",
+  "levels": [
+    {
+      "name": "ground",
+      "ground": true,
+      "rooms": [
+        { "name": "Living", "kind": "living", "rect": [0, 0, 4, 4], "habitable": true },
+        { "name": "Kitchen", "kind": "kitchen", "rect": [4, 0, 3, 4] },
+        { "name": "Bedroom", "kind": "bedroom", "rect": [7, 0, 3, 4], "habitable": true }
+      ],
+      "outdoor": [
+        { "name": "Porch", "rect": [0, -1.5, 10, 1.5], "covered": true }
+      ],
+      "openings": [
+        { "type": "door", "between": ["Living", "Kitchen"], "on": { "room": "Living", "side": "east" }, "width": 0.9 },
+        { "type": "door", "between": ["Kitchen", "Bedroom"], "on": { "room": "Kitchen", "side": "east" }, "width": 0.9 },
+        { "id": "porch-door", "type": "door", "between": ["Living", "Porch"], "on": { "room": "Living", "side": "south" }, "width": 1.5, "entrance": true }
+      ]
+    }
+  ]
+}

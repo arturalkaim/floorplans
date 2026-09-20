@@ -1,0 +1,6 @@
+{
+  "summary": {"error":0,"warning":1,"info":0},
+  "findings": [
+    {"rule":"wet.no_window","severity":"warning","message":"WC has no exterior window; plan mechanical extraction","path":"levels.ground.rooms.wc","rooms":["wc"],"at":[3.75,0.75],"level":"ground","line":6}
+  ]
+}
