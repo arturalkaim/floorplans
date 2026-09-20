@@ -508,38 +508,70 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
     const hint = a === "exterior" ? `${b} touches: ${neighbours(b)}` : b === "exterior" ? `${a} touches: ${neighbours(a)}` : `${a} touches: ${neighbours(a)}; ${b} touches: ${neighbours(b)}`;
     return fail("wall.unresolved", `opening #${spec.index} (${spec.type}): ${refLabel(a)} and ${refLabel(b)} share no wall. ${hint}`);
   }
-  if (spec.on) {
-    const { room, side, near } = spec.on;
-    if (side) cands = cands.filter((w) => sideOf(w, room) === side);
-    if (cands.length === 0) return fail("wall.unresolved", `opening #${spec.index}: ${room} has no wall to ${refLabel(a === room ? b : a)} on its ${side} side`);
-    if (near && cands.length > 1) {
-      cands.sort((w1, w2) => distToWall(near, w1) - distToWall(near, w2));
-      cands = [cands[0]!];
+  let centre: number;
+  if (spec.at) {
+    // `at` chooses the nearest candidate wall by point-to-wall distance and projects the
+    // point onto it to get the centre — the selector that survives angled walls
+    // (agent-review.md §B5): unlike on.side, it never asks the author to reason about a
+    // derived segment's orientation or which end is its start.
+    const at = spec.at;
+    const dists = cands.map((w) => ({ w, d: distToWall(at, w) }));
+    const minD = Math.min(...dists.map((x) => x.d));
+    const nearest = dists.filter((x) => eq(x.d, minD));
+    if (nearest.length > 1) {
+      const desc = nearest.map((x) => `${describe(x.w)} (${snap(x.d)} m)`).join("; ");
+      return fail(
+        "wall.ambiguous",
+        `opening #${spec.index}: point (${at[0]}, ${at[1]}) is equidistant from ${nearest.length} wall segments (${desc}); move it, or use "on" instead of "at" to disambiguate`,
+      );
     }
-  }
-  if (cands.length > 1) {
-    const roomRef = a === "exterior" ? b : a;
-    const desc = cands.map((w) => `${sideOf(w, roomRef)} ${describe(w)}`).join("; ");
-    return fail(
-      "wall.ambiguous",
-      `opening #${spec.index}: ${refLabel(a)} and ${refLabel(b)} share ${cands.length} wall segments (${desc}); add "on": { "room": "${roomRef}", "side": … } or "near": [x, y]`,
-    );
+    const nearWall = nearest[0]!.w;
+    const tol = 0.05;
+    const limit = nearWall.thickness / 2 + tol;
+    if (minD > limit) {
+      return fail(
+        "opening.off_wall",
+        `opening #${spec.index}: point (${at[0]}, ${at[1]}) is ${snap(minD)} m from the nearest wall (${describe(nearWall)}), farther than half its thickness plus tolerance (${snap(limit)} m)`,
+      );
+    }
+    cands = [nearWall];
+    const along = nearWall.axis === "h" ? at[0] : at[1];
+    centre = Math.max(nearWall.from, Math.min(nearWall.to, along));
+  } else {
+    if (spec.on) {
+      const { room, side, near } = spec.on;
+      if (side) cands = cands.filter((w) => sideOf(w, room) === side);
+      if (cands.length === 0) return fail("wall.unresolved", `opening #${spec.index}: ${room} has no wall to ${refLabel(a === room ? b : a)} on its ${side} side`);
+      if (near && cands.length > 1) {
+        cands.sort((w1, w2) => distToWall(near, w1) - distToWall(near, w2));
+        cands = [cands[0]!];
+      }
+    }
+    if (cands.length > 1) {
+      const roomRef = a === "exterior" ? b : a;
+      const desc = cands.map((w) => `${sideOf(w, roomRef)} ${describe(w)}`).join("; ");
+      return fail(
+        "wall.ambiguous",
+        `opening #${spec.index}: ${refLabel(a)} and ${refLabel(b)} share ${cands.length} wall segments (${desc}); add "on": { "room": "${roomRef}", "side": … } or "near": [x, y]`,
+      );
+    }
+    const wall = cands[0]!;
+    const len = wall.to - wall.from;
+    centre =
+      spec.position === "center"
+        ? wall.from + len / 2
+        : spec.position.from === "start"
+          ? wall.from + spec.position.distance
+          : wall.to - spec.position.distance;
   }
   const wall = cands[0]!;
-  const len = wall.to - wall.from;
-  const centre =
-    spec.position === "center"
-      ? wall.from + len / 2
-      : spec.position.from === "start"
-        ? wall.from + spec.position.distance
-        : wall.to - spec.position.distance;
   const from = snap(centre - spec.width / 2);
   const to = snap(centre + spec.width / 2);
   if (from < wall.from - MM || to > wall.to + MM) {
     findings.push({
       rule: "opening.overflow",
       severity: "error",
-      message: `opening #${spec.index} (${spec.type}, ${spec.width} m) does not fit the ${snap(len)} m wall between ${label(wall.neg)} and ${label(wall.pos)} at that position`,
+      message: `opening #${spec.index} (${spec.type}, ${spec.width} m) does not fit the ${snap(wall.to - wall.from)} m wall between ${label(wall.neg)} and ${label(wall.pos)} at that position`,
       at: pointOn(wall, centre),
       opening: spec.index,
     });

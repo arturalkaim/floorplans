@@ -324,3 +324,48 @@ describe("derive: outdoor space is open sky", () => {
     assert.ok(!has(findings, "tiling.gap"));
   });
 });
+
+describe("derive: opening `at` — absolute placement (B5)", () => {
+  it("lands where the equivalent on+position does", () => {
+    const viaOn = analyze(twoRooms());
+    const doorOn = viaOn.model.openings.find((o) => o.spec.type === "door" && o.spec.entrance)!;
+    const viaAt = analyze(
+      twoRooms({
+        openings: [
+          { type: "door", between: ["exterior", "a"], at: doorOn.center, width: 0.9, entrance: true },
+          ...twoRooms().openings.slice(1),
+        ],
+      }),
+    );
+    assert.deepEqual(rulesOf(viaAt.findings), []);
+    const doorAt = viaAt.model.openings.find((o) => o.spec.type === "door" && o.spec.entrance)!;
+    const pick = (o: typeof doorOn) => ({ wallId: o.wall.id, from: o.from, to: o.to, center: o.center, hinge: o.hinge, swingRoom: o.swingRoom });
+    assert.deepEqual(pick(doorAt), pick(doorOn));
+  });
+
+  it("farther than half the wall's thickness plus tolerance is opening.off_wall, naming the nearest wall and the distance", () => {
+    const { findings } = analyze(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: [10, 10] }] }));
+    const f = findings.find((x) => x.rule === "opening.off_wall")!;
+    assert.ok(f, `expected opening.off_wall, got ${findings.map((x) => x.rule).join(", ")}`);
+    assert.match(f.message, /is 8\.92 m from the nearest wall \(x=4 y 0→3\.4\), farther than half its thickness plus tolerance \(0\.11 m\)/);
+    assert.equal(f.opening, 0);
+  });
+
+  it("picks the nearer of two candidate walls between the same room pair", () => {
+    const L = { rooms: { l: { kind: "living", poly: [[0, 0], [4, 0], [4, 4], [2, 4], [2, 2], [0, 2]] }, k: { kind: "kitchen", poly: rect(0, 2, 2, 2) } } };
+    const nearH = analyze({ ...L, openings: [{ type: "door", between: ["l", "k"], width: 0.8, at: [1, 2] }] });
+    assert.deepEqual(rulesOf(nearH.findings), []);
+    assert.equal(nearH.model.openings[0]!.wall.axis, "h");
+    const nearV = analyze({ ...L, openings: [{ type: "door", between: ["l", "k"], width: 0.8, at: [2, 3] }] });
+    assert.deepEqual(rulesOf(nearV.findings), []);
+    assert.equal(nearV.model.openings[0]!.wall.axis, "v");
+  });
+
+  it("a point equidistant from two candidates is wall.ambiguous, listing both", () => {
+    const L = { rooms: { l: { kind: "living", poly: [[0, 0], [4, 0], [4, 4], [2, 4], [2, 2], [0, 2]] }, k: { kind: "kitchen", poly: rect(0, 2, 2, 2) } } };
+    const { findings } = analyze({ ...L, openings: [{ type: "door", between: ["l", "k"], width: 0.8, at: [2, 2] }] });
+    const f = findings.find((x) => x.rule === "wall.ambiguous")!;
+    assert.ok(f, `expected wall.ambiguous, got ${findings.map((x) => x.rule).join(", ")}`);
+    assert.match(f.message, /equidistant from 2 wall segments/);
+  });
+});

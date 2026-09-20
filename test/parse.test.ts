@@ -467,3 +467,36 @@ describe("parse: layout grid compiles to polygons", () => {
     assert.ok(issuesOf({ ...grid, layout: { ...grid.layout, rows: [3] } }).includes("layout.areas"));
   });
 });
+
+describe("parse: opening `at` (absolute placement)", () => {
+  it("accepts [x, y] and snaps it like any other coordinate", () => {
+    const plan = parse(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: [4.00049, 1] }] }));
+    const door = plan.openings.find((o) => o.between.includes("b") && o.type === "door")!;
+    assert.deepEqual(door.at, [4, 1]);
+    assert.equal(door.on, undefined);
+    assert.equal(door.position, "center");
+  });
+
+  it("rejects at together with on, the way a room rejects poly and rect together", () => {
+    const issues = issueListOf(
+      twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: [4, 1], on: { room: "a", side: "east" } }] }),
+    );
+    assert.deepEqual(issues.map((i) => i.path), ["openings[0]"]);
+    assert.equal(issues[0]!.message, 'has both "at" and "on"/"position"; use one');
+  });
+
+  it("rejects at together with position", () => {
+    const issues = issueListOf(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: [4, 1], position: 1 }] }));
+    assert.deepEqual(issues.map((i) => i.path), ["openings[0]"]);
+    assert.equal(issues[0]!.message, 'has both "at" and "on"/"position"; use one');
+  });
+
+  it("rejects a malformed at", () => {
+    assert.deepEqual(issuesOf(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: [4] }] })), ["openings[0].at"]);
+    assert.deepEqual(issuesOf(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: "4,1" }] })), ["openings[0].at"]);
+  });
+
+  it("is a known key (not flagged as unknown)", () => {
+    assert.deepEqual(issuesOf(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: [4, 1] }] })), []);
+  });
+});

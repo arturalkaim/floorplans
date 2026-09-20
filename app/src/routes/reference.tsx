@@ -102,6 +102,7 @@ export function Reference() {
           <tr><td><code>between</code></td><td>the two spaces it joins: room ids, an outdoor space id, or <code>"exterior"</code> for the street. At least one end must be a room</td></tr>
           <tr><td><code>on</code></td><td>which wall, when the pair shares several: <code>{"{ room, side, near }"}</code></td></tr>
           <tr><td><code>position</code></td><td><code>"center"</code>, metres from the wall's start, or <code>{'{ from, distance }'}</code></td></tr>
+          <tr><td><code>at</code></td><td><code>[x, y]</code>: place by an absolute point instead of <code>on</code> + <code>position</code> — picks the nearest wall between the two spaces and projects the point onto it. Mutually exclusive with <code>on</code> and <code>position</code></td></tr>
           <tr><td><code>width</code></td><td>metres</td></tr>
           <tr><td><code>hinge</code></td><td>doors: which jamb. Walls run west→east and north→south</td></tr>
           <tr><td><code>swingInto</code></td><td>doors: the space the leaf opens into</td></tr>

@@ -10,7 +10,7 @@
     "deck": {"name":"Deck","rect":[0,4,5,2]}
   },
   "openings": [
-    {"type":"door","between":["deck","sala"],"on":{"room":"sala","side":"south"},"position":0.9,"width":0.9,"hinge":"start","swingInto":"sala"},
+    {"type":"door","between":["deck","sala"],"at":[0.9,4],"width":0.9,"hinge":"start","swingInto":"sala"},
     {"type":"door","between":["sala","wc"],"position":{"from":"end","distance":0.5},"width":0.7,"hinge":"end","swingInto":"wc"},
     {"type":"door","between":["sala","arrumos"],"position":{"from":"start","distance":0.5},"width":0.7,"hinge":"start","swingInto":"arrumos"},
     {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"position":2.5,"width":2.4},

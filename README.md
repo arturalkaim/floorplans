@@ -280,6 +280,7 @@ are rectangles, and writing them as `rect` costs 186 tokens less.
 | `between` | the two spaces the opening joins: room ids, an outdoor space id, or `"exterior"` for the street. At least one end must be a room — nothing is built between two outdoor spaces |
 | `on` | disambiguates when the pair shares several walls: `{ "room", "side": north\|south\|east\|west, "near": [x,y] }` |
 | `position` | `"center"` (default), a number (metres from the wall's start to the opening centre), or `{ "from": "start"\|"end", "distance" }` |
+| `at` | `[x, y]`: place the opening by an absolute point instead of `on` + `position` — picks the nearest wall between the two spaces in `between` and projects the point onto it |
 | `width` | metres |
 | `hinge` | doors: `"start"` or `"end"` jamb. Walls run west→east and north→south. |
 | `swingInto` | doors: room the leaf opens into (default: the room in `between`, never the street or a terrace) |
@@ -290,6 +291,15 @@ border flood fill reaches. A door onto an enclosed courtyard is a perfectly good
 it is allowed, it joins the two spaces in the access graph, and it never satisfies
 `entrance.missing`. `reach.unreachable` walks from the street the same way, so a room you
 can only get to by crossing a courtyard is reachable exactly when the courtyard is.
+
+`at` is mutually exclusive with `on` and `position`, exactly as a room's `poly` and `rect`
+are; giving both is `has both "at" and "on"/"position"; use one`. It is the selector that
+survives angled walls — `on.side` asks which compass side a *derived* wall segment starts
+from, which has no meaning once walls stop being axis-aligned, while `at` just names a
+point and lets the library find the nearest wall. If that point is farther from every
+candidate wall than half its thickness plus a small tolerance, that is `opening.off_wall`,
+naming the nearest wall and the distance; a point equidistant from two candidates is
+`wall.ambiguous`, exactly as an unresolved `on` would be.
 
 ### Fixtures
 
@@ -331,8 +341,9 @@ Every finding is `{ rule, severity, message, at?, rooms?, opening? }`.
 | Rule | Severity | Catches |
 |---|---|---|
 | `tiling.gap` / `tiling.overlap` | error | hole in the plan / two rooms share area |
-| `wall.unresolved` / `wall.ambiguous` | error | opening names rooms with no (or several) shared walls |
+| `wall.unresolved` / `wall.ambiguous` | error | opening names rooms with no (or several) shared walls, or `at` names a point equidistant from more than one |
 | `opening.overflow` / `opening.collision` | error | opening wider than its wall / two openings overlap |
+| `opening.off_wall` | error | an opening's `at` point is farther from the nearest wall than half its thickness plus a small tolerance |
 | `window.not_exterior` | error | window on an interior wall |
 | `entrance.missing` | error | no door leads to the street |
 | `space.no_access` / `reach.unreachable` | error | room without a door / not reachable from the street |
