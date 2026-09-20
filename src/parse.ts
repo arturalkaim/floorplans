@@ -18,6 +18,10 @@ import type {
   Void,
 } from "./types.ts";
 import { CIRCULATION_KINDS, GROUND_LEVEL, HABITABLE_KINDS, WET_KINDS } from "./types.ts";
+// The DSL is an authoring front-end that compiles to this module's own document shape.
+// The import cycle (dsl.ts reads SCHEMA and the vocabularies from here) is used only from
+// inside function bodies on both sides, never at module-initialisation time.
+import { DslError, readSource } from "./dsl.ts";
 
 /**
  * What kind of schema problem this is. The vocabulary is the one the existing messages
@@ -38,6 +42,11 @@ export interface PlanIssue {
   path: string;
   message: string;
   kind: IssueKind;
+  /**
+   * 1-based line in the source text, for a document authored in the line DSL. Absent for
+   * a JSON document, whose `path` is already the way to find the value.
+   */
+  line?: number;
 }
 
 /** Report a problem. `type` is the default because "present but wrong" is the common case. */
@@ -375,10 +384,16 @@ export function parse(input: unknown): Plan {
   const doc: J = isObj(input) ? input : {};
   if (!isObj(input)) bad("", "plan must be a JSON object", "syntax");
   if (typeof input === "string") {
+    // Source text comes in two syntaxes and the first non-space character says which
+    // (src/dsl.ts): `{` is JSON, anything else is the line DSL. The DSL compiles to the
+    // *same document shape* this function then checks, so there is one schema and one set
+    // of messages, exactly as `layout` compiles to polygons rather than to its own rules.
     try {
-      return parse(JSON.parse(input));
+      return parse(readSource(input).doc);
     } catch (e) {
       if (e instanceof PlanError) throw e;
+      if (e instanceof DslError)
+        throw new PlanError(e.issues.map((i) => ({ path: "", message: i.message, kind: "syntax" as IssueKind, line: i.line })));
       throw new PlanError([{ path: "", message: `not valid JSON: ${(e as Error).message}`, kind: "syntax" }]);
     }
   }

@@ -13,6 +13,8 @@
 import { derive, pointOn } from "./derive.ts";
 import { polyInside, shoelace } from "./geometry.ts";
 import { parse, PlanError } from "./parse.ts";
+import { DslError, lineOf, readSource } from "./dsl.ts";
+import type { DslPositions } from "./dsl.ts";
 import { checkRules, sortFindings } from "./rules.ts";
 import { renderSvg } from "./svg.ts";
 import type { Analysis, Finding, LevelModel, Model, Owner, Plan, Pt, Severity } from "./types.ts";
@@ -45,6 +47,9 @@ export type { Projection } from "./svg.ts";
 export type { RuleDoc } from "./catalogue.ts";
 // authoring support: keep a document canonical, and edit one value in place
 export { formatPlan, formatText } from "./format.ts";
+// the line DSL: the authoring front-end, and its grammar as data
+export { ARC_SYNTAX, DSL_SCHEMA, DslError, DslPosError, dslSchemaText, dslSpliceAll, dslSpliceAt, isDslText, lineOf, parseDsl, readSource, toDsl } from "./dsl.ts";
+export type { DslDocument, DslIssue, DslPositions, DslSpan, DslStatementDoc, DslTokenDoc } from "./dsl.ts";
 export {
   appendAt,
   insertKey,
@@ -211,8 +216,10 @@ export interface FloorplanOptions {
 
 /** Everything in one call. Throws PlanError only for schema problems. */
 export function floorplan(input: unknown, opts: FloorplanOptions = {}): FloorplanResult {
-  const plan = parse(input);
-  const { model, findings } = analyze(plan, opts.rules);
+  const src = source(input);
+  const plan = parse(src.doc);
+  const { model, findings: raw } = analyze(plan, opts.rules);
+  const findings = withLines(raw, src.positions);
   const rank: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
   const mark = opts.markFindings ?? "warning";
   const marked = mark === "none" ? [] : findings.filter((f) => rank[f.severity] <= rank[mark]);
@@ -310,17 +317,57 @@ export interface LintResult {
  */
 export function lint(input: unknown, opts: FloorplanOptions = {}): LintResult {
   let plan: Plan;
+  // Source text is sniffed once here rather than inside `parse()`, so the DSL positions
+  // survive to annotate the findings; `parse()` would have thrown them away.
+  let src: { doc: unknown; positions?: DslPositions };
   try {
-    plan = parse(input);
+    src = source(input);
   } catch (e) {
     if (!(e instanceof PlanError)) throw e;
-    return {
-      findings: e.issues.map((i) => ({ ...SCHEMA_RULE[i.kind], severity: "error" as const, message: i.message, path: i.path })),
-      error: e,
-    };
+    return { findings: issueFindings(e), error: e };
+  }
+  try {
+    plan = parse(src.doc);
+  } catch (e) {
+    if (!(e instanceof PlanError)) throw e;
+    return { findings: issueFindings(e, src.positions), error: e };
   }
   const { model, findings } = analyze(plan, opts.rules);
-  return { findings, plan, model };
+  return { findings: withLines(findings, src.positions), plan, model };
+}
+
+/**
+ * Read source text as a document, in whichever syntax it is written. A DSL tokenizer
+ * error arrives as a `PlanError` of `schema.syntax` issues carrying their own line, so a
+ * caller has one exception type to handle whatever the input was written in.
+ */
+function source(input: unknown): { doc: unknown; positions?: DslPositions } {
+  if (typeof input !== "string") return { doc: input };
+  try {
+    return readSource(input);
+  } catch (e) {
+    if (e instanceof DslError) throw new PlanError(e.issues.map((i) => ({ path: "", message: i.message, kind: "syntax" as IssueKind, line: i.line })));
+    throw new PlanError([{ path: "", message: `not valid JSON: ${(e as Error).message}`, kind: "syntax" }]);
+  }
+}
+
+const issueFindings = (e: PlanError, positions?: DslPositions): Finding[] =>
+  e.issues.map((i) => {
+    const line = i.line ?? (positions ? lineOf(positions, i.path) : undefined);
+    return { ...SCHEMA_RULE[i.kind], severity: "error" as const, message: i.message, path: i.path, ...(line === undefined ? {} : { line }) };
+  });
+
+/**
+ * Attach `line` to every finding of a DSL document, by resolving its JSON path against
+ * the positions the DSL parser recorded. A JSON document is returned untouched — the
+ * array identity included — so nothing about its findings changes.
+ */
+function withLines(findings: Finding[], positions: DslPositions | undefined): Finding[] {
+  if (!positions) return findings;
+  return findings.map((f) => {
+    const line = lineOf(positions, f.path);
+    return line === undefined ? f : { ...f, line };
+  });
 }
 
 export function worstSeverity(findings: Finding[]): Severity | undefined {

@@ -448,6 +448,15 @@ export interface Finding {
    * are byte-identical to what they were before levels existed.
    */
   level?: string;
+  /**
+   * 1-based line in the source text, for a document authored in the line DSL — where one
+   * entity is one line, so a line is an address an agent can act on directly.
+   *
+   * INVARIANT: `path` stays the JSON path on every document, DSL or not; `line` is added
+   * beside it and never in place of it, so a consumer written against the JSON contract
+   * reads the same field it always did.
+   */
+  line?: number;
   at?: Pt;
   rooms?: string[];
   /** `Opening.id`, never an index: an index shifts when a sibling is deleted */
