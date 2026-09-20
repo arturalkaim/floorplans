@@ -51,7 +51,7 @@ export type { RuleDoc } from "./catalogue.ts";
 // authoring support: keep a document canonical, and edit one value in place
 export { formatPlan, formatText } from "./format.ts";
 // the line DSL: the authoring front-end, and its grammar as data
-export { ARC_SYNTAX, COMPASS_LINE, DSL_SCHEMA, DslError, DslPosError, dslSchemaText, dslSpliceAll, dslSpliceAt, isDslText, lineOf, parseDsl, readSource, toDsl } from "./dsl.ts";
+export { ARC_SYNTAX, COMPASS_LINE, DSL_SCHEMA, DslError, DslPosError, dslSchemaText, dslSpliceAll, dslSpliceAt, isDslText, lineOf, parseDsl, POLY_INLINE_EXAMPLE, readSource, toDsl } from "./dsl.ts";
 export type { DslDocument, DslIssue, DslPositions, DslSchemaOptions, DslSpan, DslStatementDoc, DslTokenDoc } from "./dsl.ts";
 export {
   appendAt,

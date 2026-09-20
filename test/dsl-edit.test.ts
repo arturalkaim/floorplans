@@ -68,7 +68,7 @@ describe("a splice into a DSL document touches one token and nothing else", () =
       { path: ["openings", 0, "width"], literal: "1.1" },
     ]);
     assert.match(out, /rect 0,0 5.5x4/);
-    assert.match(out, /door deck>sala at:0.9,4 w1.1 /);
+    assert.match(out, /door deck>sala at 0.9,4 w1.1 /);
   });
 
   it("says so when the path names nothing on any line", () => {
@@ -152,7 +152,7 @@ describe("floorplan set / patch on a DSL file", () => {
   it("set splices the token and writes the file back", () => {
     const t = fakeIo({ "p.dsl": dsl });
     assert.equal(run(["set", "p.dsl", "openings[0].width", "1.1"], t.io), 0);
-    assert.match(t.written["p.dsl"]!, /^door deck>sala at:0.9,4 w1.1 hinge:start swing:sala$/m);
+    assert.match(t.written["p.dsl"]!, /^door deck>sala at 0.9,4 w1.1 hinge:start swing:sala$/m);
     assert.equal(t.written["p.dsl"]!.split("\n").length, dsl.split("\n").length);
   });
 

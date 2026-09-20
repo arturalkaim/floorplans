@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { COMPASS_LINE, DSL_SCHEMA, dslSchemaText, parseDsl, SCHEMA, toDsl } from "../src/index.ts";
+import { COMPASS_LINE, DSL_SCHEMA, dslSchemaText, parseDsl, POLY_INLINE_EXAMPLE, SCHEMA, toDsl } from "../src/index.ts";
 
 /** Every `<object>.<field>` the JSON schema has. */
 const schemaFields = SCHEMA.flatMap((o) => o.fields.map((f) => `${o.object}.${f.name}`));
@@ -62,6 +62,44 @@ describe("the DSL grammar covers the whole schema", () => {
     const text = dslSchemaText({ example: doc });
     assert.match(text, /## example\n\nroom a rect 0,0 3x3\n?$/);
   });
+
+  // fix 2, docs/eval/cold2/cold-run.md: 3 of 7 DSL parse failures in that eval were a
+  // ground-floor door written after the *next* level's header, despite the doc sentence
+  // already stating the rule. Shown, then told.
+  it("puts the level statement's two-level worked example before its doc sentence, and it actually parses", () => {
+    const text = dslSchemaText();
+    const level = DSL_SCHEMA.find((s) => s.statement === "level")!;
+    assert.ok(level.example, "the level statement should have a worked example");
+    const exampleAt = text.indexOf(level.example!);
+    const docAt = text.indexOf(`— ${level.doc}`);
+    assert.ok(exampleAt !== -1 && docAt !== -1 && exampleAt < docAt, "the worked example should appear before the doc sentence");
+    assert.match(level.doc, /statements belong to the most recent level line/);
+    const levelLines = level.example!.split("\n").filter((l) => l.includes("level "));
+    assert.equal(levelLines.length, 2, `the level example should show 2 "level" headers, found ${levelLines.length}`);
+    // the ground-floor door lands under ground, not first — the exact mistake the eval logged
+    const clean = level.example!.replace("e.g. ", "").split("\n").map((l) => l.replace(/^\s+/, "")).join("\n");
+    const doc = parseDsl(clean).doc as { levels: Record<string, { rooms: object; openings?: unknown[] }> };
+    assert.ok(doc.levels["ground"]!.openings && doc.levels["ground"]!.openings!.length === 1);
+    assert.ok(doc.levels["first"]!.openings === undefined);
+  });
+
+  // fix 7, docs/eval/cold2/cold-run.md: neither reference showed a worked example of a
+  // poly's own layout, leaving inline-vs-indented-block a guess.
+  it("states a poly's corners are inline, not an indented block, and the example itself parses", () => {
+    const text = dslSchemaText();
+    const polyAt = text.indexOf("## poly elements");
+    const noteAt = text.indexOf(POLY_INLINE_EXAMPLE);
+    assert.ok(polyAt !== -1 && noteAt !== -1 && noteAt > polyAt, "the poly-inline note should sit in the poly elements section");
+    const line = POLY_INLINE_EXAMPLE.split(": ").slice(1).join(": ");
+    assert.doesNotThrow(() => parseDsl(line));
+  });
+
+  // fix 5, docs/eval/cold2/cold-run.md: DSL's `<room>[.<side>]` shorthand silently
+  // conflicted with an explicit `at`; JSON already states the equivalent oneOf.
+  it("states that the opening short form's implicit on cannot combine with an explicit at", () => {
+    const opening = DSL_SCHEMA.find((s) => s.statement === "door | window | cased")!;
+    assert.match(opening.doc, /cannot combine with an explicit `at`/);
+  });
 });
 
 describe("every documented token actually parses", () => {
@@ -82,7 +120,7 @@ describe("every documented token actually parses", () => {
       "door a>b @-1.5 w0.9 on:a.east near:1,2 hinge:end swing:b entrance glazed id:p",
       { openings: [{ id: "p", type: "door", between: ["a", "b"], width: 0.9, position: { from: "end", distance: 1.5 }, on: { room: "a", side: "east", near: [1, 2] }, hinge: "end", swingInto: "b", entrance: true, glazed: true }] },
     ],
-    ["window a>b at:1,2 w1", { openings: [{ type: "window", between: ["a", "b"], width: 1, at: [1, 2] }] }],
+    ["window a>b at 1,2 w1", { openings: [{ type: "window", between: ["a", "b"], width: 1, at: [1, 2] }] }],
     ["cased a>b w1", { openings: [{ type: "cased", between: ["a", "b"], width: 1 }] }],
     ['fixture pool in:deck at 1,2 size 3x4 "P" depth:1.4 id:f', { fixtures: [{ id: "f", type: "pool", in: "deck", at: [1, 2], size: [3, 4], depth: 1.4, name: "P" }] }],
     ["fixture bath in:wc poly 0,0 1,0 1,1 0,1", { fixtures: [{ type: "bath", in: "wc", poly: [[0, 0], [1, 0], [1, 1], [0, 1]] }] }],

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { ARC_SYNTAX, DSL_SCHEMA, SCHEMA } from "../src/index.ts";
+import { ARC_SYNTAX, DSL_SCHEMA, POLY_INLINE_EXAMPLE, SCHEMA } from "../src/index.ts";
 
 /**
  * The README's DSL grammar is generated from `DSL_SCHEMA`, not written by hand — the same
@@ -28,6 +28,8 @@ export function readmeBlock(): string {
   return [
     "```",
     statements,
+    "",
+    `    ${POLY_INLINE_EXAMPLE}`,
     "",
     "a poly element is a corner or an arc to it:",
     "    <x>,<y>",

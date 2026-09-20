@@ -26,19 +26,25 @@ to read a plan back" below).
 
 | load | what it is | tokens |
 |---|---|---:|
-| `floorplan --schema` | one compact typed-signature line per object (with cardinality — `{id: room}`, `opening[]`), a legend, and a worked example — all 14 objects and 73 fields | 1 035 |
-| `floorplan --schema=dsl` | the line DSL's grammar — every statement and its tokens — plus the same legend and worked example, without the field-by-field index below | 1 045 |
-| `floorplan --schema=dsl-full` | `--schema=dsl` plus the field-by-field token index for all 73 fields | 1 668 |
+| `floorplan --schema` | one compact typed-signature line per object (with cardinality — `{id: room}`, `opening[]`), a legend, and a worked example — all 14 objects and 73 fields | 1 146 |
+| `floorplan --schema=dsl` | the line DSL's grammar — every statement and its tokens — plus the same legend and worked example, without the field-by-field index below | 1 333 |
+| `floorplan --schema=dsl-full` | `--schema=dsl` plus the field-by-field token index for all 73 fields | 1 956 |
 | `floorplan --schema=full` | the same JSON table with types, enums, cardinality and a one-sentence doc per field | 2 606 |
 | `floorplan --schema=md` | the full table as Markdown, for a human | 2 225 |
+| `floorplan --rules` | every rule id and its one-line `catches`, compact | 952 |
 
 Take `--schema` when you are editing a document you already have, and
-`--schema=dsl` when you are writing one from scratch: the two now cost about
-the same to load (a worked example dominates both), and the documents the DSL
+`--schema=dsl` when you are writing one from scratch: the documents the DSL
 teaches you to write are still about half the size, so it still pays for
-itself on the first house. All five are generated from the library itself, so
-none can list a field, a token or a rule the parser and linter do not
-actually have.
+itself on the first house even though its own reference costs a little more
+to load — `--schema=dsl` now carries the same legend `--schema` does (every
+room kind, fixture type, opening type, vertical type and side, spelled out
+once) plus worked examples for `level` and `layout`, the two statements a
+cold-agent eval (`docs/eval/cold2/cold-run.md`) found under-specified. All six
+are generated from the library itself, so none can list a field, a token or a
+rule the parser and linter do not actually have; `--rules` is what both
+schemas now point an agent at for the rules — a habitable room needs a
+window, a room needs a door — that only `--lint` can teach.
 
 ## Playground app
 
@@ -147,17 +153,23 @@ finding shows `—`.
 
 `--schema` needs no input file: it prints every object's field list, read straight from
 the table the parser itself validates against (see "Plan format" below). Default is one
-typed-signature line per object — name, required/`?`, type, enum values inlined at ≤6 or a
-`enum(NAME)` reference otherwise, spelled out once in a trailing legend, cardinality on
-every nested-object field (`{id: room}` for an id-keyed map, `opening[]` for a list, bare
-`opening.on` for a single nested object) — plus the id format, the x/y ↔ compass axes, and
-one small worked example (`fixtures/cabin.json`, canonical form) at the end: no per-field
-doc text, 1 035 tokens for all 14 objects/73 fields. `--schema=full` prints the same table
-as compact JSON with name, type, required, enum values, cardinality and the one-sentence
-doc, one field per line, 2 606 tokens. `--schema=md` prints the full table as Markdown.
-`--schema=dsl` prints the line DSL's grammar instead, from its own table (see "The line
-DSL" below) plus the same legend and worked example, 1 045 tokens; `--schema=dsl-full`
-adds the field-by-field token index `--schema=dsl` omits, 1 668 tokens.
+typed-signature line per object — name, required/`?`, type, every enum as a `enum(NAME)`
+reference resolved once in a trailing legend, cardinality on every nested-object field
+(`{id: room}` for an id-keyed map, `opening[]` for a list, bare `opening.on` for a single
+nested object) — plus the id format, the x/y ↔ compass axes, a worked example for `layout`
+(`fixtures/apartment-t2.json`'s own, the one element neither reference used to demonstrate),
+and one small worked example for the whole document (`fixtures/cabin.json`, canonical form)
+at the end: no per-field doc text, 1 146 tokens for all 14 objects/73 fields. `--schema=full`
+prints the same table as compact JSON with name, type, required, enum values, cardinality
+and the one-sentence doc, one field per line, 2 606 tokens. `--schema=md` prints the full
+table as Markdown. `--schema=dsl` prints the line DSL's grammar instead, from its own table
+(see "The line DSL" below), sharing `--schema`'s own legend so a vocabulary cannot drift
+between the two, plus worked examples for `level` (two levels, so the statement-scoping rule
+is shown as well as told) and `layout`, 1 333 tokens; `--schema=dsl-full` adds the
+field-by-field token index `--schema=dsl` omits, 1 956 tokens. `--rules` prints the rule
+catalogue — every rule id and its one-line `catches`, compact, 952 tokens — which both
+schemas' preambles now point at for a rule (a habitable room needs a window; a room reached
+only by a stair still needs a door) that only `--lint` can teach.
 
 `fmt` canonicalises a plan and converts it between the two syntaxes. Without `--to` the
 file keeps the syntax it is in; `--out` writes somewhere else, which is what a conversion
@@ -791,7 +803,7 @@ room wc "Casa de banho" wc rect 5,0 1.2x2
 room arrumos "Arrumos" storage rect 5,2 1.2x2
 outdoor deck "Deck" rect 0,4 5x2
 
-door deck>sala at:0.9,4 w0.9 hinge:start swing:sala
+door deck>sala at 0.9,4 w0.9 hinge:start swing:sala
 door sala>wc @-0.5 w0.7 hinge:end swing:wc
 door sala>arrumos @0.5 w0.7 hinge:start swing:arrumos
 window sala.north @2.5 w2.4
@@ -836,9 +848,11 @@ refuses such a document rather than dropping the key.
 
 ### The grammar
 
-Printed by `floorplan --schema=dsl` (1 045 tokens; `--schema=dsl-full` adds the
-field-by-field token index below, 1 668 tokens) and generated below from the same table, so
-neither can describe a token the parser does not take. `[...]` is optional.
+Printed by `floorplan --schema=dsl` (1 333 tokens, legend and worked examples included;
+`--schema=dsl-full` adds the field-by-field token index below, 1 956 tokens) and generated
+below from the same table, so neither can describe a token the parser does not take.
+`[...]` is optional. The block below omits `--schema=dsl`'s worked examples and vocabulary
+legend to stay short; load `--schema=dsl` itself for those.
 
 <!-- generated from DSL_SCHEMA by test/readme-dsl.test.ts; run it with UPDATE_README=1 after a grammar change -->
 
@@ -856,10 +870,10 @@ grid cols <n>,… rows <n>,…
     the shared track grid every level's layout may sit on
 
 level <id> ["Name"] [h<height>] [ground]
-    a storey header: every statement after it belongs to that level, until the next one
+    a storey header: statements belong to the most recent level line, until the next one
 
-room <id> ["Name"] [<kind>] [<zone>] [rect <x>,<y> <w>x<h> | poly <x>,<y> …] [habitable] [wet] [circulation]
-    one room; the two bare words are the kind then the zone, and the kind must be a real one
+room <id> ["Name"] [<kind> [<zone>]] [rect <x>,<y> <w>x<h> | poly <x>,<y> …] [habitable] [wet] [circulation]
+    one room; the two bare words are the kind then the zone, in that order — the kind must be a real one, and a zone with no kind is written zone:<z>
 
 outdoor <id> ["Name"] [covered] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
     a terrace, courtyard or garden: outside, but not the street
@@ -869,21 +883,23 @@ void <id> ["Name"] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
 
 layout [cols <n>,…] [rows <n>,…]
         <cell> <cell> …   (one indented row per grid row)
-    the one multi-line statement: an ASCII picture placing already-declared spaces on the track grid
+    an ASCII picture placing already-declared spaces on the track grid; the same id in several cells is one space spanning them, "." is empty
 
-<type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at:<x>,<y>]  w<width>
+<type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at <x>,<y>]  w<width>
         [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [id:<id>]
-    one opening. `<room>[.<side>]` alone is the short form of `exterior><room>` with an `on`
+    one opening. `<room>[.<side>]` alone is short for `exterior><room>` with an `on`; that implicit `on` cannot combine with an explicit `at` — same rule as JSON's oneOf: "on"/"position" xor "at"
 
 fixture <type> in:<space> (at <x>,<y> size <w>x<h> | poly <x>,<y> …) ["Name"] [depth:<n>] [id:<id>]
     a thing standing in a space: a pool, a bath, a counter
 
-stairs|lift|ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)
+stairs | lift | ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)
         at <level> in:<space> rect <x>,<y> <w>x<h> | poly <x>,<y> …      (one indented line per level served)
     vertical circulation: the only entity that spans levels, joined by its id and never by overlap — one `at` line per level it serves, never one line per element
 
 # anything after a # is ignored, as is a blank line
     comments and blank lines are not part of the document and are dropped by the printer
+
+    a poly's corners are inline on the entity's own line, never an indented block: outdoor deck poly 0,0 5,0 5,2 0,2
 
 a poly element is a corner or an arc to it:
     <x>,<y>
@@ -940,7 +956,7 @@ Every field of the JSON schema, and the token that writes it — all 73 of them,
 | `opening.width` | `w<width>` |
 | `opening.position` | `@<d>` |
 | `opening.on` | `on:<room>` |
-| `opening.at` | `at:<x>,<y>` |
+| `opening.at` | `at <x>,<y>` |
 | `opening.hinge` | `hinge:start|end` |
 | `opening.swingInto` | `swing:<space>` |
 | `opening.entrance` | `entrance` |

@@ -114,7 +114,16 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
   {
     statement: "level",
     syntax: 'level <id> ["Name"] [h<height>] [ground]',
-    doc: "a storey header: every statement after it belongs to that level, until the next one",
+    /**
+     * Two levels, each with one room, and a door on the first that a careless read could
+     * misfile under the second (docs/eval/cold2/cold-run.md, briefs 7/8/20: 3 of 7 DSL
+     * parse failures in that eval were a ground-floor door written after the *next*
+     * level's header, despite the doc sentence already saying the rule — a sentence about
+     * ordering is exactly the fact a worked example removes any doubt about). Shown, then
+     * told: the doc sentence below states the rule this snippet demonstrates.
+     */
+    example: "    e.g. level ground\n         room hall rect 0,0 2x2\n         door hall.south w0.9 entrance\n         level first\n         room bed rect 0,0 3x3",
+    doc: "a storey header: statements belong to the most recent level line, until the next one",
     tokens: [
       { token: "<id>", field: "plan.levels", required: true, doc: "level id; its presence makes the document multi-level" },
       { token: '"Name"', field: "level.name", required: false, doc: "display name; default the id" },
@@ -124,8 +133,13 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
   },
   {
     statement: "room",
-    syntax: `room <id> ["Name"] [<kind>] [<zone>] [${GEOM}] [habitable] [wet] [circulation]`,
-    doc: "one room; the two bare words are the kind then the zone, and the kind must be a real one",
+    // `[<kind> [<zone>]]` nests the zone inside the kind's own brackets, not beside them —
+    // a bare zone word is only readable once a kind precedes it (parser INVARIANT above);
+    // a room with no kind writes `zone:<z>` instead (docs/eval/cold2/cold-run.md gap 2: the
+    // old `[<kind>] [<zone>]` template showed the two as independently optional, which is
+    // exactly what the parser's own error text — "a zone is written zone:<z>" — contradicts).
+    syntax: `room <id> ["Name"] [<kind> [<zone>]] [${GEOM}] [habitable] [wet] [circulation]`,
+    doc: "one room; the two bare words are the kind then the zone, in that order — the kind must be a real one, and a zone with no kind is written zone:<z>",
     tokens: [
       { token: "<id>", field: "level.rooms", required: true, doc: "room id, unique on its level" },
       { token: '"Name"', field: "room.name", required: false, doc: "display name; default the id" },
@@ -164,7 +178,11 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
   {
     statement: "layout",
     syntax: "layout [cols <n>,…] [rows <n>,…]\n        <cell> <cell> …   (one indented row per grid row)",
-    doc: "the one multi-line statement: an ASCII picture placing already-declared spaces on the track grid",
+    // `stairs` also spans indented lines (docs/eval/cold2/cold-run.md gap 4: calling this
+    // "the one multi-line statement" contradicted the very next worked example), so the doc
+    // no longer claims uniqueness — only what the picture means.
+    example: "    e.g. layout cols 3,3 rows 3,3\n           a a\n           . b",
+    doc: 'an ASCII picture placing already-declared spaces on the track grid; the same id in several cells is one space spanning them, "." is empty',
     tokens: [
       { token: "layout", field: "level.layout", required: false, doc: "the statement itself" },
       { token: "cols <n>,…", field: "layout.cols", required: false, doc: "column widths; omit to sit on the shared grid" },
@@ -175,9 +193,14 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
   {
     statement: "door | window | cased",
     syntax:
-      "<type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at:<x>,<y>]  w<width>\n" +
+      "<type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at <x>,<y>]  w<width>\n" +
       "        [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [id:<id>]",
-    doc: "one opening. `<room>[.<side>]` alone is the short form of `exterior><room>` with an `on`",
+    // The `<room>[.<side>]` short form's implicit `on` cannot combine with an explicit
+    // `at` — the same exclusion JSON's `oneOf: "on"/"position" xor "at"` already states, but
+    // nothing on the DSL side did (docs/eval/cold2/cold-run.md gap 5): brief 1's cold-agent
+    // author wrote `door studio.south at:2,4 w0.9` and only learned of the conflict from
+    // the parser's own `schema.conflict` finding, not from either reference.
+    doc: 'one opening. `<room>[.<side>]` alone is short for `exterior><room>` with an `on`; that implicit `on` cannot combine with an explicit `at` — same rule as JSON\'s oneOf: "on"/"position" xor "at"',
     tokens: [
       { token: "<type>", field: "opening.type", required: true, doc: "the verb: door, window or cased (an archway)" },
       { token: "<a>><b>", field: "level.openings", required: true, doc: "the statement itself, one opening" },
@@ -186,7 +209,10 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
       { token: "@<d>", field: "opening.position", required: false, doc: "metres from the wall run's start to the centre; omit for centred" },
       { token: "@-<d>", field: "opening.position.distance", required: false, doc: "the metres, measured from the run's end" },
       { token: "@-<d>", field: "opening.position.from", required: false, doc: "the minus means measured from the run's end" },
-      { token: "at:<x>,<y>", field: "opening.at", required: false, doc: "absolute placement; picks the nearest shared wall" },
+      // accepted for one release, no error: `at:<x>,<y>` was the canonical spelling before
+      // this fix unified it with fixture/vertical's bare `at <x>,<y>` (docs/eval/cold2/
+      // cold-run.md gap 3 — the same word spelled two ways in the same document).
+      { token: "at <x>,<y>", field: "opening.at", required: false, doc: "absolute placement; picks the nearest shared wall; `at:<x>,<y>` still parses" },
       { token: "on:<room>", field: "opening.on", required: false, doc: "which wall, when the two spaces share more than one" },
       { token: "on:<room>", field: "opening.on.room", required: false, doc: "one of the two spaces" },
       { token: "on:<room>.<side>", field: "opening.on.side", required: false, doc: "north | south | east | west" },
@@ -216,8 +242,12 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
   },
   {
     statement: "stairs | lift | ramp",
+    // Spaced pipes, matching how `statement` itself spells the same three-way choice —
+    // unspaced would read byte-identical to `VERTICAL_TYPES.join("|")` and double-count in
+    // the shared legend `vocabLegend()` prints (the token entries below stay unspaced;
+    // they are the compact machine form the field index uses, not this display line).
     syntax:
-      'stairs|lift|ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)\n' +
+      'stairs | lift | ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)\n' +
       `        at <level> in:<space> ${GEOM}      (one indented line per level served)`,
     example: "    e.g. stairs main\n           at ground in:hall rect 3.6,0.4 1.2x3\n           at first in:landing rect 3.6,0.4 1.2x3",
     doc: "vertical circulation: the only entity that spans levels, joined by its id and never by overlap — one `at` line per level it serves, never one line per element",
@@ -245,6 +275,15 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
 
 /** An `arc` element inside a `poly`, spelled out once for the grammar table and the docs. */
 export const ARC_SYNTAX = "arc <x>,<y> r<radius> [cw|ccw] [large]";
+
+/**
+ * Resolves the one thing neither reference showed a worked example of (docs/eval/cold2/
+ * cold-run.md gap 7): whether a `poly`'s corners sit on the entity's own line or in an
+ * indented block below it, the way `layout`'s cells and a `vertical`'s footprints do. They
+ * are inline; this is the concrete counter-example to that guess, not a restatement of the
+ * abstract per-element grammar below it.
+ */
+export const POLY_INLINE_EXAMPLE = "a poly's corners are inline on the entity's own line, never an indented block: outdoor deck poly 0,0 5,0 5,2 0,2";
 
 // ---------------------------------------------------------------------------
 // errors
@@ -1069,6 +1108,9 @@ export function parseDsl(text: string): DslDocument {
             cursor.i++;
             continue;
           }
+          // Canonical is bare `at <x>,<y>`, matching fixture/vertical (docs/eval/cold2/
+          // cold-run.md gap 3); `at:<x>,<y>` is still accepted here, silently, for one
+          // release — the printer (openingLine below) never emits it again.
           if (t.text === "at" || t.text.startsWith("at:")) {
             let tok = t;
             let body: string;
@@ -1484,7 +1526,7 @@ function openingLine(value: unknown): string {
     s += ` ${a}>${b}`;
   }
   s += positionText(o["position"]);
-  if (o["at"] !== undefined) s += ` at:${pointText(o["at"])}`;
+  if (o["at"] !== undefined) s += ` at ${pointText(o["at"])}`;
   s += ` w${numText(o["width"])}`;
   if (on && !short) {
     s += ` on:${String(on["room"])}`;
@@ -1766,6 +1808,15 @@ export interface DslSchemaOptions {
    * document (fix 4 for docs/eval/cold/cold-run.md: neither reference had one, and every
    * failure the eval logged is a fact a worked example would have settled). */
   example?: Record<string, unknown>;
+  /**
+   * The id format and every enum vocabulary, printed as a `## legend` section right after
+   * "poly elements" — the same lines `cli.ts`'s shared `vocabLegend()` appends to the JSON
+   * terse schema, passed in from there rather than built here, so this module never needs
+   * to import the vocabularies twice or the two legends can't say two different things
+   * (fix 1, docs/eval/cold2/cold-run.md: `--schema=dsl` never enumerated a room kind or a
+   * fixture type at all, which alone caused 5 of 7 DSL parse failures in that eval).
+   */
+  legend?: readonly string[];
 }
 
 /** `--schema=dsl`: one line per statement kind with its tokens; `--schema=dsl-full` adds the
@@ -1774,6 +1825,10 @@ export function dslSchemaText(opts: DslSchemaOptions = {}): string {
   const out: string[] = [
     "# floorplan DSL — one entity per line; `{` as the first character means JSON instead",
     `# ${COMPASS_LINE}`,
+    // fix 6, docs/eval/cold2/cold-run.md: a semantic rule (a habitable room needs a window,
+    // a room needs a door) is only learnable by running the tool; this points at the one
+    // place every such rule is listed rather than leaving it to be tripped over.
+    "# run --lint; every rule is listed by floorplan --rules",
     "",
     "## statements",
     "",
@@ -1783,7 +1838,8 @@ export function dslSchemaText(opts: DslSchemaOptions = {}): string {
     if (s.example) out.push(s.example);
     out.push(`  — ${s.doc}`, "");
   }
-  out.push("## poly elements", "", "  <x>,<y>", `  ${ARC_SYNTAX}`);
+  out.push("## poly elements", "", `  ${POLY_INLINE_EXAMPLE}`, "", "  <x>,<y>", `  ${ARC_SYNTAX}`);
+  if (opts.legend?.length) out.push("", "## legend", "", ...opts.legend);
   if (opts.fieldIndex) {
     out.push("", "## every schema field, and the token that writes it", "");
     for (const o of SCHEMA) {

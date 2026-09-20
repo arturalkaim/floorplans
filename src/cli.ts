@@ -6,6 +6,7 @@
 // floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
 // floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
 // floorplan --schema[=full|md|dsl]
+// floorplan --rules
 // Exit codes: 0 clean (or only info), 1 findings at warning or above, 2 usage / parse error.
 // The executable entry point is bin.ts, which wires stdio/fs onto `run` unconditionally;
 // this module stays a plain, IO-free function so tests can drive it with a fake CliIo.
@@ -21,12 +22,16 @@
 // derived walls are behind `--json=all`, or selected on their own.
 //
 // `--schema` exists so an agent can load the field list instead of the README's prose
-// (docs/agent-review.md B10). The default is a terse typed-signature line per object, no
-// docs, 568 tokens for all 14 objects/73 fields; `--schema=full` is the same table as
-// compact JSON with one-sentence docs (2 554 tokens), and `--schema=md` is the Markdown
-// form for a human reader. All three are printed from SCHEMA — see schemaTerse below.
-// `--schema=dsl` is the same idea for the line DSL: its grammar and every field's token,
-// printed from DSL_SCHEMA (src/dsl.ts).
+// (docs/agent-review.md B10). The default is a terse typed-signature line per object, a
+// legend and a worked example, all generated from SCHEMA — see schemaTerse below;
+// `--schema=full` is the same table as compact JSON with one-sentence docs, and
+// `--schema=md` is the Markdown form for a human reader. `--schema=dsl` is the same idea
+// for the line DSL: its grammar and every field's token, printed from DSL_SCHEMA
+// (src/dsl.ts), sharing the JSON schema's own legend (vocabLegend below) so the two
+// references cannot list a vocabulary two different ways (docs/eval/cold2/cold-run.md).
+// `--rules` prints the rule catalogue (src/catalogue.ts) — id and one-line `catches` per
+// rule — for the semantic rules neither schema can state without becoming the README
+// again (a habitable room needs a window, a room needs a door): both schemas point here.
 //
 // Every input path reads *source text*, and `lint()`/`floorplan()` decide from its first
 // non-space character whether it is JSON or DSL — so `floorplan plan.dsl --lint` and
@@ -43,6 +48,7 @@ import {
   lint,
   OPENING_TYPES,
   ROOM_KINDS,
+  RULES,
   SCHEMA,
   schedule,
   SIDES,
@@ -73,6 +79,7 @@ const USAGE = `usage: floorplan <plan.json> [--out plan.svg] [--level id] [--lin
        floorplan patch <plan.json> <patch.json|-> [--json] [--dry-run]
        floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
        floorplan --schema[=full|md|dsl|dsl-full]
+       floorplan --rules
 
 A plan file may be JSON or the line DSL; the first non-space character says which.
 --level picks which storey to draw (default: the ground level), and scopes --json=walls.
@@ -83,7 +90,8 @@ A plan file may be JSON or the line DSL; the first non-space character says whic
          =full prints the same table as compact JSON with docs;
          =md prints it as a Markdown table for a human reader;
          =dsl prints the line DSL's grammar and a worked example;
-         =dsl-full adds the field-by-field token index =dsl omits. Needs no input file.`;
+         =dsl-full adds the field-by-field token index =dsl omits. Needs no input file.
+--rules prints every rule id and what it catches, compact. Needs no input file.`;
 
 export function run(argv: string[], io: CliIo): number {
   if (argv[0] === "set") return runSet(argv.slice(1), io);
@@ -96,6 +104,10 @@ export function run(argv: string[], io: CliIo): number {
   }
   if (args.schema !== undefined) {
     io.stdout(printSchema(args.schema));
+    return 0;
+  }
+  if (args.rules) {
+    io.stdout(printRules());
     return 0;
   }
   if (!args.input) {
@@ -208,10 +220,12 @@ interface Args {
    * field index); needs no input file.
    */
   schema: SchemaMode | undefined;
+  /** `--rules`: prints the rule catalogue (id + one-line `catches`); needs no input file. */
+  rules: boolean;
 }
 
 function parseArgs(argv: string[]): Args | Error {
-  const a: Args = { input: undefined, out: undefined, level: undefined, lint: false, json: undefined, scale: undefined, theme: undefined, labels: undefined, areas: undefined, mark: undefined, schema: undefined };
+  const a: Args = { input: undefined, out: undefined, level: undefined, lint: false, json: undefined, scale: undefined, theme: undefined, labels: undefined, areas: undefined, mark: undefined, schema: undefined, rules: false };
   const oneOf = <T extends string>(flag: string, v: string | undefined, allowed: readonly T[]): T | Error =>
     v !== undefined && (allowed as readonly string[]).includes(v) ? (v as T) : new Error(`${flag} must be one of ${allowed.join("|")}`);
   for (let i = 0; i < argv.length; i++) {
@@ -250,6 +264,7 @@ function parseArgs(argv: string[]): Args | Error {
     else if (t === "--schema=md") a.schema = "md";
     else if (t === "--schema=dsl") a.schema = "dsl";
     else if (t === "--schema=dsl-full") a.schema = "dsl-full";
+    else if (t === "--rules") a.rules = true;
     else if (t.startsWith("-")) return new Error(`unknown option ${t}`);
     else if (a.input === undefined) a.input = t;
     else return new Error(`unexpected argument ${t}`);
@@ -580,13 +595,29 @@ function printSchema(mode: SchemaMode): string {
     case "dsl":
       // the other syntax's table, from DSL_SCHEMA rather than SCHEMA — but generated the
       // same way and for the same reason, so it cannot describe a token the parser
-      // does not take
-      return dslSchemaText({ example: EXAMPLE_PLAN });
+      // does not take. The legend is `vocabLegend()`, the same lines `schemaTerse` prints,
+      // so the two references cannot list a vocabulary differently (fix 1, docs/eval/
+      // cold2/cold-run.md).
+      return dslSchemaText({ example: EXAMPLE_PLAN, legend: vocabLegend() });
     case "dsl-full":
-      return dslSchemaText({ example: EXAMPLE_PLAN, fieldIndex: true });
+      return dslSchemaText({ example: EXAMPLE_PLAN, fieldIndex: true, legend: vocabLegend() });
     default:
       return schemaTerse();
   }
+}
+
+/**
+ * `--rules`: every rule id and its one-line `catches`, compact — one line each, no header,
+ * no severity column (RULES.severity is the one thing an agent still has to see fire to
+ * learn, since it can change per-plan option; `catches` does not). This is what both
+ * schemas' preambles now point an agent at instead of leaving a rule like
+ * `habitable.no_window` learnable only by tripping it (fix 6, docs/eval/cold2/cold-run.md:
+ * neither reference documented whether a stair-only room satisfies `space.no_access`, and
+ * that had to be discovered by running the tool). Needs no input file.
+ */
+function printRules(): string {
+  const w = Math.max(...RULES.map((r) => r.id.length));
+  return `${RULES.map((r) => `${r.id.padEnd(w)}  ${r.catches}`).join("\n")}\n`;
 }
 
 /**
@@ -624,6 +655,21 @@ export const EXAMPLE_PLAN: Record<string, unknown> = {
     { type: "window", between: ["exterior", "sala"], on: { room: "sala", side: "west" }, width: 1.2 },
     { type: "window", between: ["exterior", "wc"], on: { room: "wc", side: "east" }, width: 0.6 },
   ],
+};
+
+/**
+ * `fixtures/apartment-t2.json`'s own `layout`, verbatim — the worked example `schemaTerse`
+ * prints next to the `layout` object line (fix 5, docs/eval/cold2/cold-run.md: `layout`/
+ * `layout.areas` had zero worked example in either reference, which left the cell-string
+ * format — space-separated ids, the same id in several cells is one space spanning them,
+ * `"."` is empty — to guesswork on the one grid-based brief in both syntaxes).
+ * `test/cli.test.ts` asserts this equals that fixture's own `layout` field, so it cannot
+ * drift from a real, already-lint-clean document.
+ */
+export const LAYOUT_EXAMPLE: Record<string, unknown> = {
+  cols: [3.2, 1.1, 2, 2.4],
+  rows: [3.2, 1.3, 1.5, 3.4],
+  areas: ["quarto1 hall quarto2 quarto2", "quarto1 hall wc      quarto2", "sala    hall wc      lavandaria", "sala    sala cozinha cozinha"],
 };
 
 /** Every object name SCHEMA declares, for `objectRef` below to check a `"; see X"` or
@@ -664,12 +710,17 @@ function objectFieldType(owner: ObjectDoc["object"], f: FieldDoc): string {
 /**
  * `--schema` (default): one typed-signature line per object, generated from SCHEMA with no
  * doc text — required fields bare, optional `name?`, and no per-field prose — plus a short
- * legend (id format, compass axes, spelled-out enum vocabularies) and one worked example.
- * `--schema=full` below still carries every doc string for the cases that need it.
+ * preamble, a legend (id format, compass axes, every enum vocabulary spelled out once) and
+ * one worked example. `--schema=full` below still carries every doc string for the cases
+ * that need it.
  *
- * An enum with ≤6 values is spelled out inline (`enum(door|window|cased)`); a bigger one
- * (room.kind, fixture.type) is a name (`enum(ROOM_KINDS)`) resolved against VOCABULARIES
- * and spelled out once, in the trailing legend — never twice, and never copied by hand.
+ * Every enum field prints as a name (`enum(ROOM_KINDS)`) resolved against VOCABULARIES,
+ * spelled out once in the trailing legend `vocabLegend()` builds — never inline, never
+ * twice, never copied by hand. Every vocabulary is always named this way, however few
+ * values it has, because `--schema=dsl` prints the identical legend (fix 1, docs/eval/
+ * cold2/cold-run.md: that grammar used to enumerate none of the five at all) and a value
+ * list either syntax needs must live in exactly one shared place, not be inlined here for
+ * a JSON-only reason and omitted there.
  *
  * A field typed `"object"` names another line of this same table (`opening.on`, `level`)
  * rather than printing `object`, and its cardinality besides (`objectFieldType` above) —
@@ -683,13 +734,9 @@ function objectFieldType(owner: ObjectDoc["object"], f: FieldDoc): string {
  * own to attach a doc string to.
  */
 function schemaTerse(): string {
-  const usedVocabularies = new Set<string>();
   const enumType = (owner: ObjectDoc["object"], f: FieldDoc): string => {
-    const values = [...f.enum!];
-    if (values.length <= 6) return `enum(${values.join("|")})`;
     const vocab = VOCABULARIES.find((v) => v.values === f.enum);
     if (!vocab) throw new Error(`schemaTerse: ${owner}.${f.name}'s enum is not one of VOCABULARIES`);
-    usedVocabularies.add(vocab.name);
     return `enum(${vocab.name})`;
   };
 
@@ -703,17 +750,13 @@ function schemaTerse(): string {
     "[x,y,w,h]": "[x,y,w,h]",
     "point[]": "point[]",
   };
-  // INVARIANT: every field literally named "id" matches ID_RE — the one place that fact is
-  // read off a field's *name* rather than an explicit SCHEMA flag, mirrored by the `{id: X}`
-  // map notation above using the same bare word for the constraint on a map's own keys.
-  let usesIdTag = false;
   const fieldType = (owner: ObjectDoc["object"], f: FieldDoc): string => {
     if (f.type === "object") return objectFieldType(owner, f);
     if (f.type === "enum") return enumType(owner, f);
-    if (f.type === "string" && f.name === "id") {
-      usesIdTag = true;
-      return "id";
-    }
+    // INVARIANT: every field literally named "id" matches ID_RE — the one place that fact
+    // is read off a field's *name* rather than an explicit SCHEMA flag, mirrored by the
+    // `{id: X}` map notation above using the same bare word for a map's own keys.
+    if (f.type === "string" && f.name === "id") return "id";
     return TYPE_TAG[f.type];
   };
 
@@ -722,17 +765,30 @@ function schemaTerse(): string {
     const oneOf = o.oneOf && o.oneOf.length > 0 ? ` oneOf: ${o.oneOf.join("; ")}` : "";
     return `${o.object} { ${fields} }${oneOf}`;
   });
-  const usesMapShape = SCHEMA.some((o) => o.fields.some((f) => f.shape === "map"));
-  const legend = [
-    ...(usesIdTag || usesMapShape ? [`id = ${ID_RE}`] : []),
-    COMPASS_LINE,
-    ...VOCABULARIES.filter((v) => usedVocabularies.has(v.name)).map((v) => `${v.name} = ${[...v.values].join("|")}`),
-  ];
+  // fix 5, docs/eval/cold2/cold-run.md: `layout`/`layout.areas` had zero worked example in
+  // either reference. LAYOUT_EXAMPLE is `fixtures/apartment-t2.json`'s own `layout`,
+  // verbatim, printed next to the object it documents — not folded into the trailing
+  // example, since `layout` is not always at the document's top level (a multi-level plan
+  // nests it under `levels.<id>.layout`).
+  const layoutAt = lines.findIndex((l) => l.startsWith("layout "));
+  lines.splice(layoutAt + 1, 0, `  e.g. ${JSON.stringify(LAYOUT_EXAMPLE)}`);
   const example = formatPlan(EXAMPLE_PLAN).replace(/\n$/, "");
-  return `${[...lines, "", ...legend, "", "example:", example].join("\n")}\n`;
+  return [
+    // fix 6, docs/eval/cold2/cold-run.md: a semantic rule (a habitable room needs a
+    // window, a room needs a door) is only learnable by running the tool; this points at
+    // the one place every such rule is listed rather than leaving it to be tripped over.
+    "# run --lint; every rule is listed by floorplan --rules",
+    "",
+    ...lines,
+    "",
+    ...vocabLegend({ compass: true }),
+    "",
+    "example:",
+    example,
+  ].join("\n") + "\n";
 }
 
-/** Every enum vocabulary SCHEMA's fields point at, named for `schemaTerse`'s legend. */
+/** Every enum vocabulary SCHEMA's fields point at, named for `vocabLegend`. */
 const VOCABULARIES: readonly { name: string; values: ReadonlySet<string> }[] = [
   { name: "ROOM_KINDS", values: ROOM_KINDS },
   { name: "SIDES", values: SIDES },
@@ -740,6 +796,19 @@ const VOCABULARIES: readonly { name: string; values: ReadonlySet<string> }[] = [
   { name: "FIXTURE_TYPES", values: FIXTURE_TYPES },
   { name: "VERTICAL_TYPES", values: VERTICAL_TYPES },
 ];
+
+/**
+ * The id format plus every enum vocabulary, spelled out once each — the legend both
+ * `--schema` and `--schema=dsl` end with, built once from the parser's own vocabularies so
+ * the two references cannot state a vocabulary two different ways (fix 1, docs/eval/
+ * cold2/cold-run.md: `--schema=dsl` never enumerated a room kind or a fixture type at all,
+ * which alone caused 5 of 7 DSL parse failures logged there). `compass` is left out by
+ * default because `--schema=dsl`'s own header comment already carries `COMPASS_LINE`, and
+ * repeating it here would print it twice in that output.
+ */
+function vocabLegend(opts: { compass?: boolean } = {}): string[] {
+  return [`id = ${ID_RE}`, ...(opts.compass ? [COMPASS_LINE] : []), ...VOCABULARIES.map((v) => `${v.name} = ${[...v.values].join("|")}`)];
+}
 
 /**
  * `--schema=full`: the document's field table as compact JSON, one field per line — the

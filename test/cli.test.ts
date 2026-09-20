@@ -4,9 +4,9 @@ import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import { EXAMPLE_PLAN, formatFindings, run } from "../src/cli.ts";
+import { EXAMPLE_PLAN, formatFindings, LAYOUT_EXAMPLE, run } from "../src/cli.ts";
 import type { CliIo } from "../src/cli.ts";
-import { COMPASS_LINE, FIXTURE_TYPES, formatPlan, ID_RE, isSchemaFinding, lint, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, toDsl, VERTICAL_TYPES } from "../src/index.ts";
+import { COMPASS_LINE, FIXTURE_TYPES, formatPlan, ID_RE, isSchemaFinding, lint, OPENING_TYPES, ROOM_KINDS, RULES, SCHEMA, SIDES, toDsl, VERTICAL_TYPES } from "../src/index.ts";
 import { twoRooms } from "./helpers.ts";
 
 function fakeIo(files: Record<string, string>, stdin = "") {
@@ -196,11 +196,13 @@ describe("cli: --schema (terse, default)", () => {
   });
 
   // The ~800-token budget (docs/agent-review.md B10) covered the bare field table; the
-  // legend (id format, compass axes) and the worked example (fix 4, docs/eval/cold/cold-run.md)
-  // that now follow it are worth more than the budget, and push the true cost to ~1 035
-  // gpt-tokenizer o200k_base tokens / 3 106 chars — see README.md's token table for the
-  // measured, tokenizer-backed number. This asserts a char proxy so the suite carries no
-  // tokenizer dependency, and exists only to catch an unbounded regression.
+  // legend (id format, compass axes, every enum vocabulary), the layout worked example
+  // (fix 5, docs/eval/cold2/cold-run.md), the run --lint/--rules preamble (fix 6) and the
+  // document worked example (fix 4, docs/eval/cold/cold-run.md) that now follow it are
+  // worth more than the budget, and push the true cost to ~1 146 gpt-tokenizer o200k_base
+  // tokens / 3 433 chars — see README.md's token table for the measured, tokenizer-backed
+  // number. This asserts a char proxy so the suite carries no tokenizer dependency, and
+  // exists only to catch an unbounded regression.
   it("stays under a regression ceiling for its total length (field table + legend + example)", () => {
     const t = fakeIo({});
     run(["--schema"], t.io);
@@ -269,6 +271,102 @@ describe("cli: --schema and --schema=dsl end with a worked example", () => {
     assert.ok(t.out().includes(`## example\n\n${example}`), "--schema=dsl's example section does not match toDsl(EXAMPLE_PLAN)");
     const linted = lint(example);
     assert.deepEqual(linted.findings.filter(isSchemaFinding), []);
+  });
+});
+
+// fix 1 (docs/eval/cold2/cold-run.md): `--schema=dsl` used to enumerate none of the five
+// vocabularies at all — the eval's own gap 1, which alone caused 5 of 7 DSL parse failures
+// there (briefs 1, 13, 14×2, 18 guessed a room kind or fixture type from the brief's own
+// words). Both schemas now build their legend from the same `vocabLegend()`.
+describe("cli: --schema=dsl states the same vocabularies as --schema", () => {
+  it("--schema=dsl mentions every enum vocabulary's full value list exactly once", () => {
+    const t = fakeIo({});
+    run(["--schema=dsl"], t.io);
+    const out = t.out();
+    for (const vocab of [ROOM_KINDS, SIDES, OPENING_TYPES, FIXTURE_TYPES, VERTICAL_TYPES]) {
+      const joined = [...vocab].join("|");
+      const occurrences = out.split(joined).length - 1;
+      assert.equal(occurrences, 1, `vocabulary "${joined}" should appear exactly once in --schema=dsl, found ${occurrences}`);
+    }
+  });
+
+  it("--schema=dsl also states the id format", () => {
+    const t = fakeIo({});
+    run(["--schema=dsl"], t.io);
+    assert.match(t.out(), new RegExp(`^id = ${ID_RE.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
+  });
+
+  it("--schema=dsl states the compass axes once, not twice (its own header already carries it)", () => {
+    const t = fakeIo({});
+    run(["--schema=dsl"], t.io);
+    const out = t.out();
+    assert.equal(out.split(COMPASS_LINE).length - 1, 1, "COMPASS_LINE should appear exactly once in --schema=dsl");
+  });
+
+  it("--schema points an agent at --rules for the rules neither schema can state", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    assert.match(t.out(), /run --lint; every rule is listed by floorplan --rules/);
+    const d = fakeIo({});
+    run(["--schema=dsl"], d.io);
+    assert.match(d.out(), /run --lint; every rule is listed by floorplan --rules/);
+  });
+});
+
+// fix 5 (docs/eval/cold2/cold-run.md): `layout`/`layout.areas` had zero worked example in
+// either reference, the last of the eval's 8 documented gaps.
+describe("cli: --schema shows a layout worked example", () => {
+  it("LAYOUT_EXAMPLE is fixtures/apartment-t2.json's own layout, verbatim", () => {
+    const apt = JSON.parse(readFileSync(new URL("../fixtures/apartment-t2.json", import.meta.url), "utf8"));
+    assert.deepEqual(LAYOUT_EXAMPLE, apt.layout);
+  });
+
+  it("--schema prints it as compact JSON right next to the layout object line, and it lints clean", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const out = t.out();
+    assert.ok(out.includes(JSON.stringify(LAYOUT_EXAMPLE)), "--schema is missing the layout worked example");
+    const layoutLine = out.split("\n").findIndex((l) => l.startsWith("layout "));
+    assert.ok(layoutLine !== -1, "--schema has no layout object line");
+    assert.ok(out.split("\n")[layoutLine + 1]!.includes(JSON.stringify(LAYOUT_EXAMPLE)), "the layout example should sit directly under the layout object line");
+    // every room LAYOUT_EXAMPLE's areas name, with no rect/poly of its own — exactly how a
+    // grid-placed room is authored (SCHEMA's room oneOf: "poly" xor "rect" — neither: place
+    // it in layout.areas instead) — so this checks LAYOUT_EXAMPLE parses on its own terms,
+    // not just as part of the whole apartment-t2 fixture it came from.
+    const rooms = Object.fromEntries((LAYOUT_EXAMPLE["areas"] as string[]).join(" ").split(/\s+/).map((id) => [id, {}]));
+    const linted = lint(JSON.stringify({ rooms, layout: LAYOUT_EXAMPLE }));
+    assert.deepEqual(linted.findings.filter(isSchemaFinding), []);
+  });
+
+  it("--schema=dsl shows a 3-line layout snippet demonstrating a merged id and a blank cell", () => {
+    const t = fakeIo({});
+    run(["--schema=dsl"], t.io);
+    assert.match(t.out(), /layout cols 3,3 rows 3,3/);
+    assert.match(t.out(), /\ba a\b/);
+    assert.match(t.out(), /\. b/);
+  });
+});
+
+// fix 6 (docs/eval/cold2/cold-run.md): a rule like `space.no_access` (does a stair-only
+// room satisfy access?) was only learnable by running the tool, for every rule.
+describe("cli: --rules", () => {
+  it("needs no input file and exits 0", () => {
+    const t = fakeIo({});
+    assert.equal(run(["--rules"], t.io), 0);
+    assert.notEqual(t.out(), "");
+    assert.equal(t.err(), "");
+  });
+
+  it("prints every rule id exactly once, each with its one-line catches", () => {
+    const t = fakeIo({});
+    run(["--rules"], t.io);
+    const lines = t.out().trimEnd().split("\n");
+    assert.equal(lines.length, RULES.length);
+    for (const r of RULES) {
+      const line = lines.find((l) => l.startsWith(r.id));
+      assert.ok(line, `--rules is missing ${r.id}`);
+      assert.ok(line!.includes(r.catches), `--rules line for ${r.id} does not include its catches text`);
+    }
   });
 });
 
