@@ -3,7 +3,8 @@
 // expressed as a splice into its text, never as a mutation of the derived model.
 import { metres, spliceAll } from "./jsonpos.ts";
 import type { JsonPath } from "./jsonpos.ts";
-import type { Model, Pt, WallSegment } from "./types.ts";
+import { levelOf } from "./svg.ts";
+import type { LevelModel, Model, Pt, WallSegment } from "./types.ts";
 import { ownerId } from "./types.ts";
 
 /** Rooms and tracks may not be dragged below this, in metres. */
@@ -32,6 +33,19 @@ type Doc = Record<string, unknown>;
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
 const asObj = (v: unknown): Doc | undefined =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as Doc) : undefined;
+/** Walk a path of object keys from the document root. */
+const at = (doc: Doc, path: JsonPath): Doc | undefined => {
+  let cur: Doc | undefined = doc;
+  for (const k of path) cur = cur === undefined ? undefined : asObj(cur[k as string]);
+  return cur;
+};
+
+/** Every group of the document a wall's owner can be declared in. */
+const SPACE_KINDS = ["rooms", "outdoor", "voids"] as const;
+
+/** A path as a reader of a status line would write it: `levels.piso1.layout`. */
+const label = (path: JsonPath): string => path.join(".");
+
 const safeParse = (text: string): unknown => {
   try {
     return JSON.parse(text);
@@ -60,8 +74,10 @@ interface SpaceForm {
  * grid-placed space moves when its tracks do. `null` means geometry is there but is not
  * readable, and the caller must decline the edit rather than write half of it.
  */
-function spaceForm(doc: Doc, kind: "rooms" | "outdoor", id: string): SpaceForm | null | undefined {
-  const entry = asObj(asObj(doc[kind])?.[id]);
+type SpaceKind = "rooms" | "outdoor" | "voids";
+
+function spaceForm(doc: Doc, root: JsonPath, kind: SpaceKind, id: string): SpaceForm | null | undefined {
+  const entry = asObj(asObj(at(doc, root)?.[kind])?.[id]);
   if (!entry) return undefined;
 
   const poly = entry["poly"];
@@ -73,7 +89,7 @@ function spaceForm(doc: Doc, kind: "rooms" | "outdoor", id: string): SpaceForm |
       pts.push([p[0] as number, p[1] as number]);
     }
     const write = (v: number, axis: 0 | 1, to: number) => ({
-      path: [kind, id, "poly", v, axis] as JsonPath,
+      path: [...root, kind, id, "poly", v, axis] as JsonPath,
       literal: metres(to),
     });
     return {
@@ -101,11 +117,11 @@ function spaceForm(doc: Doc, kind: "rooms" | "outdoor", id: string): SpaceForm |
     // the near side moves the origin and keeps the far side still; the far side resizes
     if (near(origin, from))
       return [
-        { path: [kind, id, "rect", axis] as JsonPath, literal: metres(to) },
-        { path: [kind, id, "rect", axis + 2] as JsonPath, literal: metres(size + (origin - to)) },
+        { path: [...root, kind, id, "rect", axis] as JsonPath, literal: metres(to) },
+        { path: [...root, kind, id, "rect", axis + 2] as JsonPath, literal: metres(size + (origin - to)) },
       ];
     if (near(origin + size, from))
-      return [{ path: [kind, id, "rect", axis + 2] as JsonPath, literal: metres(size + (to - from)) }];
+      return [{ path: [...root, kind, id, "rect", axis + 2] as JsonPath, literal: metres(size + (to - from)) }];
     return [];
   };
   return {
@@ -126,10 +142,18 @@ function boundaries(tracks: number[]): number[] {
  * A wall on a track boundary moves by resizing the two tracks either side: one grows by
  * exactly what the other loses, so the grid still tiles and every other room stays put.
  */
-function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
-  const layout = asObj(doc["layout"]);
-  if (!layout) return undefined;
+function fromGrid(doc: Doc, root: JsonPath, levels: string[], wall: WallSegment): Draggable | undefined {
+  // A level either authors its own `layout` tracks or sits on the document's shared
+  // track grid. Dragging a shared boundary moves that wall on every level using it, so
+  // the status line has to say so: the surprise is the whole risk of sharing.
+  const own = asObj(at(doc, root)?.["layout"]);
+  const sharedTracks = asObj(doc["grid"]);
   const key = wall.axis === "v" ? "cols" : "rows";
+  const hasOwn = own !== undefined && Array.isArray(own[key]);
+  const layout = hasOwn ? own : sharedTracks;
+  if (!layout) return undefined;
+  const base: JsonPath = hasOwn ? [...root, "layout"] : ["grid"];
+  const alsoOn = hasOwn ? [] : levels;
   const tracks: unknown = layout[key];
   if (!Array.isArray(tracks) || !tracks.every((t) => typeof t === "number")) return undefined;
 
@@ -147,7 +171,7 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
   // endpoint at a real boundary, is a coincidence: quinta's detached shack
   // `arrecadacao` lands on the grid's east line purely by chance, sharing no corner
   // with it, a full metre south of where the grid actually ends.
-  const alongTracks: unknown = layout[wall.axis === "v" ? "rows" : "cols"];
+  const alongTracks: unknown = layout[wall.axis === "v" ? "rows" : "cols"] ?? sharedTracks?.[wall.axis === "v" ? "rows" : "cols"];
   const alongBounds =
     Array.isArray(alongTracks) && alongTracks.every((t) => typeof t === "number")
       ? boundaries(alongTracks as number[])
@@ -160,11 +184,11 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
    * the boundary, so they have to travel with it or the plan tears open behind them.
    */
   const anchored: Array<{ form: SpaceForm; indices: number[] }> = [];
-  for (const kind of ["rooms", "outdoor"] as const) {
-    const group = asObj(doc[kind]);
+  for (const kind of SPACE_KINDS) {
+    const group = asObj(at(doc, root)?.[kind]);
     if (!group) continue;
     for (const id of Object.keys(group)) {
-      const form = spaceForm(doc, kind, id);
+      const form = spaceForm(doc, root, kind, id);
       if (!form) continue;
       const pts = form.vertices;
       const n = pts.length;
@@ -196,9 +220,9 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
       c: wall.c,
       min: wall.c - (before - MIN_TRACK),
       max: wall.c + 100,
-      writes: `layout.${key}[${i - 1}]`,
+      writes: `${label(base)}.${key}[${i - 1}]${alsoOn.length > 1 ? ` — moves this wall on ${alsoOn.join(", ")}` : ""}`,
       edits: (next) => [
-        { path: ["layout", key, i - 1], literal: metres(before + Math.round((next - wall.c) * 1000) / 1000) },
+        { path: [...base, key, i - 1], literal: metres(before + Math.round((next - wall.c) * 1000) / 1000) },
         ...carry(next),
       ],
     };
@@ -211,12 +235,12 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
     c: wall.c,
     min: wall.c - (before - MIN_TRACK),
     max: wall.c + (after - MIN_TRACK),
-    writes: `layout.${key}[${i - 1}] and [${i}]`,
+    writes: `${label(base)}.${key}[${i - 1}] and [${i}]${alsoOn.length > 1 ? ` — moves this wall on ${alsoOn.join(", ")}` : ""}`,
     edits: (next) => {
       const d = Math.round((next - wall.c) * 1000) / 1000;
       return [
-        { path: ["layout", key, i - 1], literal: metres(before + d) },
-        { path: ["layout", key, i], literal: metres(after - d) },
+        { path: [...base, key, i - 1], literal: metres(before + d) },
+        { path: [...base, key, i], literal: metres(after - d) },
         ...carry(next),
       ];
     },
@@ -229,7 +253,7 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
  * room has a vertex on this coordinate outside the wall's span, moving it would need the
  * edge split and new vertices inserted, which is a different operation than a drag.
  */
-function fromPolys(doc: Doc, wall: WallSegment): Draggable | undefined {
+function fromPolys(doc: Doc, root: JsonPath, wall: WallSegment): Draggable | undefined {
   const axis: 0 | 1 = wall.axis === "v" ? 0 : 1;
   const along = 1 - axis;
   let lower = -Infinity;
@@ -242,12 +266,12 @@ function fromPolys(doc: Doc, wall: WallSegment): Draggable | undefined {
   if (owners.size === 0) return undefined;
 
   const movers: Array<{ id: string; form: SpaceForm }> = [];
-  for (const kind of ["rooms", "outdoor"] as const) {
-    const group = asObj(doc[kind]);
+  for (const kind of SPACE_KINDS) {
+    const group = asObj(at(doc, root)?.[kind]);
     if (!group) continue;
     for (const id of Object.keys(group)) {
       if (!owners.has(id)) continue;
-      const form = spaceForm(doc, kind, id);
+      const form = spaceForm(doc, root, kind, id);
       if (form === null) return undefined;
       if (!form) continue;
       for (const pt of form.vertices) {
@@ -275,13 +299,40 @@ function fromPolys(doc: Doc, wall: WallSegment): Draggable | undefined {
   };
 }
 
-/** Every wall in the model that a drag can express as an edit to the source. */
-export function draggableWalls(text: string, model: Model): Map<string, Draggable> {
+/**
+ * Where in the document one level's content lives. A document that never authored
+ * `levels` keeps the root it always had, so `rooms.sala.poly[2][0]` is still exactly that
+ * — which is what makes every path an agent cached before levels existed stay valid.
+ */
+function rootOf(doc: Doc, model: Model, level: string | undefined): { root: JsonPath; lm: LevelModel } {
+  const lm = levelOf(model, level);
+  return { root: model.plan.levelled ? ["levels", lm.level.id] : [], lm };
+}
+
+/**
+ * The ids of every level sitting on the shared track grid — a level whose `layout`
+ * supplies `areas` and no tracks of its own. They all move together when a shared
+ * boundary is dragged, so a status line has to be able to name them.
+ */
+const onSharedGrid = (doc: Doc, model: Model): string[] =>
+  doc["grid"] === undefined
+    ? []
+    : model.levels
+        .filter((m) => {
+          const l = asObj(at(doc, ["levels", m.level.id])?.["layout"]);
+          return l !== undefined && l["cols"] === undefined && l["rows"] === undefined;
+        })
+        .map((m) => m.level.id);
+
+/** Every wall on one level that a drag can express as an edit to the source. */
+export function draggableWalls(text: string, model: Model, level?: string): Map<string, Draggable> {
   const doc = asObj(safeParse(text));
   if (!doc) return new Map();
+  const { root, lm } = rootOf(doc, model, level);
+  const shared = onSharedGrid(doc, model);
   const out = new Map<string, Draggable>();
-  for (const wall of model.walls) {
-    const d = fromGrid(doc, wall) ?? fromPolys(doc, wall);
+  for (const wall of lm.walls) {
+    const d = fromGrid(doc, root, shared, wall) ?? fromPolys(doc, root, wall);
     if (d && d.max > d.min) out.set(wall.id, d);
   }
   return out;
@@ -300,15 +351,16 @@ export function applyDrag(text: string, d: Draggable, rawNext: number, free = fa
  * handles. Dragging one moves the coordinate shared by the two vertices at its ends,
  * which for a rectilinear ring is the whole edge.
  */
-export function draggableOutdoorEdges(text: string, model: Model): Map<string, Draggable> {
+export function draggableOutdoorEdges(text: string, model: Model, level?: string): Map<string, Draggable> {
   const doc = asObj(safeParse(text));
   const out = new Map<string, Draggable>();
   if (!doc) return out;
+  const { root, lm } = rootOf(doc, model, level);
 
-  for (const space of model.plan.outdoor) {
+  for (const space of lm.level.outdoor) {
     // only an outdoor space that authored its own geometry can be edited this way; one
     // placed by the track grid moves when its tracks do
-    const form = spaceForm(doc, "outdoor", space.id);
+    const form = spaceForm(doc, root, "outdoor", space.id);
     if (!form || form.vertices.length !== space.poly.length) continue;
 
     const xs = space.poly.map((p) => p[0]);
@@ -364,8 +416,11 @@ function extentOf(poly: Pt[]): { x0: number; y0: number; x1: number; y1: number 
  * written back in whichever form the source uses — rewriting one into the other would
  * reformat a document the author is still typing in.
  */
-function fixtureWriter(doc: Doc, index: number, poly: Pt[]) {
-  const entry = asObj((asObj(doc) && Array.isArray(doc["fixtures"]) ? (doc["fixtures"] as unknown[])[index] : undefined));
+function fixtureWriter(doc: Doc, root: JsonPath, index: number, poly: Pt[]) {
+  const group = at(doc, root)?.["fixtures"];
+  // index -1 is a vertical element's synthetic footprint: it addresses nothing here, so
+  // there is nothing to write back and the handle is simply not offered
+  const entry = index < 0 || !Array.isArray(group) ? undefined : asObj((group as unknown[])[index]);
   if (!entry) return undefined;
   const hasPoly = Array.isArray(entry["poly"]);
   const hasRect = Array.isArray(entry["at"]) && Array.isArray(entry["size"]);
@@ -377,13 +432,13 @@ function fixtureWriter(doc: Doc, index: number, poly: Pt[]) {
       if (hasRect) {
         const at = entry["at"] as number[];
         return [
-          { path: ["fixtures", index, "at", 0], literal: metres(at[0]! + dx) },
-          { path: ["fixtures", index, "at", 1], literal: metres(at[1]! + dy) },
+          { path: [...root, "fixtures", index, "at", 0], literal: metres(at[0]! + dx) },
+          { path: [...root, "fixtures", index, "at", 1], literal: metres(at[1]! + dy) },
         ];
       }
       return poly.flatMap((p, v) => [
-        { path: ["fixtures", index, "poly", v, 0] as JsonPath, literal: metres(p[0] + dx) },
-        { path: ["fixtures", index, "poly", v, 1] as JsonPath, literal: metres(p[1] + dy) },
+        { path: [...root, "fixtures", index, "poly", v, 0] as JsonPath, literal: metres(p[0] + dx) },
+        { path: [...root, "fixtures", index, "poly", v, 1] as JsonPath, literal: metres(p[1] + dy) },
       ]);
     },
     /** move one side of the footprint, leaving the opposite side where it is */
@@ -394,28 +449,29 @@ function fixtureWriter(doc: Doc, index: number, poly: Pt[]) {
         const near0 = Math.abs(at[axis]! - from) < 1e-6;
         return near0
           ? [
-              { path: ["fixtures", index, "at", axis], literal: metres(to) },
-              { path: ["fixtures", index, "size", axis], literal: metres(size[axis]! + (at[axis]! - to)) },
+              { path: [...root, "fixtures", index, "at", axis], literal: metres(to) },
+              { path: [...root, "fixtures", index, "size", axis], literal: metres(size[axis]! + (at[axis]! - to)) },
             ]
-          : [{ path: ["fixtures", index, "size", axis], literal: metres(size[axis]! + (to - from)) }];
+          : [{ path: [...root, "fixtures", index, "size", axis], literal: metres(size[axis]! + (to - from)) }];
       }
       return poly
         .map((p, v) => ({ p, v }))
         .filter(({ p }) => Math.abs(p[axis] - from) < 1e-6)
-        .map(({ v }) => ({ path: ["fixtures", index, "poly", v, axis] as JsonPath, literal: metres(to) }));
+        .map(({ v }) => ({ path: [...root, "fixtures", index, "poly", v, axis] as JsonPath, literal: metres(to) }));
     },
   };
 }
 
 /** Each side of every fixture, so a pool can be made bigger or smaller. */
-export function draggableFixtureEdges(text: string, model: Model): Map<string, Draggable> {
+export function draggableFixtureEdges(text: string, model: Model, level?: string): Map<string, Draggable> {
   const doc = asObj(safeParse(text));
   const out = new Map<string, Draggable>();
   if (!doc) return out;
+  const { root, lm } = rootOf(doc, model, level);
 
-  for (const fm of model.fixtures) {
+  for (const fm of lm.fixtures) {
     const i = fm.fixture.index;
-    const w = fixtureWriter(doc, i, fm.fixture.poly);
+    const w = fixtureWriter(doc, root, i, fm.fixture.poly);
     if (!w) continue;
     const e = extentOf(fm.fixture.poly);
     const sides = [
@@ -439,14 +495,15 @@ export function draggableFixtureEdges(text: string, model: Model): Map<string, D
 }
 
 /** Every fixture's body, so a pool can be picked up and put somewhere else. */
-export function movableFixtures(text: string, model: Model): Map<string, Movable> {
+export function movableFixtures(text: string, model: Model, level?: string): Map<string, Movable> {
   const doc = asObj(safeParse(text));
   const out = new Map<string, Movable>();
   if (!doc) return out;
+  const { root, lm } = rootOf(doc, model, level);
 
-  for (const fm of model.fixtures) {
+  for (const fm of lm.fixtures) {
     const i = fm.fixture.index;
-    const w = fixtureWriter(doc, i, fm.fixture.poly);
+    const w = fixtureWriter(doc, root, i, fm.fixture.poly);
     if (!w) continue;
     const e = extentOf(fm.fixture.poly);
     out.set(`fixture:${i}`, {
