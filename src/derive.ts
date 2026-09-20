@@ -515,6 +515,27 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
     }
   }
 
+  // ---- a void is a hole in the slab, so no room may have floor over it ----
+  // `ownerOfFace` prefers a room to a void, which is right for the ordinary case — a void
+  // that shares its edge with the room around it claims no face the room also claims —
+  // but it means a void drawn *inside* a room is swallowed without trace: no wall round
+  // it, its area still counted as interior floor, and nothing said. A declared hole under
+  // a declared floor is a contradiction, exactly as a room over open sky is.
+  for (const v of voids) {
+    for (const r of rooms) {
+      if (areaBoth(arr, R + O + voids.indexOf(v), rooms.indexOf(r)) <= 0) continue;
+      const b = shapeBox(v);
+      findings.push({
+        rule: "void.overlap",
+        severity: "error",
+        message: `${v.name} is a hole in this floor but ${r.name} has floor over it; cut the room back to the void's edge`,
+        path: pathTo(r, "poly", "rect"),
+        at: [snap((b.x0 + b.x1) / 2), snap((b.y0 + b.y1) / 2)],
+        rooms: [r.id],
+      });
+    }
+  }
+
   // ---- fixtures standing inside rooms ----
   // a fixture stands in a room or in an outdoor space — a pool is a pool either way
   const hostShape = new Map<string, Shape>([

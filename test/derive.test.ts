@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { derive } from "../src/derive.ts";
 import { doorSwing } from "../src/doors.ts";
@@ -409,5 +410,52 @@ describe("derive: usable area deducts the part of a fixture that is in the room 
       fixtures: [{ type: "counter", in: "a", at: [5, 1], size: [1, 1] }],
     });
     assert.equal(model.rooms.find((m) => m.room.id === "a")!.fixtureArea, 0);
+  });
+});
+
+/**
+ * gpt-5.5 §2.5: an explicit void under a room's floor.
+ *
+ * `ownerOfFace` prefers a room to a void, and there was no overlap check to catch the
+ * contradiction, so a void drawn inside a room was silently swallowed: no wall round it,
+ * its area still counted in `interiorArea`, and nothing said. A declared hole under a
+ * declared floor is a contradiction, exactly as a room over open sky is, so it is the
+ * same kind of error — `void.overlap`.
+ */
+describe("derive: a void is a hole in the slab (void.overlap)", () => {
+  it("reports a room built over a void", () => {
+    const { findings } = analyze({
+      rooms: { a: { name: "Sala", kind: "living", poly: rect(0, 0, 6, 6) } },
+      voids: { vaz: { name: "Vazio", poly: rect(2, 0, 2, 2) } },
+    });
+    const f = findings.filter((x) => x.rule === "void.overlap");
+    assert.equal(f.length, 1);
+    assert.equal(f[0]!.severity, "error");
+    assert.match(f[0]!.message, /Vazio is a hole in this floor but Sala has floor over it/);
+    // the fix is to the room's geometry — cut it back to the hole's edge
+    assert.equal(f[0]!.path, "rooms.a.poly");
+    assert.deepEqual(f[0]!.rooms, ["a"]);
+  });
+
+  it("reports a partial overlap too, and names each room that has floor over it", () => {
+    const { findings } = analyze({
+      rooms: { a: { name: "A", kind: "living", poly: rect(0, 0, 3, 6) }, b: { name: "B", kind: "living", poly: rect(3, 0, 3, 6) } },
+      voids: { vaz: { name: "Vazio", poly: rect(2, 0, 2, 2) } },
+    });
+    assert.deepEqual(findings.filter((x) => x.rule === "void.overlap").map((x) => x.rooms), [["a"], ["b"]]);
+  });
+
+  it("allows the shape a void is meant to have: carved out of the room, meeting it edge to edge", () => {
+    const { findings } = analyze({
+      rooms: { a: { name: "Sala", kind: "living", poly: [[0, 0], [6, 0], [6, 6], [4, 6], [4, 4], [2, 4], [2, 6], [0, 6]] } },
+      voids: { vaz: { name: "Vazio", poly: rect(2, 4, 2, 2) } },
+    });
+    assert.ok(!has(findings, "void.overlap"));
+    assert.ok(!has(findings, "tiling.gap"));
+  });
+
+  it("leaves moradia, which has two real voids, clean", () => {
+    const doc = JSON.parse(readFileSync(new URL("../fixtures/moradia-2-pisos.json", import.meta.url), "utf8"));
+    assert.ok(!has(analyze(doc).findings, "void.overlap"));
   });
 });

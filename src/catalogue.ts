@@ -36,6 +36,7 @@ export const RULES: readonly RuleDoc[] = [
   { id: "fixture.outside_space", severity: "error", catches: "a fixture is not fully inside the room or outdoor space it names" },
   { id: "fixture.overlap", severity: "error", catches: "two fixtures in the same space collide" },
   { id: "outdoor.overlap", severity: "error", catches: "a room is built over an outdoor space, which is open sky" },
+  { id: "void.overlap", severity: "error", catches: "a room has floor over a declared void, which is a hole in this storey's slab — the room has to be cut back to the void's edge" },
   { id: "geometry.sliver", severity: "info", catches: "a face smaller than 100 mm² that nothing covers: two edges meant to meet are a fraction apart, named with the spaces either side" },
   { id: "room.no_clear_floor", severity: "error", catches: "a room whose walls leave it no floor at all: the inward offset of its ring turns itself inside out" },
   { id: "arc.too_shallow", severity: "warning", catches: "an arc that bulges less than 5 mm past its chord: a straight edge written as a curve" },

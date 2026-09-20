@@ -856,6 +856,7 @@ issue, all `error`, each with the issue's own document path:
 | `opening.near_corner` | warning | sliver of wall < 0.1 m beside an opening |
 | `fixture.outside_space` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |
 | `outdoor.overlap` | error | a room is built over an outdoor space, which is open sky |
+| `void.overlap` | error | a room has floor over a declared void, which is a hole in this storey's slab |
 | `fixture.clearance` | warning | gap between two fixtures too narrow to walk through |
 | `door.swing_hits_fixture` | warning | a door leaf sweeps into a fixture |
 | `entrance.not_street` | warning | a door marked `"entrance": true` opens onto an enclosed courtyard, or onto another room |
