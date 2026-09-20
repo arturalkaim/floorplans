@@ -1,7 +1,7 @@
-import { geometryPath, normalOn, offsetGeometry, pointOn, wallSubGeometry } from "./derive.ts";
+import { geometryPath, isCurved, normalOn, offsetGeometry, pointOn, shapeArea, shapeBox, shapePath, wallSubGeometry } from "./derive.ts";
 import { doorSwing } from "./doors.ts";
 import { snap } from "./geometry.ts";
-import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening } from "./types.ts";
+import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, Shape } from "./types.ts";
 import { isStreet } from "./types.ts";
 
 export interface RenderOptions {
@@ -75,14 +75,16 @@ export function projection(model: Model, opts: RenderOptions = {}): Projection {
   // Every level is measured against the same extent, because they share the plan origin
   // and axes: two levels of one house must line up sheet to sheet, and the ghost of the
   // level below may reach past the level being drawn.
-  const allPts = [
-    ...model.levels.flatMap((m) => m.rooms.flatMap((r) => r.room.poly)),
-    ...model.levels.flatMap((m) => m.level.outdoor.flatMap((o) => o.poly)),
+  // bounding boxes over the rings, not over the corners: an arc bulges past its chord,
+  // and a round hall clipped at its own corners is the thing this library exists to draw
+  const boxes = [
+    ...model.levels.flatMap((m) => m.rooms.map((r) => shapeBox(r.room))),
+    ...model.levels.flatMap((m) => m.level.outdoor.map((o) => shapeBox(o))),
   ];
-  const minX = Math.min(...allPts.map((p) => p[0]));
-  const minY = Math.min(...allPts.map((p) => p[1]));
-  const maxX = Math.max(...allPts.map((p) => p[0]));
-  const maxY = Math.max(...allPts.map((p) => p[1]));
+  const minX = Math.min(...boxes.map((b) => b.x0));
+  const minY = Math.min(...boxes.map((b) => b.y0));
+  const maxX = Math.max(...boxes.map((b) => b.x1));
+  const maxY = Math.max(...boxes.map((b) => b.y1));
   const title = opts.title ?? model.plan.title;
   const dims = opts.dimensions ?? true;
   const ox = (dims ? 78 : 24) + 0;
@@ -154,39 +156,43 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   for (const v of lm.level.voids) {
     const c = centroid(v.poly);
     body += `<g class="void" data-void="${esc(v.id)}"><title>${esc(v.name)} — no floor</title>`;
-    body += `<polygon points="${pts(v.poly)}" fill="var(--ink)" fill-opacity=".05" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>`;
+    body += `${fill(v)} fill="var(--ink)" fill-opacity=".05" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>`;
     body += `</g>${text(X(c[0]), Y(c[1]) + 4, v.name, "ra")}`;
   }
 
   // ---- outdoor spaces ----
   for (const o of lm.level.outdoor) {
-    body += `<polygon points="${pts(o.poly)}" fill="var(--accent)" fill-opacity=".08" stroke="var(--accent)" stroke-width="1" stroke-dasharray="5 4"/>`;
+    body += `${fill(o)} fill="var(--accent)" fill-opacity=".08" stroke="var(--accent)" stroke-width="1" stroke-dasharray="5 4"/>`;
     // an outdoor space has no walls, so each edge gets its own handle to grab; drawn
     // transparent over the outline, wide enough to hit without hunting for it
     o.poly.forEach((p0, k) => {
       const p1 = o.poly[(k + 1) % o.poly.length]!;
+      // only a straight, axis-parallel edge is a one-coordinate drag; the rest are
+      // moved by `wallHandles`, which needs no invisible line to grab
+      if (o.arcs[k] !== undefined) return;
       const vertical = snap(p0[0]) === snap(p1[0]);
+      if (!vertical && snap(p0[1]) !== snap(p1[1])) return;
       body +=
         `<line data-outdoor="${esc(o.id)}" data-edge="${k}" data-axis="${vertical ? "v" : "h"}"` +
         ` x1="${px(X(p0[0]))}" y1="${px(Y(p0[1]))}" x2="${px(X(p1[0]))}" y2="${px(Y(p1[1]))}"` +
         ` stroke="transparent" stroke-width="9" stroke-linecap="butt" pointer-events="stroke"/>`;
     });
     const c = centroid(o.poly);
-    body += text(X(c[0]), Y(c[1]) - 2, o.name, "rn") + text(X(c[0]), Y(c[1]) + 12, `${fmt.format(Math.abs(area(o.poly)))} m²${o.covered ? " covered" : ""}`, "ra");
+    body += text(X(c[0]), Y(c[1]) - 2, o.name, "rn") + text(X(c[0]), Y(c[1]) + 12, `${fmt.format(shapeArea(o))} m²${o.covered ? " covered" : ""}`, "ra");
   }
 
   // ---- room fills ----
   for (const r of lm.rooms) {
     const col = zoneColour.get(r.room.zone ?? r.room.kind)!;
     body += `<g class="room" data-id="${esc(r.room.id)}"><title>${esc(r.room.name)} — ${esc(areaOf(r))}</title>`;
-    body += `<polygon points="${pts(r.room.poly)}" fill="${col}" fill-opacity="var(--fill-alpha)"/></g>`;
+    body += `${fill(r.room)} fill="${col}" fill-opacity="var(--fill-alpha)"/></g>`;
   }
 
   // ---- fixtures standing in rooms ----
   for (const fm of lm.fixtures) {
     const f = fm.fixture;
     const water = f.type === "pool";
-    const fill = water ? "var(--water)" : "var(--muted)";
+    const paint = water ? "var(--water)" : "var(--muted)";
     const alpha = water ? ".30" : ".16";
     const b = fm.bbox;
     const label = `${f.name}${f.depth ? ` · ${fmt.format(f.depth)} m deep` : ""} — ${fmt2.format(fm.area)} m²`;
@@ -194,7 +200,7 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
     // document, so it is tagged by its own id: nothing may offer it as `fixtures[-1]`.
     const ref = f.vertical === undefined ? `data-fixture="${f.index}"` : `data-vertical="${esc(f.vertical)}"`;
     body += `<g class="fixture" ${ref} data-type="${esc(f.type)}"><title>${esc(label)}</title>`;
-    body += `<polygon ${ref} data-body="1" points="${pts(f.poly)}" fill="${fill}" fill-opacity="${alpha}" stroke="${fill}" stroke-width="1"${water ? "" : ' stroke-dasharray="3 2"'} pointer-events="fill"/>`;
+    body += `${fill(f, `${ref} data-body="1"`)} fill="${paint}" fill-opacity="${alpha}" stroke="${paint}" stroke-width="1"${water ? "" : ' stroke-dasharray="3 2"'} pointer-events="fill"/>`;
     // name it only where the shape can hold the text, and sit the label at the top of the
     // footprint: a fixture that fills most of its room would otherwise land on the room name
     if ((b.x1 - b.x0) * S > 54 && (b.y1 - b.y0) * S > 18)
@@ -437,6 +443,13 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
 
   function pts(poly: Pt[]) {
     return poly.map((p) => `${px(X(p[0]))},${px(Y(p[1]))}`).join(" ");
+  }
+  /** The opening tag of a filled shape: a polygon when it is one, a path when it curves. */
+  function fill(sh: Shape, attrs = "") {
+    const head = attrs === "" ? "" : ` ${attrs}`;
+    return isCurved(sh)
+      ? `<path${head} d="${shapePath(sh, X, Y, S)}"`
+      : `<polygon${head} points="${pts(sh.poly)}"`;
   }
   function text(x: number, y: number, s: string, cls: string, anchor = "middle") {
     return `<text x="${px(x)}" y="${px(y)}" text-anchor="${anchor}" class="${cls}">${esc(s)}</text>`;

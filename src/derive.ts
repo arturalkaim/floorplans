@@ -1659,6 +1659,49 @@ export function offsetGeometry(g: WallGeometry, d: number): WallGeometry {
   return { kind: "arc", a: move(g.a), b: move(g.b), r: snap(r), sweep: g.sweep, large: g.large, centre: g.centre };
 }
 
+/**
+ * A whole shape as a closed SVG path: straight edges as `L`, curved ones as `A`. A ring
+ * with no arcs is left to the caller to draw as a `<polygon>`, which is what it is.
+ */
+export function shapePath(sh: Shape, X: (m: number) => number, Y: (m: number) => number, S: number): string {
+  const ring = ringOf(sh);
+  const head = sh.poly[0]!;
+  let d = `M${fmtNum(X(head[0]))} ${fmtNum(Y(head[1]))}`;
+  for (const e of ringEdges(ring)) {
+    const b = ptM(e.b);
+    if (!e.arc) {
+      d += ` L${fmtNum(X(b[0]))} ${fmtNum(Y(b[1]))}`;
+      continue;
+    }
+    const r = fmtNum((e.arc.r / 1000) * S);
+    const large = Math.abs(e.arc.span) > Math.PI ? 1 : 0;
+    const sweep = e.arc.span >= 0 ? 1 : 0;
+    d += ` A${r} ${r} 0 ${large} ${sweep} ${fmtNum(X(b[0]))} ${fmtNum(Y(b[1]))}`;
+  }
+  return `${d} Z`;
+}
+
+/** Has any edge of this shape a curve on it? Decides polygon versus path. */
+export const isCurved = (sh: Shape): boolean => sh.arcs.some((a) => a !== undefined);
+
+/** Area centroid of a shape, in metres; where a label without a room goes. */
+export function shapeCentroid(sh: Shape): Pt {
+  const ring = ringPoints(ringOf(sh));
+  let a2 = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i]!;
+    const q = ring[(i + 1) % ring.length]!;
+    const c = p[0] * q[1] - q[0] * p[1];
+    a2 += c;
+    cx += (p[0] + q[0]) * c;
+    cy += (p[1] + q[1]) * c;
+  }
+  if (a2 === 0) return [snap(toM(ring[0]![0])), snap(toM(ring[0]![1]))];
+  return [snap(toM(cx / (3 * a2))), snap(toM(cy / (3 * a2)))];
+}
+
 /** Every point an SVG path needs to draw this geometry, as `M`/`L`/`A` commands. */
 export function geometryPath(g: WallGeometry, X: (m: number) => number, Y: (m: number) => number, S: number): string {
   const head = geometryStart(g);
