@@ -60,6 +60,23 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
   const list = tracks as number[];
   const bounds = boundaries(list);
   const axis = wall.axis === "v" ? 0 : 1;
+  const along = 1 - axis;
+
+  // The grid's own boundaries on the other axis — the coordinates a track edge can
+  // actually land on. A polygon edge counts as riding the dragged line only if one of
+  // its own endpoints sits at a genuine boundary there: a real corner of the
+  // arrangement, even if the polygon then runs on past the grid's own extent (casa-
+  // piscina's deck, whose outer edge starts exactly at the house wall and continues
+  // south of it). A vertex that merely shares the dragged coordinate, with neither
+  // endpoint at a real boundary, is a coincidence: quinta's detached shack
+  // `arrecadacao` lands on the grid's east line purely by chance, sharing no corner
+  // with it, a full metre south of where the grid actually ends.
+  const alongTracks: unknown = layout[wall.axis === "v" ? "rows" : "cols"];
+  const alongBounds =
+    Array.isArray(alongTracks) && alongTracks.every((t) => typeof t === "number")
+      ? boundaries(alongTracks as number[])
+      : [];
+  const onBoundary = (v: number) => alongBounds.some((b) => near(b, v));
 
   /**
    * A grid boundary is a line right across the plan, but a space may still be authored
@@ -73,10 +90,20 @@ function fromGrid(doc: Doc, wall: WallSegment): Draggable | undefined {
     for (const id of Object.keys(group)) {
       const poly = asObj(group[id])?.["poly"];
       if (!Array.isArray(poly)) continue;
-      poly.forEach((pt, v) => {
-        if (Array.isArray(pt) && typeof pt[axis] === "number" && near(pt[axis] as number, wall.c))
-          anchored.push([kind, id, "poly", v, axis]);
-      });
+      const n = poly.length;
+      const carried = new Set<number>();
+      for (let v = 0; v < n; v++) {
+        const p0 = poly[v];
+        const p1 = poly[(v + 1) % n];
+        if (!Array.isArray(p0) || !Array.isArray(p1)) continue;
+        if (typeof p0[axis] !== "number" || typeof p1[axis] !== "number") continue;
+        if (typeof p0[along] !== "number" || typeof p1[along] !== "number") continue;
+        if (!near(p0[axis] as number, wall.c) || !near(p1[axis] as number, wall.c)) continue;
+        if (!onBoundary(p0[along] as number) && !onBoundary(p1[along] as number)) continue;
+        carried.add(v);
+        carried.add((v + 1) % n);
+      }
+      for (const v of carried) anchored.push([kind, id, "poly", v, axis]);
     }
   }
   const carry = (next: number) => anchored.map((path) => ({ path, literal: metres(next) }));
