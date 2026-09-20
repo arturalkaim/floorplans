@@ -19,6 +19,9 @@ export { parse, PlanError, derive, checkRules, renderSvg, sortFindings };
 // the parser's own vocabularies, so documentation cannot drift from what it accepts
 export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES } from "./parse.ts";
 export { RULES, ruleById } from "./catalogue.ts";
+// owner classes: rooms, outdoor spaces, the street and holes, plus the predicates that
+// tell them apart — a consumer reading model.walls or model.access needs these
+export { EXTERIOR, GAP, isOpenSky, isStreet, isVoid, outdoorOwner, ownerId, ownerKey, roomOwner, sameOwner } from "./types.ts";
 export {
   applyDrag,
   applyMove,
@@ -78,6 +81,8 @@ export interface Schedule {
     /** area less fixtureArea: a deck net of its pool */
     usableArea: number;
     covered: boolean;
+    /** can you walk here from the street? false for an enclosed courtyard */
+    streetConnected: boolean;
   }>;
 }
 
@@ -109,6 +114,7 @@ export function schedule(model: Model): Schedule {
         fixtureArea,
         usableArea: Math.round(Math.max(0, area - fixtureArea) * 1000) / 1000,
         covered: o.covered,
+        streetConnected: model.streetOutdoor.has(o.id),
       };
     }),
   };

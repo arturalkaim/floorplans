@@ -14,6 +14,7 @@ import type {
   Side,
   WallSegment,
 } from "./types.ts";
+import { EXTERIOR, GAP, isOpenSky, isVoid, outdoorOwner, ownerId, ownerKey, roomOwner, sameOwner } from "./types.ts";
 
 const MM = 0.001;
 const CORNER_SLIVER = 0.1;
@@ -57,38 +58,45 @@ export function derive(plan: Plan): Analysis {
       ownersOf[i]!.push(rooms.filter((r) => pointInPoly([cx, cy], r.poly)).map((r) => r.id));
     }
   }
-  // outside = zero-coverage cells connected to the grid border
-  const outside: boolean[][] = ownersOf.map((col) => col.map(() => false));
+  // A cell no room covers belongs to a declared outdoor space, to the street, or to
+  // nothing at all. Outdoor spaces are claimed first, so a deck on the boundary keeps its
+  // own id instead of being swallowed by the street.
+  const voidOwner: Owner[][] = ownersOf.map((col) => col.map(() => GAP));
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rowsN; j++) {
+      if (ownersOf[i]![j]!.length > 0) continue;
+      const c: Pt = [(xs[i]! + xs[i + 1]!) / 2, (ys[j]! + ys[j + 1]!) / 2];
+      const o = plan.outdoor.find((o) => pointInPoly(c, o.poly));
+      if (o) voidOwner[i]![j] = outdoorOwner(o.id);
+    }
+  }
+  // The street is what the border flood fill reaches over cells no room covers. It walks
+  // *through* outdoor cells without claiming them — no wall is ever derived between two
+  // voids, so a deck touching the boundary is continuous with the street — and every
+  // outdoor space it reaches is street-connected. One it cannot reach is a courtyard:
+  // open sky you can only get to from inside the house.
+  const streetOutdoor = new Set<string>();
+  const reached: boolean[][] = ownersOf.map((col) => col.map(() => false));
   const stack: Array<[number, number]> = [];
   for (let i = 0; i < cols; i++) for (const j of [0, rowsN - 1]) if (ownersOf[i]![j]!.length === 0) stack.push([i, j]);
   for (let j = 0; j < rowsN; j++) for (const i of [0, cols - 1]) if (ownersOf[i]![j]!.length === 0) stack.push([i, j]);
   while (stack.length) {
     const [i, j] = stack.pop()!;
-    if (i < 0 || j < 0 || i >= cols || j >= rowsN || outside[i]![j] || ownersOf[i]![j]!.length > 0) continue;
-    outside[i]![j] = true;
+    if (i < 0 || j < 0 || i >= cols || j >= rowsN || reached[i]![j] || ownersOf[i]![j]!.length > 0) continue;
+    reached[i]![j] = true;
+    const v = voidOwner[i]![j]!;
+    if (v.kind === "outdoor") streetOutdoor.add(v.id);
+    else voidOwner[i]![j] = EXTERIOR;
     stack.push([i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]);
   }
-  // A declared outdoor space is open sky, so a courtyard fully enclosed by rooms is
-  // "outside" even though the border flood fill cannot reach it.
-  // INVARIANT: cells marked here are the only "outside" ones not connected to the
-  // border. This is what makes courtyard-facing walls derive as exterior, so a window
-  // onto a patio satisfies habitable.no_window rather than tripping window.not_exterior.
-  for (const o of plan.outdoor) {
-    for (let i = 0; i < cols; i++) {
-      for (let j = 0; j < rowsN; j++) {
-        if (outside[i]![j] || ownersOf[i]![j]!.length > 0) continue;
-        const cx = (xs[i]! + xs[i + 1]!) / 2;
-        const cy = (ys[j]! + ys[j + 1]!) / 2;
-        if (pointInPoly([cx, cy], o.poly)) outside[i]![j] = true;
-      }
-    }
-  }
   const owner = (i: number, j: number): Owner => {
-    if (i < 0 || j < 0 || i >= cols || j >= rowsN) return "exterior";
+    if (i < 0 || j < 0 || i >= cols || j >= rowsN) return EXTERIOR;
     const o = ownersOf[i]![j]!;
-    if (o.length >= 1) return o[0]!;
-    return outside[i]![j] ? "exterior" : "gap";
+    if (o.length >= 1) return roomOwner(o[0]!);
+    return voidOwner[i]![j]!;
   };
+  /** is this owner the room with that id? */
+  const isRoom = (o: Owner, id: string) => o.kind === "room" && o.id === id;
   // A gap or an overlap is a region, not a cell: flood-fill 4-connected cells of the same
   // kind into one component and report it once, with the component's bbox, area and
   // area-weighted centroid. Reporting per cell instead makes one hole or one overlap look
@@ -104,7 +112,7 @@ export function derive(plan: Plan): Analysis {
       rooms,
     });
   }
-  for (const cells of tilingComponents((i, j) => ownersOf[i]![j]!.length === 0 && !outside[i]![j]!, cols, rowsN)) {
+  for (const cells of tilingComponents((i, j) => ownersOf[i]![j]!.length === 0 && voidOwner[i]![j]!.kind === "gap", cols, rowsN)) {
     const region = cellRegion(cells, xs, ys);
     findings.push({
       rule: "tiling.gap",
@@ -120,22 +128,24 @@ export function derive(plan: Plan): Analysis {
     for (let j = 0; j < rowsN; j++) {
       const a = owner(i - 1, j);
       const b = owner(i, j);
-      if (a !== b && !(isVoid(a) && isVoid(b))) pieces.push({ axis: "v", c: xs[i]!, from: ys[j]!, to: ys[j + 1]!, neg: a, pos: b });
+      if (!sameOwner(a, b) && !(isVoid(a) && isVoid(b))) pieces.push({ axis: "v", c: xs[i]!, from: ys[j]!, to: ys[j + 1]!, neg: a, pos: b });
     }
   }
   for (let j = 0; j <= rowsN; j++) {
     for (let i = 0; i < cols; i++) {
       const a = owner(i, j - 1);
       const b = owner(i, j);
-      if (a !== b && !(isVoid(a) && isVoid(b))) pieces.push({ axis: "h", c: ys[j]!, from: xs[i]!, to: xs[i + 1]!, neg: a, pos: b });
+      if (!sameOwner(a, b) && !(isVoid(a) && isVoid(b))) pieces.push({ axis: "h", c: ys[j]!, from: xs[i]!, to: xs[i + 1]!, neg: a, pos: b });
     }
   }
-  const thicknessOf = (p: Piece) => (p.neg === "exterior" || p.pos === "exterior" ? plan.walls.exterior : plan.walls.partition);
+  // A wall onto open sky is an exterior wall whether the sky is the street or a courtyard:
+  // see the INVARIANT on isOpenSky in types.ts.
+  const thicknessOf = (p: Piece) => (isOpenSky(p.neg) || isOpenSky(p.pos) ? plan.walls.exterior : plan.walls.partition);
 
   // merge collinear pieces with the same owner pair
   const groups = new Map<string, Piece[]>();
   for (const p of pieces) {
-    const k = `${p.axis}|${p.c}|${p.neg}|${p.pos}`;
+    const k = `${p.axis}|${p.c}|${ownerKey(p.neg)}|${ownerKey(p.pos)}`;
     (groups.get(k) ?? groups.set(k, []).get(k)!).push(p);
   }
   const walls: WallSegment[] = [];
@@ -155,7 +165,7 @@ export function derive(plan: Plan): Analysis {
   walls.forEach((w, i) => (w.id = `w${i + 1}`));
 
   function toWall(p: Piece): WallSegment {
-    const kind = p.neg === "exterior" || p.pos === "exterior" ? "exterior" : "partition";
+    const kind = isOpenSky(p.neg) || isOpenSky(p.pos) ? "exterior" : "partition";
     return { id: "", axis: p.axis, c: p.c, from: p.from, to: p.to, neg: p.neg, pos: p.pos, kind, thickness: thicknessOf(p) };
   }
 
@@ -237,7 +247,7 @@ export function derive(plan: Plan): Analysis {
     let t = 0;
     for (const w of walls) {
       if (w.axis !== axis || !eq(w.c, c)) continue;
-      if (w.neg !== id && w.pos !== id) continue;
+      if (!isRoom(w.neg, id) && !isRoom(w.pos, id)) continue;
       if (Math.min(w.to, to) - Math.max(w.from, from) <= MM) continue;
       t = Math.max(t, w.thickness);
     }
@@ -248,7 +258,7 @@ export function derive(plan: Plan): Analysis {
   const roomModels: RoomModel[] = rooms.map((room) => {
     const area = Math.abs(shoelace(room.poly));
     const rect = largestRect(
-      (i, j) => owner(i, j) === room.id && ownersOf[i]![j]!.length === 1 && !occupied[i]![j]!,
+      (i, j) => isRoom(owner(i, j), room.id) && ownersOf[i]![j]!.length === 1 && !occupied[i]![j]!,
       xs,
       ys,
     );
@@ -269,10 +279,10 @@ export function derive(plan: Plan): Analysis {
     const faces = new Set<Side>();
     for (const wall of walls) {
       if (wall.kind !== "exterior") continue;
-      if (wall.axis === "h" && wall.pos === room.id) faces.add("north");
-      if (wall.axis === "h" && wall.neg === room.id) faces.add("south");
-      if (wall.axis === "v" && wall.pos === room.id) faces.add("west");
-      if (wall.axis === "v" && wall.neg === room.id) faces.add("east");
+      if (wall.axis === "h" && isRoom(wall.pos, room.id)) faces.add("north");
+      if (wall.axis === "h" && isRoom(wall.neg, room.id)) faces.add("south");
+      if (wall.axis === "v" && isRoom(wall.pos, room.id)) faces.add("west");
+      if (wall.axis === "v" && isRoom(wall.neg, room.id)) faces.add("east");
     }
     return {
       room,
@@ -327,24 +337,30 @@ export function derive(plan: Plan): Analysis {
           opening: o.spec.index,
         });
       } else {
-        const r = o.wall.neg === "exterior" ? o.wall.pos : o.wall.neg;
-        const m = byId.get(r);
+        // the wall is exterior, so exactly one side is open sky; the other is the room
+        // that gets the daylight — including when the sky is a courtyard
+        const r = ownerId(isOpenSky(o.wall.neg) ? o.wall.pos : o.wall.neg);
+        const m = r === undefined ? undefined : byId.get(r);
         if (m) m.exteriorWindow = true;
       }
     }
   }
 
   // ---- access graph ----
+  // Every outdoor space is a node of its own: a door onto a courtyard leads somewhere,
+  // it just does not lead to the street.
   const access = new Map<string, Set<string>>();
-  const link = (a: string, b: string) => {
-    (access.get(a) ?? access.set(a, new Set()).get(a)!).add(b);
-    (access.get(b) ?? access.set(b, new Set()).get(b)!).add(a);
+  const link = (a: Owner, b: Owner) => {
+    const [ka, kb] = [ownerKey(a), ownerKey(b)];
+    (access.get(ka) ?? access.set(ka, new Set()).get(ka)!).add(kb);
+    (access.get(kb) ?? access.set(kb, new Set()).get(kb)!).add(ka);
   };
-  for (const r of rooms) access.set(r.id, new Set());
-  access.set("exterior", new Set());
+  for (const r of rooms) access.set(ownerKey(roomOwner(r.id)), new Set());
+  for (const o of plan.outdoor) access.set(ownerKey(outdoorOwner(o.id)), new Set());
+  access.set(ownerKey(EXTERIOR), new Set());
   for (const o of openings) {
     if (o.spec.type === "window") continue;
-    if (o.wall.neg === "gap" || o.wall.pos === "gap") continue;
+    if (o.wall.neg.kind === "gap" || o.wall.pos.kind === "gap") continue;
     link(o.wall.neg, o.wall.pos);
   }
 
@@ -353,7 +369,7 @@ export function derive(plan: Plan): Analysis {
   let footprint = 0;
   for (let i = 0; i < cols; i++)
     for (let j = 0; j < rowsN; j++)
-      if (owner(i, j) !== "exterior") footprint += (xs[i + 1]! - xs[i]!) * (ys[j + 1]! - ys[j]!);
+      if (!isOpenSky(owner(i, j))) footprint += (xs[i + 1]! - xs[i]!) * (ys[j + 1]! - ys[j]!);
 
   return {
     model: {
@@ -364,14 +380,25 @@ export function derive(plan: Plan): Analysis {
       fixtures: fixtureModels,
       envelope: { ...env, area: snap(footprint) },
       access,
+      streetOutdoor,
       interiorArea: snap(roomModels.reduce((s, m) => s + m.area, 0)),
     },
     findings,
   };
 }
 
-const isVoid = (o: Owner) => o === "exterior" || o === "gap";
-export const label = (o: Owner): string => (o === "exterior" ? "the exterior" : o === "gap" ? "a gap" : o);
+export const label = (o: Owner): string =>
+  o.kind === "exterior" ? "the exterior" : o.kind === "gap" ? "a gap" : o.kind === "overlap" ? o.ids.join(" + ") : o.id;
+
+/**
+ * Does the id an opening's `between` names refer to this owner? The literal "exterior" is
+ * the street and only the street; anything else is a room or an outdoor space by id.
+ */
+const refMatches = (ref: string, o: Owner): boolean =>
+  ref === "exterior" ? o.kind === "exterior" : (o.kind === "room" || o.kind === "outdoor") && o.id === ref;
+
+/** how an authored `between` id reads in a message */
+const refLabel = (ref: string): string => (ref === "exterior" ? "the exterior" : ref);
 
 /** 4-connected components of arrangement-grid cells matching `mask`, as lists of [i, j]. */
 function tilingComponents(mask: (i: number, j: number) => boolean, cols: number, rowsN: number): Array<Array<[number, number]>> {
@@ -433,7 +460,7 @@ function cellRegion(cells: Array<[number, number]>, xs: number[], ys: number[]) 
  */
 function clearArea(poly: Pt[], area: number, pieces: Piece[], id: string, thicknessOf: (p: Piece) => number): number {
   let deduct = 0;
-  const mine = pieces.filter((p) => p.neg === id || p.pos === id);
+  const mine = pieces.filter((p) => ownerId(p.neg) === id || ownerId(p.pos) === id);
   for (const p of mine) deduct += (p.to - p.from) * (thicknessOf(p) / 2);
   const orient = Math.sign(shoelace(poly));
   let corners = 0;
@@ -462,21 +489,29 @@ function thicknessAt(pieces: Piece[], a: Pt, b: Pt, thicknessOf: (p: Piece) => n
 
 function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]): ResolvedOpening | undefined {
   const [a, b] = spec.between;
-  let cands = walls.filter((w) => (w.neg === a && w.pos === b) || (w.neg === b && w.pos === a));
+  let cands = walls.filter(
+    (w) => (refMatches(a, w.neg) && refMatches(b, w.pos)) || (refMatches(b, w.neg) && refMatches(a, w.pos)),
+  );
   const fail = (rule: string, message: string) => {
     findings.push({ rule, severity: "error", message, opening: spec.index, rooms: spec.between.filter((s) => s !== "exterior") });
     return undefined;
   };
   if (cands.length === 0) {
     const neighbours = (id: string) =>
-      [...new Set(walls.filter((w) => w.neg === id || w.pos === id).map((w) => (w.neg === id ? w.pos : w.neg)))].map(label).join(", ");
+      [
+        ...new Set(
+          walls
+            .filter((w) => refMatches(id, w.neg) || refMatches(id, w.pos))
+            .map((w) => label(refMatches(id, w.neg) ? w.pos : w.neg)),
+        ),
+      ].join(", ");
     const hint = a === "exterior" ? `${b} touches: ${neighbours(b)}` : b === "exterior" ? `${a} touches: ${neighbours(a)}` : `${a} touches: ${neighbours(a)}; ${b} touches: ${neighbours(b)}`;
-    return fail("wall.unresolved", `opening #${spec.index} (${spec.type}): ${label(a)} and ${label(b)} share no wall. ${hint}`);
+    return fail("wall.unresolved", `opening #${spec.index} (${spec.type}): ${refLabel(a)} and ${refLabel(b)} share no wall. ${hint}`);
   }
   if (spec.on) {
     const { room, side, near } = spec.on;
     if (side) cands = cands.filter((w) => sideOf(w, room) === side);
-    if (cands.length === 0) return fail("wall.unresolved", `opening #${spec.index}: ${room} has no wall to ${label(a === room ? b : a)} on its ${side} side`);
+    if (cands.length === 0) return fail("wall.unresolved", `opening #${spec.index}: ${room} has no wall to ${refLabel(a === room ? b : a)} on its ${side} side`);
     if (near && cands.length > 1) {
       cands.sort((w1, w2) => distToWall(near, w1) - distToWall(near, w2));
       cands = [cands[0]!];
@@ -487,7 +522,7 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
     const desc = cands.map((w) => `${sideOf(w, roomRef)} ${describe(w)}`).join("; ");
     return fail(
       "wall.ambiguous",
-      `opening #${spec.index}: ${label(a)} and ${label(b)} share ${cands.length} wall segments (${desc}); add "on": { "room": "${roomRef}", "side": … } or "near": [x, y]`,
+      `opening #${spec.index}: ${refLabel(a)} and ${refLabel(b)} share ${cands.length} wall segments (${desc}); add "on": { "room": "${roomRef}", "side": … } or "near": [x, y]`,
     );
   }
   const wall = cands[0]!;
@@ -534,10 +569,10 @@ function resolveOpening(spec: Opening, walls: WallSegment[], findings: Finding[]
   };
 }
 
-/** which side of `room` a wall lies on */
-export function sideOf(w: WallSegment, room: string): Side {
-  if (w.axis === "h") return w.pos === room ? "north" : "south";
-  return w.pos === room ? "west" : "east";
+/** which side of the space `ref` a wall lies on */
+export function sideOf(w: WallSegment, ref: string): Side {
+  if (w.axis === "h") return refMatches(ref, w.pos) ? "north" : "south";
+  return refMatches(ref, w.pos) ? "west" : "east";
 }
 
 export function pointOn(w: WallSegment, t: number): Pt {

@@ -205,7 +205,6 @@ export function parse(input: unknown): Plan {
 
   for (const [id, v] of Object.entries(roomsIn)) {
     if (!ID_RE.test(id)) bad(`rooms.${id}`, "id must match ^[a-z][a-z0-9_]*$");
-    if (id === "exterior" || id === "gap") bad(`rooms.${id}`, "reserved id");
     if (!isObj(v)) {
       bad(`rooms.${id}`, "must be an object");
       continue;
@@ -277,15 +276,15 @@ export function parse(input: unknown): Plan {
   if (!Array.isArray(openingsIn)) bad("openings", "must be an array");
   const roomIds = new Set(Object.keys(roomsIn));
   const spaceIds = new Set([...Object.keys(roomsIn), ...Object.keys(outdoorIn)]);
+  // An opening may name a room, an outdoor space, or the street. "exterior" is the street
+  // and only the street: a door onto a courtyard names the courtyard.
   const spaceRef = (path: string, v: unknown): string | undefined => {
     if (typeof v !== "string") {
-      bad(path, "must be a room id or \"exterior\"");
+      bad(path, 'must be a room id, an outdoor space id, or "exterior"');
       return undefined;
     }
-    if (v !== "exterior" && !roomIds.has(v)) {
-      if (spaceIds.has(v))
-        bad(path, `${JSON.stringify(v)} is an outdoor space; an opening onto it is written between the room and "exterior"`);
-      else bad(path, `unknown room ${JSON.stringify(v)}`);
+    if (v !== "exterior" && !spaceIds.has(v)) {
+      bad(path, `unknown space ${JSON.stringify(v)}; expected a room id, an outdoor space id, or "exterior"`);
       return undefined;
     }
     return v;
@@ -311,7 +310,13 @@ export function parse(input: unknown): Plan {
     const b = spaceRef(`${p}.between[1]`, bt[1]);
     if (a === undefined || b === undefined) return;
     if (a === b) bad(`${p}.between`, "both ends name the same space");
-    if (a === "exterior" && b === "exterior") bad(`${p}.between`, "an opening needs at least one room");
+    // Two voids have no wall between them, so there is nothing for the opening to sit in.
+    // A gate in a garden wall would need the wall to be modelled first; it is not.
+    if (!roomIds.has(a) && !roomIds.has(b))
+      bad(
+        `${p}.between`,
+        `an opening needs a room on at least one side; ${JSON.stringify(a)} and ${JSON.stringify(b)} are both outside, and nothing is built between two outdoor spaces`,
+      );
     const width = o["width"];
     if (!isNum(width) || width <= 0) bad(`${p}.width`, "must be a positive number (metres)");
 
@@ -331,7 +336,7 @@ export function parse(input: unknown): Plan {
       const s = o["on"];
       if (isObj(s)) checkKeys(`${p}.on`, s, ["room", "side", "near"], bad);
       if (!isObj(s) || typeof s["room"] !== "string" || (s["room"] !== a && s["room"] !== b) || s["room"] === "exterior")
-        bad(`${p}.on.room`, "must name one of the rooms in `between`");
+        bad(`${p}.on.room`, "must name one of the spaces in `between`, and not \"exterior\"");
       else {
         const side = s["side"];
         if (side !== undefined && !SIDES.has(side as string)) bad(`${p}.on.side`, "north | south | east | west");
@@ -347,7 +352,8 @@ export function parse(input: unknown): Plan {
     }
 
     let hinge: Jamb = "start";
-    let swingInto = b === "exterior" ? a : b;
+    // a leaf sweeps indoors by default: never out into the street, nor onto a terrace
+    let swingInto = roomIds.has(b) ? b : a;
     let entrance = false;
     if (type === "door") {
       if (o["hinge"] !== undefined) {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { analyze, floorplan, parse, renderSvg, schedule } from "../src/index.ts";
-import { rulesOf } from "./helpers.ts";
+import { has, rulesOf } from "./helpers.ts";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));
 
@@ -126,6 +126,24 @@ describe("fixture: casa-patio (courtyard)", () => {
     assert.equal(patio.area, 16);
     assert.ok(!r.schedule.rooms.some((x) => x.name === "Pátio"), "the patio is not a room");
     assert.ok(r.schedule.interiorClearArea < 111, "patio area is excluded from the interior");
+  });
+
+  it("counts only the street door as a way in", () => {
+    // the plan has two exterior doors; the second opens onto the enclosed patio, so it
+    // is not a second way out and entrance.multiple has nothing to report
+    const exteriorDoors = r.model.openings.filter((o) => o.spec.type === "door" && o.wall.kind === "exterior");
+    assert.equal(exteriorDoors.length, 2);
+    assert.deepEqual(rulesOf(r.findings), ["circulation.share"]);
+    assert.equal(r.schedule.outdoor[0]!.streetConnected, false);
+  });
+
+  it("without its street door the house cannot be entered", () => {
+    // regression: with the patio indistinguishable from the street, the remaining door
+    // onto the courtyard passed entrance.missing and the plan linted clean
+    const doc = load("casa-patio");
+    doc.openings = doc.openings.filter((o: { entrance?: boolean }) => o.entrance !== true);
+    const findings = floorplan(doc).findings;
+    assert.ok(has(findings, "entrance.missing"), `got ${rulesOf(findings).join(", ")}`);
   });
 });
 

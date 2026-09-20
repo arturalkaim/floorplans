@@ -234,6 +234,13 @@ Declaring one *inside* the footprint makes a courtyard. The walls around it deri
 (`habitable.no_window` is satisfied, `window.not_exterior` stays quiet) — which is the
 whole point of a patio house. Without the declaration the same void is a `tiling.gap`.
 
+An outdoor space is a space in its own right: name its id in an opening's `between` to
+put a door or a window on the wall that faces it, and it becomes a node of the access
+graph like any room. `schedule.outdoor[].streetConnected` says whether you can walk
+there from the street — true for a deck that touches the boundary, false for a courtyard
+the house encloses. That distinction is what an **entrance** means (see below), and it
+is why `"exterior"` never stands in for a courtyard: write the courtyard's id.
+
 ```jsonc
 {
   "layout": { "cols": [3.6, 4.0, 3.6], "rows": [3.4, 4.0, 3.4],
@@ -270,13 +277,19 @@ are rectangles, and writing them as `rect` costs 186 tokens less.
 | Field | Meaning |
 |---|---|
 | `type` | `door`, `window`, `cased` |
-| `between` | the two spaces the opening joins; `"exterior"` for outside |
+| `between` | the two spaces the opening joins: room ids, an outdoor space id, or `"exterior"` for the street. At least one end must be a room — nothing is built between two outdoor spaces |
 | `on` | disambiguates when the pair shares several walls: `{ "room", "side": north\|south\|east\|west, "near": [x,y] }` |
 | `position` | `"center"` (default), a number (metres from the wall's start to the opening centre), or `{ "from": "start"\|"end", "distance" }` |
 | `width` | metres |
 | `hinge` | doors: `"start"` or `"end"` jamb. Walls run west→east and north→south. |
-| `swingInto` | doors: room the leaf opens into (default: last room in `between`) |
-| `entrance` | doors: mark the main entrance |
+| `swingInto` | doors: room the leaf opens into (default: the room in `between`, never the street or a terrace) |
+| `entrance` | doors: mark the main entrance. It must lead to the street, or you get `entrance.not_street` |
+
+An **entrance** is a door to the street: to `"exterior"`, or to an outdoor space the
+border flood fill reaches. A door onto an enclosed courtyard is a perfectly good door —
+it is allowed, it joins the two spaces in the access graph, and it never satisfies
+`entrance.missing`. `reach.unreachable` walks from the street the same way, so a room you
+can only get to by crossing a courtyard is reachable exactly when the courtyard is.
 
 ### Fixtures
 
@@ -321,8 +334,8 @@ Every finding is `{ rule, severity, message, at?, rooms?, opening? }`.
 | `wall.unresolved` / `wall.ambiguous` | error | opening names rooms with no (or several) shared walls |
 | `opening.overflow` / `opening.collision` | error | opening wider than its wall / two openings overlap |
 | `window.not_exterior` | error | window on an interior wall |
-| `entrance.missing` | error | no door leads outside |
-| `space.no_access` / `reach.unreachable` | error | room without a door / not reachable from the entrance |
+| `entrance.missing` | error | no door leads to the street |
+| `space.no_access` / `reach.unreachable` | error | room without a door / not reachable from the street |
 | `habitable.no_window` / `wet.no_window` | warning | living space without daylight / WC needing extraction |
 | `wet.opens_to_kitchen` | warning | WC door straight into a kitchen |
 | `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
@@ -336,6 +349,7 @@ room drawn on centrelines is 1.88 × 0.79 m to stand in.
 | `outdoor.overlap` | error | a room is built over an outdoor space, which is open sky |
 | `fixture.clearance` | warning | gap between two fixtures too narrow to walk through |
 | `door.swing_hits_fixture` | warning | a door leaf sweeps into a fixture |
+| `entrance.not_street` | warning | a door marked `"entrance": true` opens onto an enclosed courtyard, or onto another room |
 | `circulation.share` | info | halls and corridors above 10 % of the interior |
 | `privacy.bedroom_off_living` / `entrance.multiple` / `door.swing_collision` | info | worth a look |
 

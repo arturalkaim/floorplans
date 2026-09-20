@@ -75,6 +75,13 @@ export function Reference() {
         walls, so a window onto a patio counts as daylight. Without the declaration the same void is a{" "}
         <code>tiling.gap</code>.
       </p>
+      <p>
+        An outdoor space is a space like any other: name its id in an opening's <code>between</code> to put a
+        door or a window on the wall that faces it. The schedule says whether the street reaches it
+        (<code>streetConnected</code>) — a deck on the boundary, yes; an enclosed courtyard, no. Only a door to
+        the street is an entrance, so a house whose only door opens onto its patio reports{" "}
+        <code>entrance.missing</code>.
+      </p>
 
       <h2>Fixtures</h2>
       <p>
@@ -92,13 +99,13 @@ export function Reference() {
       <ul className="tokens">{[...OPENING_TYPES].map((k) => <li key={k}><code>{k}</code></li>)}</ul>
       <table>
         <tbody>
-          <tr><td><code>between</code></td><td>the two spaces it joins; <code>"exterior"</code> for outside</td></tr>
+          <tr><td><code>between</code></td><td>the two spaces it joins: room ids, an outdoor space id, or <code>"exterior"</code> for the street. At least one end must be a room</td></tr>
           <tr><td><code>on</code></td><td>which wall, when the pair shares several: <code>{"{ room, side, near }"}</code></td></tr>
           <tr><td><code>position</code></td><td><code>"center"</code>, metres from the wall's start, or <code>{'{ from, distance }'}</code></td></tr>
           <tr><td><code>width</code></td><td>metres</td></tr>
           <tr><td><code>hinge</code></td><td>doors: which jamb. Walls run west→east and north→south</td></tr>
           <tr><td><code>swingInto</code></td><td>doors: the space the leaf opens into</td></tr>
-          <tr><td><code>entrance</code></td><td>doors: marks the main entrance</td></tr>
+          <tr><td><code>entrance</code></td><td>doors: marks the main entrance. It has to lead to the street, or you get <code>entrance.not_street</code></td></tr>
         </tbody>
       </table>
       <h3>side</h3>

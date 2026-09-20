@@ -11,6 +11,7 @@ import {
   movableFixtures,
   parse,
 } from "../src/index.ts";
+import { ownerId } from "../src/types.ts";
 
 const load = (n: string) => readFileSync(new URL(`../fixtures/${n}.json`, import.meta.url), "utf8");
 const modelOf = (text: string) => analyze(parse(JSON.parse(text))).model;
@@ -52,7 +53,7 @@ describe("edit: which walls a drawing may offer to drag", () => {
 
     for (const w of declined) {
       const axis = w.axis === "v" ? 0 : 1;
-      const owners = [w.neg, w.pos].filter((o) => o !== "exterior" && o !== "gap");
+      const owners = [w.neg, w.pos].map(ownerId).filter((id) => id !== undefined);
       // a wall is refused only because some space it separates has a vertex on that line
       // beyond the wall's run, which a drag would have to split the edge to handle
       const wouldSplit = owners.some((id) =>
@@ -104,7 +105,7 @@ describe("edit: moving a wall rewrites the source and nothing else", () => {
     // must resize the grid column and leave the shack's polygon untouched.
     const text = load("quinta");
     const model = modelOf(text);
-    const east = model.walls.find((w) => w.axis === "v" && w.pos === "exterior" && w.neg === "cozinha")!;
+    const east = model.walls.find((w) => w.axis === "v" && w.pos.kind === "exterior" && ownerId(w.neg) === "cozinha")!;
     const d = draggableWalls(text, model).get(east.id)!;
     assert.match(d.writes, /^layout\.cols\[\d+\]/);
     const before = JSON.parse(text);
@@ -161,14 +162,19 @@ describe("edit: moving a wall rewrites the source and nothing else", () => {
     }
   });
 
-  it("offers the building's outer walls", () => {
+  it("offers the building's outer walls, except where one runs past the wall", () => {
     for (const name of ["casa-t3", "cabin"]) {
       const text = load(name);
       const model = modelOf(text);
       const walls = draggableWalls(text, model);
       const exterior = model.walls.filter((w) => w.kind === "exterior");
-      const offered = exterior.filter((w) => walls.has(w.id));
-      assert.equal(offered.length, exterior.length, `${name}: only ${offered.length}/${exterior.length} outer walls`);
+      // A wall is refused when a space it separates has a vertex on its line but outside
+      // its run: moving it would have to split that polygon edge. casa-t3's sala has one
+      // south edge (x 4.6 -> 12) that the alpendre divides into two walls — street to the
+      // west of x = 6.6, porch to the east — so neither half may be dragged on its own.
+      const refused = exterior.filter((w) => !walls.has(w.id));
+      const shown = refused.map((w) => `${w.axis}${w.c}:${w.from}-${w.to}`).sort();
+      assert.deepEqual(shown, name === "casa-t3" ? ["h10.6:4.6-6.6", "h10.6:6.6-12"] : [], name);
     }
   });
 
@@ -182,7 +188,7 @@ describe("edit: moving a wall rewrites the source and nothing else", () => {
     const before = JSON.parse(text).rooms;
     const after = JSON.parse(applyDrag(text, d, 0.4)).rooms;
     const moved = Object.keys(before).filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
-    const owners = [wall.neg, wall.pos].filter((o) => o !== "exterior");
+    const owners = [wall.neg, wall.pos].map(ownerId).filter((id) => id !== undefined);
     assert.deepEqual(moved.sort(), owners.sort());
   });
 
@@ -294,7 +300,7 @@ describe("edit: a rect-authored space is written back as a rect", () => {
     const text = load(CABIN);
     const model = modelOf(text);
     // the wc's east wall is its rect's far side: only the width changes
-    const wall = model.walls.find((w) => w.axis === "v" && w.c === 6.2 && w.neg === "wc")!;
+    const wall = model.walls.find((w) => w.axis === "v" && w.c === 6.2 && ownerId(w.neg) === "wc")!;
     const d = draggableWalls(text, model).get(wall.id)!;
     const after = JSON.parse(applyDrag(text, d, 6.6)).rooms;
     assert.deepEqual(after.wc.rect, [5, 0, 1.6, 2]);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { analyze } from "../src/index.ts";
+import { analyze, schedule } from "../src/index.ts";
 import { parse } from "../src/parse.ts";
 import { has, rect, twoRooms } from "./helpers.ts";
 import type { Finding } from "../src/types.ts";
@@ -54,7 +54,7 @@ describe("rules: light", () => {
     assert.match(w.find((x) => x.rooms![0] === "b")!.message, /north\/south\/east|exterior wall/);
   });
   it("a window onto a courtyard counts as daylight", () => {
-    const plan = (outdoor: Record<string, unknown> | undefined) => ({
+    const plan = (outdoor: Record<string, unknown> | undefined, bedWindow = "exterior") => ({
       walls: { exterior: 0.3, partition: 0.12 },
       rooms: {
         hall: { kind: "hall", poly: rect(0, 0, 3, 1) },
@@ -69,12 +69,12 @@ describe("rules: light", () => {
         { type: "door", between: ["hall", "kit"], width: 0.8 },
         { type: "door", between: ["kit", "liv"], width: 0.8 },
         // bed's ONLY window faces the courtyard
-        { type: "window", between: ["exterior", "bed"], on: { room: "bed", side: "east" }, width: 0.6 },
+        { type: "window", between: [bedWindow, "bed"], on: { room: "bed", side: "east" }, width: 0.6 },
         { type: "window", between: ["exterior", "kit"], on: { room: "kit", side: "east" }, width: 0.6 },
         { type: "window", between: ["exterior", "liv"], on: { room: "liv", side: "south" }, width: 1.2 },
       ],
     });
-    const withPatio = run(plan({ patio: { poly: rect(1, 1, 1, 1) } }));
+    const withPatio = run(plan({ patio: { poly: rect(1, 1, 1, 1) } }, "patio"));
     assert.ok(!has(withPatio, "habitable.no_window"), "courtyard window lights the bedroom");
     assert.ok(!has(withPatio, "window.not_exterior"));
     assert.ok(!has(withPatio, "tiling.gap"));
@@ -292,5 +292,83 @@ describe("rules: entrance.multiple says something true about the plan", () => {
     const m = only(run(twoWaysOut([true, true])), "entrance.multiple")[0]!.message;
     assert.match(m, /2 of them are marked/);
     assert.match(m, /only one can be the main door/);
+  });
+});
+
+describe("rules: an entrance is a door to the street", () => {
+  /** Four rooms round a 2 x 1 m void at (1, 1); what the void is depends on `outdoor`. */
+  const ring = (openings: unknown[], outdoor: Record<string, unknown> = { patio: { name: "Pátio", poly: rect(1, 1, 2, 1) } }) => ({
+    walls: { exterior: 0.3, partition: 0.12 },
+    rooms: {
+      hall: { name: "Hall", kind: "hall", poly: rect(0, 0, 4, 1) },
+      west: { name: "West", kind: "storage", poly: rect(0, 1, 1, 1) },
+      east: { name: "East", kind: "storage", poly: rect(3, 1, 1, 1) },
+      south: { name: "South", kind: "storage", poly: rect(0, 2, 4, 1) },
+    },
+    outdoor,
+    openings,
+  });
+  const streetDoor = { type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "north" }, width: 0.9 };
+  const patioDoor = { type: "door", between: ["hall", "patio"], width: 0.9 };
+
+  it("a door onto an enclosed courtyard does not let anyone in", () => {
+    const f = run(ring([patioDoor, { type: "door", between: ["hall", "west"], width: 0.8 }]));
+    assert.ok(has(f, "entrance.missing"), `expected entrance.missing in ${f.map((x) => x.rule).join(", ")}`);
+  });
+
+  it("the same plan with a street door has its entrance", () => {
+    const f = run(ring([streetDoor, patioDoor, { type: "door", between: ["hall", "west"], width: 0.8 }]));
+    assert.ok(!has(f, "entrance.missing"));
+    assert.ok(!has(f, "entrance.multiple"), "the courtyard door is not a second way out");
+  });
+
+  it("a door onto an enclosed courtyard is allowed and silent", () => {
+    const f = run(ring([streetDoor, patioDoor]));
+    assert.ok(!has(f, "wall.unresolved"));
+    assert.ok(!has(f, "entrance.not_street"));
+  });
+
+  it("marking it the main entrance is a warning, not a refusal", () => {
+    const f = run(ring([streetDoor, { ...patioDoor, entrance: true }, { type: "door", between: ["hall", "west"], width: 0.8 }]));
+    const w = only(f, "entrance.not_street");
+    assert.equal(w.length, 1);
+    assert.equal(w[0]!.severity, "warning");
+    assert.match(w[0]!.message, /opens onto Pátio, which the street does not reach/);
+    assert.ok(!has(f, "entrance.missing"), "the street door still counts");
+  });
+
+  it("a room reached only across the courtyard, from a street door, is reachable", () => {
+    const f = run(ring([streetDoor, patioDoor, { type: "door", between: ["patio", "south"], width: 0.9 }]));
+    assert.ok(!only(f, "reach.unreachable").some((x) => x.rooms![0] === "south"));
+  });
+
+  it("a room reached only across a courtyard nothing else opens onto is not", () => {
+    const f = run(ring([streetDoor, { type: "door", between: ["patio", "south"], width: 0.9 }]));
+    const unreachable = only(f, "reach.unreachable").map((x) => x.rooms![0]);
+    assert.ok(unreachable.includes("south"), `expected south unreachable, got ${unreachable.join(", ")}`);
+  });
+
+  it("a deck on the boundary is the street side", () => {
+    const deckSide = { type: "door", between: ["south", "deck"], on: { room: "south", side: "south" }, width: 1, entrance: true };
+    const plan = ring([deckSide, { type: "door", between: ["hall", "south"], width: 0.9 }], {
+      deck: { name: "Deck", poly: rect(0, 3, 4, 1) },
+    });
+    const { model, findings } = analyze(parse(plan));
+    assert.deepEqual([...model.streetOutdoor], ["deck"]);
+    assert.ok(!has(findings, "entrance.missing"), "a door onto a deck that touches the street is a way in");
+    assert.ok(!has(findings, "entrance.not_street"));
+    assert.ok(!only(findings, "reach.unreachable").some((x) => x.rooms![0] === "hall"));
+  });
+
+  it("the schedule says which outdoor spaces the street reaches", () => {
+    const { model } = analyze(parse(ring([streetDoor])));
+    assert.deepEqual([...model.streetOutdoor], []);
+    assert.equal(schedule(model).outdoor[0]!.streetConnected, false);
+  });
+
+  it("a door onto an outdoor space joins it to the access graph", () => {
+    const { model } = analyze(parse(ring([streetDoor, patioDoor])));
+    assert.deepEqual([...model.access.get("outdoor:patio")!], ["room:hall"]);
+    assert.ok(model.access.get("room:hall")!.has("outdoor:patio"));
   });
 });
