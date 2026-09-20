@@ -365,6 +365,23 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
   const O = outdoor.length;
   const arr = arrange(spaces.map(ringOf));
 
+  // Snap-rounding has a budget of passes, not a proof, and a plan can reach the end of it
+  // still moving — a handful of chords bending onto one another's hot pixels in a cycle.
+  // Everything below is a well-formed arrangement of the chords as they stood when the
+  // budget ran out, which is not the same thing as the arrangement of the document, so it
+  // is said out loud rather than returned as if it were settled (gpt-5.5 §2.7).
+  if (arr.unstable) {
+    const u = arr.unstable;
+    const box = [toM(u.box.x0), toM(u.box.y0), toM(u.box.x1), toM(u.box.y1)].map(snap);
+    findings.push({
+      rule: "geometry.unstable",
+      severity: "error",
+      message: `the geometry did not settle: after ${u.passes} rounds of snapping to the millimetre grid, ${u.moved} chords were still moving, all of them between (${box[0]}, ${box[1]}) and (${box[2]}, ${box[3]}). Every wall and area on this level is derived from where they happened to stop; move the edges that meet there apart, or round their coordinates to the millimetre yourself`,
+      path: inLevel(level, "rooms"),
+      at: [snap((box[0]! + box[2]!) / 2), snap((box[1]! + box[3]!) / 2)],
+    });
+  }
+
   /**
    * One owner per face. A face several rooms claim is an `overlap`; one inside the
    * building that nobody claims is a `gap`; the rest are the space that contains the

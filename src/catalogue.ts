@@ -39,6 +39,7 @@ export const RULES: readonly RuleDoc[] = [
   { id: "void.overlap", severity: "error", catches: "a room has floor over a declared void, which is a hole in this storey's slab — the room has to be cut back to the void's edge" },
   { id: "geometry.sliver", severity: "info", catches: "a face smaller than 100 mm² that nothing covers: two edges meant to meet are a fraction apart, named with the spaces either side" },
   { id: "room.no_clear_floor", severity: "error", catches: "a room whose walls leave it no floor at all: the inward offset of its ring turns itself inside out" },
+  { id: "geometry.unstable", severity: "error", catches: "snap-rounding ran out of passes with chords still moving: the arrangement is of where they stopped, not of the document, and the region is named" },
   { id: "arc.too_shallow", severity: "warning", catches: "an arc that bulges less than 5 mm past its chord: a straight edge written as a curve" },
 
   // semantics, produced by checkRules()

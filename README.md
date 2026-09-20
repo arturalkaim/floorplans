@@ -863,6 +863,7 @@ issue, all `error`, each with the issue's own document path:
 | `circulation.share` | info | halls and corridors above 10 % of the interior |
 | `arc.too_shallow` | warning | an arc bulging under 5 mm past its chord: a straight edge written as a curve |
 | `room.no_clear_floor` | error | a room its own walls leave no floor in: the inward offset turns inside out |
+| `geometry.unstable` | error | snap-rounding ran out of passes with chords still moving, and the region they are in is named |
 | `geometry.sliver` | info | a face under 100 mm² that nothing covers: two edges meant to meet are a fraction apart |
 | `room.acute_corner` | info | a corner under 25°, where the mitred wall faces meet so far along each arm that the point of the room is wall |
 | `privacy.bedroom_off_living` / `entrance.multiple` / `door.swing_collision` | info | worth a look |
