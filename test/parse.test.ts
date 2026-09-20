@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { parse, PlanError } from "../src/parse.ts";
 import { shoelace } from "../src/geometry.ts";
@@ -13,6 +14,19 @@ const issuesOf = (input: unknown): string[] => {
     throw e;
   }
 };
+
+/** The full issue list (path + message), for tests that check message text. */
+const issueListOf = (input: unknown): { path: string; message: string }[] => {
+  try {
+    parse(input);
+    return [];
+  } catch (e) {
+    if (e instanceof PlanError) return e.issues;
+    throw e;
+  }
+};
+
+const loadFixture = (name: string): any => JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));
 
 describe("parse: basics", () => {
   it("parses a minimal plan and applies defaults", () => {
@@ -169,6 +183,102 @@ describe("parse: fixtures", () => {
 
   it("defaults to no fixtures", () => {
     assert.deepEqual(parse(twoRooms()).fixtures, []);
+  });
+});
+
+describe("parse: unknown keys are reported (A4)", () => {
+  // A copy of casa-t3 with the five misspellings the review found, plus one private
+  // "_note" that must still pass. Regression guard for "a door with `positon`,
+  // `swing_into`, `hinges` ... lints byte-identically to the original".
+  const misspelledCasaT3 = () => {
+    const doc = loadFixture("casa-t3");
+    doc._note = "internal draft, ignore for review";
+    const door = doc.openings[0];
+    door.positon = door.position;
+    delete door.position;
+    door.swing_into = door.swingInto;
+    delete door.swingInto;
+    door.hinges = door.hinge;
+    delete door.hinge;
+    const closet = doc.rooms.closet;
+    closet.kinds = closet.kind;
+    delete closet.kind;
+    closet.habitble = true;
+    return doc;
+  };
+
+  it("flags all five misspellings and leaves the private _note alone", () => {
+    const paths = issuesOf(misspelledCasaT3());
+    for (const expected of ["openings[0].positon", "openings[0].swing_into", "openings[0].hinges", "rooms.closet.kinds", "rooms.closet.habitble"])
+      assert.ok(paths.includes(expected), `expected issue at ${expected}, got ${paths.join(", ")}`);
+    assert.ok(!paths.some((p) => p.includes("_note")), "a private _note must not be flagged");
+  });
+
+  it("still lints clean for the unmodified fixture (baseline for the regression above)", () => {
+    assert.deepEqual(issuesOf(loadFixture("casa-t3")), []);
+  });
+
+  it('suggests the nearest known key ("did you mean") for a close misspelling', () => {
+    const issues = issueListOf(misspelledCasaT3());
+    const by = Object.fromEntries(issues.map((i) => [i.path, i.message]));
+    assert.equal(by["openings[0].positon"], 'unknown field "positon"; did you mean "position"?');
+    assert.equal(by["openings[0].swing_into"], 'unknown field "swing_into"; did you mean "swingInto"?');
+    assert.equal(by["openings[0].hinges"], 'unknown field "hinges"; did you mean "hinge"?');
+    assert.equal(by["rooms.closet.kinds"], 'unknown field "kinds"; did you mean "kind"?');
+    assert.equal(by["rooms.closet.habitble"], 'unknown field "habitble"; did you mean "habitable"?');
+  });
+
+  it("lists every known key when nothing is close enough to suggest", () => {
+    const issues = issueListOf(twoRooms({ rooms: { ...twoRooms().rooms, a: { ...twoRooms().rooms["a"], totallyUnrelatedKey: 1 } } }));
+    const issue = issues.find((i) => i.path === "rooms.a.totallyUnrelatedKey");
+    assert.ok(issue, `expected an issue at rooms.a.totallyUnrelatedKey, got ${issues.map((i) => i.path).join(", ")}`);
+    assert.match(issue!.message, /^unknown field "totallyUnrelatedKey"; expected one of /);
+    assert.match(issue!.message, /\bkind\b/);
+    assert.match(issue!.message, /\bpoly\b/);
+  });
+
+  it("allows keys prefixed with _ or x- anywhere, without complaint", () => {
+    const plan = parse(twoRooms({ _internal: true, "x-authoring-tool": "sketch" }));
+    assert.equal(plan.rooms.length, 2);
+  });
+
+  it("rejects an unknown key on every object it reads", () => {
+    const base = twoRooms();
+    const cases: Array<[string, unknown, string]> = [
+      ["top level", { ...base, bogus: 1 }, "bogus"],
+      ["walls", { ...base, walls: { ...base.walls, bogus: 1 } }, "walls.bogus"],
+      [
+        "layout",
+        { walls: base.walls, layout: { cols: [1], rows: [1], areas: ["a"], bogus: 1 }, rooms: { a: { kind: "hall" } } },
+        "layout.bogus",
+      ],
+      ["room", { ...base, rooms: { ...base.rooms, a: { ...(base.rooms as any)["a"], bogus: 1 } } }, "rooms.a.bogus"],
+      ["outdoor space", { ...base, outdoor: { p: { poly: rect(0, 4, 2, 2), bogus: 1 } } }, "outdoor.p.bogus"],
+      ["opening", { ...base, openings: [{ ...(base.openings as any)[0], bogus: 1 }] }, "openings[0].bogus"],
+      [
+        "opening.on",
+        { ...base, openings: [{ ...(base.openings as any)[0], on: { ...(base.openings as any)[0].on, bogus: 1 } }] },
+        "openings[0].on.bogus",
+      ],
+      [
+        "opening.position",
+        { ...base, openings: [{ type: "door", between: ["a", "b"], width: 0.8, position: { from: "start", distance: 1, bogus: 1 } }] },
+        "openings[0].position.bogus",
+      ],
+      ["fixture", { ...base, fixtures: [{ type: "sink", in: "a", at: [1, 1], size: [0.5, 0.5], bogus: 1 }] }, "fixtures[0].bogus"],
+    ];
+    for (const [label, doc, expectedPath] of cases) {
+      const paths = issuesOf(doc);
+      assert.ok(paths.includes(expectedPath), `${label}: expected ${expectedPath}, got ${paths.join(", ")}`);
+    }
+  });
+
+  it("does not flag an unknown key twice as both unknown and missing geometry", () => {
+    // sanity: an unknown key on a room must not suppress or duplicate the normal
+    // "has no geometry" issue when the room also lacks a poly
+    const paths = issuesOf({ rooms: { a: { bogus: 1 } } });
+    assert.ok(paths.includes("rooms.a.bogus"));
+    assert.ok(paths.includes("rooms.a"));
   });
 });
 

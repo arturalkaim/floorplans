@@ -49,6 +49,53 @@ type J = Record<string, unknown>;
 const isObj = (v: unknown): v is J => typeof v === "object" && v !== null && !Array.isArray(v);
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
+// A key starting with "_" or "x-" is a private note or authoring-tool annotation:
+// always allowed, never reported as unknown. Documented in README's Plan format section.
+const PRIVATE_KEY_RE = /^(_|x-)/;
+
+/** Levenshtein edit distance (insert/delete/substitute), used for "did you mean" suggestions. */
+function levenshtein(a: string, b: string): number {
+  const dp: number[] = [];
+  for (let j = 0; j <= b.length; j++) dp[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    let prev = dp[0]!;
+    dp[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = dp[j]!;
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j]!, dp[j - 1]!);
+      prev = tmp;
+    }
+  }
+  return dp[b.length]!;
+}
+
+/**
+ * Report, through `bad`, every key of `obj` that is not in `known`. Keys starting with
+ * `_` or `x-` are exempt (see PRIVATE_KEY_RE). A key within edit distance 2 of exactly
+ * one known key gets "did you mean"; otherwise the message lists every known key.
+ */
+function checkKeys(path: string, obj: J, known: readonly string[], bad: (path: string, message: string) => void): void {
+  for (const key of Object.keys(obj)) {
+    if (PRIVATE_KEY_RE.test(key) || known.includes(key)) continue;
+    let best: string | undefined;
+    let bestDist = Infinity;
+    for (const k of known) {
+      const d = levenshtein(key, k);
+      if (d < bestDist) {
+        bestDist = d;
+        best = k;
+      }
+    }
+    const keyPath = path === "" ? key : `${path}.${key}`;
+    bad(
+      keyPath,
+      best !== undefined && bestDist <= 2
+        ? `unknown field ${JSON.stringify(key)}; did you mean ${JSON.stringify(best)}?`
+        : `unknown field ${JSON.stringify(key)}; expected one of ${known.join(", ")}`,
+    );
+  }
+}
+
 /**
  * Parse and normalise a plan document. Throws PlanError listing every schema
  * problem found. Geometry/topology problems are NOT raised here — they become
@@ -71,9 +118,12 @@ export function parse(input: unknown): Plan {
     }
   }
 
+  checkKeys("", doc, ["title", "units", "walls", "north", "rooms", "outdoor", "layout", "openings", "fixtures"], bad);
+
   const title = typeof doc["title"] === "string" ? doc["title"] : undefined;
   if (doc["units"] !== undefined && doc["units"] !== "m") bad("units", 'only "m" is supported');
   const wallsIn = isObj(doc["walls"]) ? doc["walls"] : {};
+  checkKeys("walls", wallsIn, ["exterior", "partition"], bad);
   const exterior = wallsIn["exterior"] ?? 0.3;
   const partition = wallsIn["partition"] ?? 0.12;
   if (!isNum(exterior) || exterior <= 0) bad("walls.exterior", "must be a positive number (metres)");
@@ -117,6 +167,7 @@ export function parse(input: unknown): Plan {
       bad(`rooms.${id}`, "must be an object");
       continue;
     }
+    checkKeys(`rooms.${id}`, v, ["poly", "kind", "name", "zone", "habitable", "wet", "circulation"], bad);
     if (v["poly"] !== undefined) {
       const p = readPoly(`rooms.${id}.poly`, v["poly"]);
       if (p) polys.set(id, p);
@@ -130,6 +181,7 @@ export function parse(input: unknown): Plan {
       bad(`outdoor.${id}`, "must be an object");
       continue;
     }
+    checkKeys(`outdoor.${id}`, v, ["poly", "name", "covered"], bad);
     if (v["poly"] !== undefined) {
       const p = readPoly(`outdoor.${id}.poly`, v["poly"]);
       if (p) polys.set(id, p);
@@ -207,6 +259,7 @@ export function parse(input: unknown): Plan {
       bad(p, "must be an object");
       return;
     }
+    checkKeys(p, o, ["type", "between", "width", "position", "on", "hinge", "swingInto", "entrance"], bad);
     const type = o["type"];
     if (!OPENING_TYPES.has(type as string)) {
       bad(`${p}.type`, `must be one of door, window, cased`);
@@ -229,13 +282,17 @@ export function parse(input: unknown): Plan {
     const pos = o["position"];
     if (pos === undefined || pos === "center") position = "center";
     else if (isNum(pos)) position = { from: "start", distance: snap(pos) };
-    else if (isObj(pos) && (pos["from"] === "start" || pos["from"] === "end") && isNum(pos["distance"]) && pos["distance"] >= 0)
-      position = { from: pos["from"] as Jamb, distance: snap(pos["distance"]) };
-    else bad(`${p}.position`, '"center", a number (metres from start to centre) or { from: "start"|"end", distance }');
+    else if (isObj(pos)) {
+      checkKeys(`${p}.position`, pos, ["from", "distance"], bad);
+      if ((pos["from"] === "start" || pos["from"] === "end") && isNum(pos["distance"]) && pos["distance"] >= 0)
+        position = { from: pos["from"] as Jamb, distance: snap(pos["distance"]) };
+      else bad(`${p}.position`, '"center", a number (metres from start to centre) or { from: "start"|"end", distance }');
+    } else bad(`${p}.position`, '"center", a number (metres from start to centre) or { from: "start"|"end", distance }');
 
     let on: Opening["on"];
     if (o["on"] !== undefined) {
       const s = o["on"];
+      if (isObj(s)) checkKeys(`${p}.on`, s, ["room", "side", "near"], bad);
       if (!isObj(s) || typeof s["room"] !== "string" || (s["room"] !== a && s["room"] !== b) || s["room"] === "exterior")
         bad(`${p}.on.room`, "must name one of the rooms in `between`");
       else {
@@ -295,6 +352,7 @@ export function parse(input: unknown): Plan {
       bad(path, "must be an object");
       return;
     }
+    checkKeys(path, v, ["type", "in", "poly", "at", "size", "depth", "name"], bad);
     const type = v["type"];
     if (!FIXTURE_TYPES.has(type as string))
       bad(`${path}.type`, `must be one of ${[...FIXTURE_TYPES].join(", ")}`);
@@ -370,6 +428,7 @@ function compileLayout(
     bad("layout", "must be an object { cols, rows, areas }");
     return;
   }
+  checkKeys("layout", layout, ["cols", "rows", "areas"], bad);
   const tracks = (k: string): number[] | undefined => {
     const v = layout[k];
     if (!Array.isArray(v) || v.length === 0 || !v.every((n) => isNum(n) && n > 0)) {
