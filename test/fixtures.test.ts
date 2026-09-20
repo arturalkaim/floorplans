@@ -200,3 +200,20 @@ describe("fixture: casa-piscina (fixtures layer)", () => {
     assert.equal(r.schedule.waterArea, 34.72);
   });
 });
+
+describe("svg: a glazed door gets a glazing line across its leaf (D1)", () => {
+  const base = {
+    rooms: { a: { kind: "living", poly: [[0, 0], [4, 0], [4, 4], [0, 4]] } },
+    openings: [{ type: "door", between: ["exterior", "a"], on: { room: "a", side: "south" }, width: 0.9, entrance: true }],
+  };
+  const doorGroup = (svg: string) => svg.match(/<g class="door">[\s\S]*?<\/g>/)![0];
+
+  it("adds a second <line> to the door's <g> only when glazed", () => {
+    const plain = renderSvg(analyze(parse(base)).model);
+    const glazed = renderSvg(analyze(parse({ ...base, openings: [{ ...base.openings[0], glazed: true }] })).model);
+    assert.equal((doorGroup(plain).match(/<line/g) ?? []).length, 1);
+    assert.equal((doorGroup(glazed).match(/<line/g) ?? []).length, 2);
+  });
+  // casa-t3 has no glazed doors, so its own snapshot test (above, "fixture: casa-t3") is
+  // the check that this feature leaves it byte-identical.
+});

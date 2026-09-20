@@ -208,7 +208,19 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
       if (!s) continue;
       const r = L(o.to - o.from);
       body += `<g class="door"><path d="M${px(X(s.closed[0]))} ${px(Y(s.closed[1]))} A${px(r)} ${px(r)} 0 0 ${s.sweep} ${px(X(s.open[0]))} ${px(Y(s.open[1]))}" fill="none" stroke="var(--muted)" stroke-width="1"/>`;
-      body += `<line x1="${px(X(s.hinge[0]))}" y1="${px(Y(s.hinge[1]))}" x2="${px(X(s.open[0]))}" y2="${px(Y(s.open[1]))}" stroke="var(--wall)" stroke-width="2"/></g>`;
+      const [hx, hy] = [X(s.hinge[0]), Y(s.hinge[1])];
+      const [ox, oy] = [X(s.open[0]), Y(s.open[1])];
+      body += `<line x1="${px(hx)}" y1="${px(hy)}" x2="${px(ox)}" y2="${px(oy)}" stroke="var(--wall)" stroke-width="2"/>`;
+      if (o.spec.glazed) {
+        // D1: a short tick across the leaf, at its midpoint, marks the glazing
+        const leafLen = Math.hypot(ox - hx, oy - hy) || 1;
+        const nx = (-(oy - hy) / leafLen) * 4;
+        const ny = ((ox - hx) / leafLen) * 4;
+        const mx = (hx + ox) / 2;
+        const my = (hy + oy) / 2;
+        body += `<line x1="${px(mx - nx)}" y1="${px(my - ny)}" x2="${px(mx + nx)}" y2="${px(my + ny)}" stroke="var(--wall)" stroke-width="1"/>`;
+      }
+      body += `</g>`;
       // only a door to the street is an entrance: one onto an enclosed courtyard is an
       // exterior door that leads nowhere, so it gets no tag
       const toStreet = street(w.neg) || street(w.pos);

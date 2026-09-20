@@ -93,6 +93,7 @@ export interface Opening {
   hinge: Jamb; // doors only
   swingInto: string; // doors only: one of the ids in `between`
   entrance: boolean; // doors only: marks the main entrance
+  glazed: boolean; // doors only: a glazed door counts as daylight, same as a window
 }
 
 export interface Plan {

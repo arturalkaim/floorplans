@@ -343,6 +343,13 @@ export function derive(plan: Plan): Analysis {
         const m = r === undefined ? undefined : byId.get(r);
         if (m) m.exteriorWindow = true;
       }
+    } else if (o.spec.type === "door" && o.spec.glazed && o.wall.kind === "exterior") {
+      // D1: a glazed exterior door is daylight too, exactly like a window — including onto
+      // a courtyard, which is open sky (isOpenSky). A glazed *interior* door (wall.kind !==
+      // "exterior") never reaches here, so it never counts.
+      const r = ownerId(isOpenSky(o.wall.neg) ? o.wall.pos : o.wall.neg);
+      const m = r === undefined ? undefined : byId.get(r);
+      if (m) m.exteriorWindow = true;
     }
   }
 

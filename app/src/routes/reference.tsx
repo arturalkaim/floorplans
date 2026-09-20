@@ -107,6 +107,7 @@ export function Reference() {
           <tr><td><code>hinge</code></td><td>doors: which jamb. Walls run west→east and north→south</td></tr>
           <tr><td><code>swingInto</code></td><td>doors: the space the leaf opens into</td></tr>
           <tr><td><code>entrance</code></td><td>doors: marks the main entrance. It has to lead to the street, or you get <code>entrance.not_street</code></td></tr>
+          <tr><td><code>glazed</code></td><td>doors: <code>true</code> for a glazed door (default <code>false</code>) — counts as daylight for <code>habitable.no_window</code>, same as a window</td></tr>
         </tbody>
       </table>
       <h3>side</h3>

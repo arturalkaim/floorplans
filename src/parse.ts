@@ -295,7 +295,7 @@ export function parse(input: unknown): Plan {
       bad(p, "must be an object");
       return;
     }
-    checkKeys(p, o, ["type", "between", "width", "position", "on", "at", "hinge", "swingInto", "entrance"], bad);
+    checkKeys(p, o, ["type", "between", "width", "position", "on", "at", "hinge", "swingInto", "entrance", "glazed"], bad);
     const type = o["type"];
     if (!OPENING_TYPES.has(type as string)) {
       bad(`${p}.type`, `must be one of door, window, cased`);
@@ -369,6 +369,7 @@ export function parse(input: unknown): Plan {
     // a leaf sweeps indoors by default: never out into the street, nor onto a terrace
     let swingInto = roomIds.has(b) ? b : a;
     let entrance = false;
+    let glazed = false;
     if (type === "door") {
       if (o["hinge"] !== undefined) {
         if (o["hinge"] === "start" || o["hinge"] === "end") hinge = o["hinge"];
@@ -382,8 +383,12 @@ export function parse(input: unknown): Plan {
         if (typeof o["entrance"] === "boolean") entrance = o["entrance"];
         else bad(`${p}.entrance`, "must be boolean");
       }
+      if (o["glazed"] !== undefined) {
+        if (typeof o["glazed"] === "boolean") glazed = o["glazed"];
+        else bad(`${p}.glazed`, "must be boolean");
+      }
     } else {
-      for (const k of ["hinge", "swingInto", "entrance"]) if (o[k] !== undefined) bad(`${p}.${k}`, `only valid on doors`);
+      for (const k of ["hinge", "swingInto", "entrance", "glazed"]) if (o[k] !== undefined) bad(`${p}.${k}`, `only valid on doors`);
     }
 
     openings.push({
@@ -397,6 +402,7 @@ export function parse(input: unknown): Plan {
       hinge,
       swingInto,
       entrance,
+      glazed,
     });
   });
 

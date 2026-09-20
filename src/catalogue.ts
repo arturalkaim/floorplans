@@ -31,7 +31,7 @@ export const RULES: readonly RuleDoc[] = [
   { id: "entrance.missing", severity: "error", catches: "no door leads to the street: to `\"exterior\"`, or to an outdoor space the street reaches. A door onto an enclosed courtyard is allowed and does not count" },
   { id: "space.no_access", severity: "error", catches: "a room has no door or cased opening" },
   { id: "reach.unreachable", severity: "error", catches: "a room cannot be reached from the street, walking through rooms and through the outdoor spaces the street reaches" },
-  { id: "habitable.no_window", severity: "warning", catches: "a living space has no daylight" },
+  { id: "habitable.no_window", severity: "warning", catches: "a living space has no daylight: no exterior window or glazed door" },
   { id: "wet.no_window", severity: "warning", catches: "a bathroom or WC has no window; plan extraction" },
   { id: "wet.opens_to_kitchen", severity: "warning", catches: "a WC door opens straight into a kitchen" },
   { id: "privacy.bedroom_through_route", severity: "warning", catches: "a bedroom is the route to another bedroom" },

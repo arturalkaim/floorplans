@@ -285,6 +285,7 @@ are rectangles, and writing them as `rect` costs 186 tokens less.
 | `hinge` | doors: `"start"` or `"end"` jamb. Walls run west→east and north→south. |
 | `swingInto` | doors: room the leaf opens into (default: the room in `between`, never the street or a terrace) |
 | `entrance` | doors: mark the main entrance. It must lead to the street, or you get `entrance.not_street` |
+| `glazed` | doors: `true` for a glazed door (default `false`) — counts as daylight for `habitable.no_window`, same as a window |
 
 An **entrance** is a door to the street: to `"exterior"`, or to an outdoor space the
 border flood fill reaches. A door onto an enclosed courtyard is a perfectly good door —
@@ -347,7 +348,7 @@ Every finding is `{ rule, severity, message, at?, rooms?, opening? }`.
 | `window.not_exterior` | error | window on an interior wall |
 | `entrance.missing` | error | no door leads to the street |
 | `space.no_access` / `reach.unreachable` | error | room without a door / not reachable from the street |
-| `habitable.no_window` / `wet.no_window` | warning | living space without daylight / WC needing extraction |
+| `habitable.no_window` / `wet.no_window` | warning | living space without a window or glazed exterior door / WC needing extraction |
 | `wet.opens_to_kitchen` | warning | WC door straight into a kitchen |
 | `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |

@@ -500,3 +500,27 @@ describe("parse: opening `at` (absolute placement)", () => {
     assert.deepEqual(issuesOf(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, at: [4, 1] }] })), []);
   });
 });
+
+describe("parse: opening `glazed`", () => {
+  it("defaults to false and is a known key", () => {
+    const plan = parse(twoRooms());
+    assert.equal(plan.openings[0]!.glazed, false);
+  });
+
+  it("accepts true on a door", () => {
+    const plan = parse(twoRooms({ openings: [{ type: "door", between: ["exterior", "a"], on: { room: "a", side: "west" }, width: 0.9, glazed: true }] }));
+    assert.equal(plan.openings[0]!.glazed, true);
+  });
+
+  it("rejects a non-boolean value", () => {
+    assert.deepEqual(
+      issuesOf(twoRooms({ openings: [{ type: "door", between: ["a", "b"], width: 0.8, glazed: "yes" }] })),
+      ["openings[0].glazed"],
+    );
+  });
+
+  it("is only valid on doors", () => {
+    const issues = issueListOf(twoRooms({ openings: [{ type: "window", between: ["exterior", "a"], on: { room: "a", side: "north" }, width: 1, glazed: true }] }));
+    assert.deepEqual(issues, [{ path: "openings[0].glazed", message: "only valid on doors" }]);
+  });
+});
