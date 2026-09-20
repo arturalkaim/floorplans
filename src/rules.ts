@@ -54,14 +54,21 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
   // A single-level document never carries `level` on a finding, so its output stays
   // byte-identical to what it was before levels existed.
   const tag = (levelId: string, x: Finding): Finding => (plan.levelled ? { ...x, level: levelId } : x);
+  /**
+   * INVARIANT: a finding of a document that did not author `levels` never carries one,
+   * whatever produced it. A single-level plan may still declare a `vertical` block — it
+   * will go nowhere and say so — and that message must not be the one thing that leaks a
+   * level id into output a caller has been parsing since before levels existed.
+   */
+  const on = (levelId: string) => (plan.levelled ? { level: levelId } : {});
 
   const named = new Map(plan.levels.map((l) => [l.id, l.name]));
   /** how a room reads in a building-wide message, which may span levels */
   const where = (levelId: string, name: string) => (plan.levelled ? `${name} on ${named.get(levelId) ?? levelId}` : name);
 
-  buildingRules(model, f, where);
+  buildingRules(model, f, where, on);
   for (const lm of model.levels) levelRules(model, lm, opts, f, tag);
-  verticalRules(model, opts, f);
+  verticalRules(model, opts, f, on);
   return f;
 }
 
@@ -83,7 +90,12 @@ function namesOf(lm: LevelModel) {
  * You enter a building once and then walk through all of it, so the way in and the walk
  * from it are the only rules that see every level at once.
  */
-function buildingRules(model: Model, f: Finding[], where: (levelId: string, name: string) => string): void {
+function buildingRules(
+  model: Model,
+  f: Finding[],
+  where: (levelId: string, name: string) => string,
+  on: (levelId: string) => { level?: string },
+): void {
   const plan = model.plan;
   const ground = new Set(plan.levels.filter((l) => l.ground).map((l) => l.id));
 
@@ -133,7 +145,7 @@ function buildingRules(model: Model, f: Finding[], where: (levelId: string, name
   // a sloping site answers it by marking that level `"ground": true`.
   for (const d of doorsOff) {
     f.push({
-      level: d.lm.level.id,
+      ...on(d.lm.level.id),
       rule: "entrance.not_ground",
       severity: "info",
       message: `door #${d.o.spec.index} opens to the outside on ${d.lm.level.name}, which the street does not meet; it is a balcony door, not a way in`,
@@ -170,7 +182,7 @@ function buildingRules(model: Model, f: Finding[], where: (levelId: string, name
       // act on and one it has to go and investigate
       const why = ground.has(lm.level.id) || served ? "" : `; no stair, lift or ramp arrives on ${lm.level.name}`;
       f.push({
-        ...(model.plan.levelled ? { level: lm.level.id } : {}),
+        ...on(lm.level.id),
         rule: "reach.unreachable",
         severity: "error",
         message: `${m.room.name} cannot be reached from the entrance${why}`,
@@ -413,7 +425,12 @@ function levelRules(
  * open sky. All of these exist only because a vertical element is matched by its own id
  * (§2.2.3) — matching by footprint overlap would make "misaligned" unexpressible.
  */
-function verticalRules(model: Model, opts: RuleOptions, f: Finding[]): void {
+function verticalRules(
+  model: Model,
+  opts: RuleOptions,
+  f: Finding[],
+  on: (levelId: string) => { level?: string },
+): void {
   const stair = { ...STAIR_DEFAULTS, ...opts.stairPitch, ...(opts.minHeadroom === undefined ? {} : { headroom: opts.minHeadroom }) };
   const plan = model.plan;
   if (plan.levels.length < 2 && plan.vertical.length === 0) return;
@@ -424,7 +441,7 @@ function verticalRules(model: Model, opts: RuleOptions, f: Finding[]): void {
     if (level.ground) continue;
     if (plan.vertical.some((v) => v.at.some((a) => a.level === level.id))) continue;
     f.push({
-      level: level.id,
+      ...on(level.id),
       rule: "level.unreachable",
       severity: "error",
       message: `${level.name} has no stair, lift or ramp: nothing arrives on it`,
@@ -435,10 +452,10 @@ function verticalRules(model: Model, opts: RuleOptions, f: Finding[]): void {
     if (v.at.length === 1) {
       const only = v.at[0]!;
       f.push({
-        level: only.level,
+        ...on(only.level),
         rule: "stair.no_arrival",
         severity: "error",
-        message: `${v.name} stands on ${byLevel.get(only.level)?.level.name ?? only.level} and goes nowhere; a vertical element needs a footprint on each of the levels it joins`,
+        message: `${v.name} ${plan.levelled ? `stands on ${byLevel.get(only.level)?.level.name ?? only.level} and ` : ""}goes nowhere; a vertical element needs a footprint on each of the levels it joins`,
         at: centre(only.poly),
         vertical: v.id,
       });
@@ -450,7 +467,7 @@ function verticalRules(model: Model, opts: RuleOptions, f: Finding[]): void {
         lm.rooms.find((m) => m.room.id === at.in)?.room.poly ?? lm.level.outdoor.find((o) => o.id === at.in)?.poly;
       if (host && !polyInside(at.poly, host)) {
         f.push({
-          level: at.level,
+          ...on(at.level),
           rule: "stair.no_arrival",
           severity: "error",
           message: `${v.name} is not fully inside ${at.in} on ${lm.level.name}; that is the space you are meant to step off it into`,
@@ -467,7 +484,7 @@ function verticalRules(model: Model, opts: RuleOptions, f: Finding[]): void {
       const smaller = Math.min(Math.abs(shoelace(a.poly)), Math.abs(shoelace(b.poly)));
       if (over >= smaller / 2 - 1e-9) continue;
       f.push({
-        level: b.level,
+        ...on(b.level),
         rule: "stair.misaligned",
         severity: "warning",
         message:
@@ -495,7 +512,7 @@ function verticalRules(model: Model, opts: RuleOptions, f: Finding[]): void {
       const pitch = (Math.atan2(rise, going) * 180) / Math.PI;
       if (pitch < stair.min || pitch > stair.max || going < stair.going) {
         f.push({
-          level: lower.level,
+          ...on(lower.level),
           rule: "stair.pitch",
           severity: "info",
           message: `${v.name}: ${snap(Math.round(pitch * 10) / 10)}° pitch — ${v.risers} risers of ${snap(Math.round(rise * 1000) / 1000)} m over a ${snap(length)} m flight gives a ${snap(Math.round(going * 1000) / 1000)} m going; ${stair.min}–${stair.max}° and a going of ${stair.going} m upwards is the comfortable range`,
@@ -511,7 +528,7 @@ function verticalRules(model: Model, opts: RuleOptions, f: Finding[]): void {
       const headroom = height - (rise * dOpen) / going;
       if (headroom < stair.headroom) {
         f.push({
-          level: upper.level,
+          ...on(upper.level),
           rule: "stair.headroom",
           severity: "info",
           message: `${v.name} passes under the ${upper.level === lower.level ? "slab" : name(byLevel, upper.level) + " slab"} with ${snap(Math.round(Math.max(0, headroom) * 100) / 100)} m of headroom: the floor above stays closed for ${snap(dOpen)} m of the flight; open it sooner, or declare a void, to keep ${stair.headroom} m`,
@@ -532,7 +549,7 @@ function verticalRules(model: Model, opts: RuleOptions, f: Finding[]): void {
       const un = uncoveredArea(m.room.poly, lower.rooms.map((r) => r.room.poly));
       if (un.area <= 1e-6) continue;
       f.push({
-        level: upper.level.id,
+        ...on(upper.level.id),
         rule: "structure.over_open_sky",
         severity: "warning",
         message: `${m.room.name} has ${snap(un.area)} m² standing over no room on ${lower.level.name}; a cantilever is real, but so is a room that has lost its support`,

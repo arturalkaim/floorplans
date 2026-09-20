@@ -45,6 +45,23 @@ describe("levels: a single-level document is byte-identical to what it was befor
     }
   });
 
+  it("carries none even when a single-level document declares a vertical element", () => {
+    // the one rule that can fire without a second level: a stair that joins nothing. It
+    // is also the one place a level id could leak into output that has never had one.
+    const { findings } = analyze(
+      parse({
+        walls: { exterior: 0.3, partition: 0.12 },
+        rooms: { hall: { kind: "hall", rect: [0, 0, 3, 4] } },
+        openings: [{ type: "door", between: ["exterior", "hall"], on: { room: "hall", side: "north" }, width: 1, entrance: true }],
+        vertical: [{ id: "escada", type: "stairs", at: [{ level: "ground", in: "hall", rect: [0.5, 0.5, 1, 2] }] }],
+      }),
+    );
+    const f = findings.find((x) => x.rule === "stair.no_arrival")!;
+    assert.ok(f, `expected stair.no_arrival in ${findings.map((x) => x.rule).join(", ")}`);
+    assert.equal("level" in f, false);
+    assert.match(f.message, /^Stairs goes nowhere;/, "and it does not name a level the author never wrote");
+  });
+
   it("keeps the schedule free of the multi-level sections", () => {
     for (const name of FIXTURES) {
       const s = schedule(analyze(parse(JSON.parse(load(name)))).model);
