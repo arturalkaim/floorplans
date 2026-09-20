@@ -662,7 +662,7 @@ one `{ "arc": [0, 3], "r": 3, "sweep": "cw" }`, the other `{ "arc": [0, -3], "r"
 **What an arc costs.** Measured with `gpt-tokenizer`'s `o200k_base`: `casa-redonda` —
 two wings joined by a round hall, four arcs — is **534 tokens**; the same three rooms
 with the same areas to a hundredth of a square metre and the same seven openings, written
-as three plain rectangles, is **388**. So the curve costs 146 tokens, +38 %, for the
+as three plain rectangles, is **392**. So the curve costs 142 tokens, +36 %, for the
 whole house. Per room the geometry alone is 11 tokens as a `rect`, 21 as four explicit
 points, **56 as two arcs**, and **169 hand-flattened to 21 points** — which is also not
 1 mm correct and which the parser would have refused outright before, because its chords
