@@ -33,7 +33,7 @@ export const EXAMPLES: Example[] = [
   { id: "casa-patio", name: "Casa com Pátio", shows: "a courtyard — the Sala is lit only through it", source: casaPatio },
   { id: "quinta", name: "Quinta", shows: "an inner garden, a pool on a terrace, a detached shack", source: quinta },
   { id: "casa-angulo", name: "Casa com Ângulo", shows: "a wing at 45° and a canted bay: walls that are not axis-aligned", source: casaAngulo },
-  { id: "casa-v", name: "Casa em V", shows: "two wings splayed 60° off the living bar, a pool in the court between them: every wing wall is angled", source: casaV },
+  { id: "casa-v", name: "Casa em V", shows: "one open living-kitchen bar with a glass wall onto a decked pool, two wings splayed 60° off it: every wing wall is angled", source: casaV },
   { id: "casa-redonda", name: "Casa Redonda", shows: "two wings joined by a round hall, drawn with true circular arcs", source: casaRedonda },
   { id: "moradia-2-pisos", name: "Moradia de 2 pisos", shows: "two storeys: a shared track grid, a double-height void and a stair", source: moradia2Pisos },
   { id: "apartment-t2", name: "Apartamento T2", shows: "authored as a track grid instead of polygons", source: apartmentT2 },

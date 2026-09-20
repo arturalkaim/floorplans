@@ -2417,64 +2417,32 @@
    "rooms": [
     {
      "id": "sala",
-     "corners": 5,
-     "area": 35.544,
-     "clearArea": 32.854,
-     "minDimension": 4.664,
+     "corners": 6,
+     "area": 136.899,
+     "clearArea": 131.08,
+     "minDimension": 10.499,
      "largestRect": {
-      "x0": 3.651,
-      "y0": 12.7,
-      "x1": 11,
-      "y1": 17
+      "x0": 12.063,
+      "y0": 5.104,
+      "x1": 19.14,
+      "y1": 14.462
      },
      "clearRect": {
-      "x0": 3.651,
-      "y0": 12.7,
-      "x1": 10.94,
-      "y1": 16.85,
-      "w": 7.289,
-      "h": 4.15
+      "x0": 12.063,
+      "y0": 5.104,
+      "x1": 19.14,
+      "y1": 14.462,
+      "w": 7.077,
+      "h": 9.358
      },
      "labelAt": [
-      7.326,
-      14.85
+      8.619,
+      16.274
      ],
-     "fixtureArea": 0,
-     "usableArea": 32.854,
+     "fixtureArea": 5.13,
+     "usableArea": 125.95,
      "exteriorFaces": [
       "east",
-      "north",
-      "south"
-     ],
-     "exteriorWindow": true
-    },
-    {
-     "id": "cozinha",
-     "corners": 5,
-     "area": 35.544,
-     "clearArea": 32.854,
-     "minDimension": 4.7,
-     "largestRect": {
-      "x0": 11,
-      "y0": 12.7,
-      "x1": 18.2,
-      "y1": 17
-     },
-     "clearRect": {
-      "x0": 11.06,
-      "y0": 12.7,
-      "x1": 18.2,
-      "y1": 16.85,
-      "w": 7.14,
-      "h": 4.15
-     },
-     "labelAt": [
-      14.6,
-      14.85
-     ],
-     "fixtureArea": 0,
-     "usableArea": 32.854,
-     "exteriorFaces": [
       "north",
       "south",
       "west"
@@ -2520,21 +2488,21 @@
      "minDimension": 2.28,
      "largestRect": {
       "x0": 11.493,
-      "y0": 1.337,
-      "x1": 13.893,
+      "y0": 1.336,
+      "x1": 13.892,
       "y1": 5.337
      },
      "clearRect": {
       "x0": 11.493,
-      "y0": 1.337,
-      "x1": 13.893,
+      "y0": 1.336,
+      "x1": 13.892,
       "y1": 5.337,
-      "w": 2.4,
-      "h": 4
+      "w": 2.399,
+      "h": 4.001
      },
      "labelAt": [
       3.455,
-      12.661
+      12.66
      ],
      "fixtureArea": 0,
      "usableArea": 8.641,
@@ -2584,18 +2552,18 @@
       "x0": 4.492,
       "y0": 1.337,
       "x1": 7.893,
-      "y1": 5.338
+      "y1": 5.337
      },
      "clearRect": {
       "x0": 4.492,
       "y0": 1.337,
       "x1": 7.893,
-      "y1": 5.338,
+      "y1": 5.337,
       "w": 3.401,
-      "h": 4.001
+      "h": 4
      },
      "labelAt": [
-      0.205,
+      0.206,
       7.032
      ],
      "fixtureArea": 0,
@@ -2678,19 +2646,19 @@
      "largestRect": {
       "x0": 20.39,
       "y0": 0.495,
-      "x1": 24.39,
-      "y1": 2.895
+      "x1": 24.391,
+      "y1": 2.894
      },
      "clearRect": {
       "x0": 20.39,
       "y0": 0.495,
-      "x1": 24.39,
-      "y1": 2.895,
-      "w": 4,
-      "h": 2.4
+      "x1": 24.391,
+      "y1": 2.894,
+      "w": 4.001,
+      "h": 2.399
      },
      "labelAt": [
-      18.544,
+      18.545,
       12.661
      ],
      "fixtureArea": 0,
@@ -2771,12 +2739,12 @@
      "axis": "h",
      "c": 12,
      "from": 7,
-     "to": 11,
+     "to": 15,
      "kind": "exterior",
      "thickness": 0.3,
      "neg": {
       "kind": "outdoor",
-      "id": "patio"
+      "id": "deck"
      },
      "pos": {
       "kind": "room",
@@ -2786,71 +2754,21 @@
     {
      "id": "w2",
      "axis": "h",
-     "c": 12,
-     "from": 11,
+     "c": 22.799,
+     "from": 7,
      "to": 15,
      "kind": "exterior",
      "thickness": 0.3,
      "neg": {
-      "kind": "outdoor",
-      "id": "patio"
+      "kind": "room",
+      "id": "sala"
      },
      "pos": {
-      "kind": "room",
-      "id": "cozinha"
+      "kind": "exterior"
      }
     },
     {
      "id": "w3",
-     "axis": "h",
-     "c": 17,
-     "from": 3.651,
-     "to": 11,
-     "kind": "exterior",
-     "thickness": 0.3,
-     "neg": {
-      "kind": "room",
-      "id": "sala"
-     },
-     "pos": {
-      "kind": "exterior"
-     }
-    },
-    {
-     "id": "w4",
-     "axis": "h",
-     "c": 17,
-     "from": 11,
-     "to": 18.349,
-     "kind": "exterior",
-     "thickness": 0.3,
-     "neg": {
-      "kind": "room",
-      "id": "cozinha"
-     },
-     "pos": {
-      "kind": "exterior"
-     }
-    },
-    {
-     "id": "w5",
-     "axis": "v",
-     "c": 11,
-     "from": 12,
-     "to": 17,
-     "kind": "partition",
-     "thickness": 0.12,
-     "neg": {
-      "kind": "room",
-      "id": "sala"
-     },
-     "pos": {
-      "kind": "room",
-      "id": "cozinha"
-     }
-    },
-    {
-     "id": "w6",
      "from": 0,
      "to": 4.2,
      "kind": "exterior",
@@ -2864,7 +2782,7 @@
      }
     },
     {
-     "id": "w7",
+     "id": "w4",
      "from": 0,
      "to": 5.4,
      "kind": "exterior",
@@ -2878,7 +2796,7 @@
      }
     },
     {
-     "id": "w8",
+     "id": "w5",
      "from": 0,
      "to": 3.4,
      "kind": "exterior",
@@ -2892,7 +2810,7 @@
      }
     },
     {
-     "id": "w9",
+     "id": "w6",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -2907,7 +2825,7 @@
      }
     },
     {
-     "id": "w10",
+     "id": "w7",
      "from": 0,
      "to": 3.6,
      "kind": "exterior",
@@ -2921,7 +2839,7 @@
      }
     },
     {
-     "id": "w11",
+     "id": "w8",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -2936,7 +2854,7 @@
      }
     },
     {
-     "id": "w12",
+     "id": "w9",
      "from": 0,
      "to": 4.2,
      "kind": "exterior",
@@ -2951,7 +2869,7 @@
      }
     },
     {
-     "id": "w13",
+     "id": "w10",
      "from": 0,
      "to": 1.4,
      "kind": "partition",
@@ -2966,7 +2884,7 @@
      }
     },
     {
-     "id": "w14",
+     "id": "w11",
      "from": 0,
      "to": 3.4,
      "kind": "partition",
@@ -2981,7 +2899,7 @@
      }
     },
     {
-     "id": "w15",
+     "id": "w12",
      "from": 0,
      "to": 2.4,
      "kind": "exterior",
@@ -2995,7 +2913,7 @@
      }
     },
     {
-     "id": "w16",
+     "id": "w13",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -3010,9 +2928,9 @@
      }
     },
     {
-     "id": "w17",
+     "id": "w14",
      "from": 0,
-     "to": 9.4,
+     "to": 5.4,
      "kind": "exterior",
      "thickness": 0.3,
      "neg": {
@@ -3025,21 +2943,7 @@
      }
     },
     {
-     "id": "w18",
-     "from": 0,
-     "to": 2.656,
-     "kind": "exterior",
-     "thickness": 0.3,
-     "neg": {
-      "kind": "room",
-      "id": "sala"
-     },
-     "pos": {
-      "kind": "exterior"
-     }
-    },
-    {
-     "id": "w19",
+     "id": "w15",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -3054,7 +2958,21 @@
      }
     },
     {
-     "id": "w20",
+     "id": "w16",
+     "from": 0,
+     "to": 9.352,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w17",
      "from": 0,
      "to": 3.6,
      "kind": "partition",
@@ -3069,7 +2987,7 @@
      }
     },
     {
-     "id": "w21",
+     "id": "w18",
      "from": 0,
      "to": 2.4,
      "kind": "partition",
@@ -3084,7 +3002,22 @@
      }
     },
     {
-     "id": "w22",
+     "id": "w19",
+     "from": 0,
+     "to": 4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "deck"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "corr_w"
+     }
+    },
+    {
+     "id": "w20",
      "from": 0,
      "to": 1.4,
      "kind": "partition",
@@ -3099,7 +3032,7 @@
      }
     },
     {
-     "id": "w23",
+     "id": "w21",
      "from": 0,
      "to": 1.4,
      "kind": "partition",
@@ -3110,18 +3043,18 @@
      },
      "pos": {
       "kind": "room",
-      "id": "cozinha"
+      "id": "sala"
      }
     },
     {
-     "id": "w24",
+     "id": "w22",
      "from": 0,
-     "to": 6.4,
+     "to": 4,
      "kind": "exterior",
      "thickness": 0.3,
      "neg": {
       "kind": "outdoor",
-      "id": "patio"
+      "id": "deck"
      },
      "pos": {
       "kind": "room",
@@ -3129,7 +3062,21 @@
      }
     },
     {
-     "id": "w25",
+     "id": "w23",
+     "from": 0,
+     "to": 9.352,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "sala"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w24",
      "from": 0,
      "to": 2.4,
      "kind": "partition",
@@ -3144,7 +3091,7 @@
      }
     },
     {
-     "id": "w26",
+     "id": "w25",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -3155,7 +3102,22 @@
      },
      "pos": {
       "kind": "room",
-      "id": "cozinha"
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w26",
+     "from": 0,
+     "to": 2.4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "patio"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "corr_e"
      }
     },
     {
@@ -3221,20 +3183,6 @@
     {
      "id": "w31",
      "from": 0,
-     "to": 2.656,
-     "kind": "exterior",
-     "thickness": 0.3,
-     "neg": {
-      "kind": "room",
-      "id": "cozinha"
-     },
-     "pos": {
-      "kind": "exterior"
-     }
-    },
-    {
-     "id": "w32",
-     "from": 0,
      "to": 4.001,
      "kind": "partition",
      "thickness": 0.12,
@@ -3248,7 +3196,7 @@
      }
     },
     {
-     "id": "w33",
+     "id": "w32",
      "from": 0,
      "to": 2.4,
      "kind": "exterior",
@@ -3262,7 +3210,7 @@
      }
     },
     {
-     "id": "w34",
+     "id": "w33",
      "from": 0,
      "to": 4.001,
      "kind": "exterior",
@@ -3276,7 +3224,7 @@
      }
     },
     {
-     "id": "w35",
+     "id": "w34",
      "from": 0,
      "to": 5.4,
      "kind": "exterior",
@@ -3290,7 +3238,7 @@
      }
     },
     {
-     "id": "w36",
+     "id": "w35",
      "from": 0,
      "to": 5.599,
      "kind": "exterior",
@@ -3307,47 +3255,57 @@
    "openings": [
     {
      "index": 0,
-     "wall": "w3",
-     "from": 8.5,
-     "to": 9.5,
+     "wall": "w2",
+     "from": 8,
+     "to": 9,
      "center": [
-      9,
-      17
+      8.5,
+      22.799
      ],
      "hinge": [
-      8.5,
-      17
+      8,
+      22.799
      ],
      "swingRoom": "sala"
     },
     {
      "index": 1,
-     "wall": "w5",
-     "from": 13.7,
-     "to": 15.3,
+     "wall": "w2",
+     "from": 11.3,
+     "to": 13.7,
      "center": [
-      11,
-      14.5
+      12.5,
+      22.799
      ]
     },
     {
      "index": 2,
-     "wall": "w2",
-     "from": 12.4,
-     "to": 13.6,
+     "wall": "w1",
+     "from": 7.2,
+     "to": 13,
      "center": [
-      13,
+      10.1,
       12
-     ],
-     "hinge": [
-      12.4,
-      12
-     ],
-     "swingRoom": "patio"
+     ]
     },
     {
      "index": 3,
-     "wall": "w22",
+     "wall": "w1",
+     "from": 13.2,
+     "to": 14.6,
+     "center": [
+      13.9,
+      12
+     ],
+     "hinge": [
+      13.2,
+      12
+     ],
+     "swingRoom": "deck"
+    },
+    {
+     "index": 4,
+     "wall": "w20",
      "from": 0.25,
      "to": 1.15,
      "center": [
@@ -3361,8 +3319,8 @@
      "swingRoom": "corr_w"
     },
     {
-     "index": 4,
-     "wall": "w23",
+     "index": 5,
+     "wall": "w21",
      "from": 0.25,
      "to": 1.15,
      "center": [
@@ -3376,8 +3334,8 @@
      "swingRoom": "corr_e"
     },
     {
-     "index": 5,
-     "wall": "w21",
+     "index": 6,
+     "wall": "w18",
      "from": 0.8,
      "to": 1.6,
      "center": [
@@ -3391,8 +3349,8 @@
      "swingRoom": "wc_w"
     },
     {
-     "index": 6,
-     "wall": "w20",
+     "index": 7,
+     "wall": "w17",
      "from": 1.35,
      "to": 2.25,
      "center": [
@@ -3406,8 +3364,8 @@
      "swingRoom": "quarto1"
     },
     {
-     "index": 7,
-     "wall": "w14",
+     "index": 8,
+     "wall": "w11",
      "from": 1.251,
      "to": 2.151,
      "center": [
@@ -3421,8 +3379,8 @@
      "swingRoom": "quarto2"
     },
     {
-     "index": 8,
-     "wall": "w13",
+     "index": 9,
+     "wall": "w10",
      "from": 0.25,
      "to": 1.15,
      "center": [
@@ -3436,23 +3394,23 @@
      "swingRoom": "suite"
     },
     {
-     "index": 9,
-     "wall": "w17",
-     "from": 3.9,
-     "to": 4.9,
+     "index": 10,
+     "wall": "w14",
+     "from": 2.9,
+     "to": 3.9,
      "center": [
-      4.5,
-      7.67
+      4,
+      6.804
      ],
      "hinge": [
-      4.25,
-      7.237
+      3.75,
+      6.371
      ],
      "swingRoom": "patio"
     },
     {
-     "index": 10,
-     "wall": "w25",
+     "index": 11,
+     "wall": "w24",
      "from": 0.8,
      "to": 1.6,
      "center": [
@@ -3466,7 +3424,7 @@
      "swingRoom": "lavandaria"
     },
     {
-     "index": 11,
+     "index": 12,
      "wall": "w27",
      "from": 1.551,
      "to": 2.451,
@@ -3481,7 +3439,7 @@
      "swingRoom": "escritorio"
     },
     {
-     "index": 12,
+     "index": 13,
      "wall": "w29",
      "from": 0.2,
      "to": 1.2,
@@ -3496,43 +3454,23 @@
      "swingRoom": "brincar"
     },
     {
-     "index": 13,
-     "wall": "w24",
-     "from": 3.5,
-     "to": 4.5,
+     "index": 14,
+     "wall": "w26",
+     "from": 1,
+     "to": 2,
      "center": [
-      17,
-      8.536
+      17.75,
+      7.237
      ],
      "hinge": [
-      16.75,
-      8.969
+      17.5,
+      7.67
      ],
      "swingRoom": "patio"
     },
     {
-     "index": 14,
-     "wall": "w3",
-     "from": 5.6,
-     "to": 7.4,
-     "center": [
-      6.5,
-      17
-     ]
-    },
-    {
      "index": 15,
-     "wall": "w4",
-     "from": 13.8,
-     "to": 15.2,
-     "center": [
-      14.5,
-      17
-     ]
-    },
-    {
-     "index": 16,
-     "wall": "w15",
+     "wall": "w12",
      "from": 0.9,
      "to": 1.5,
      "center": [
@@ -3541,8 +3479,8 @@
      ]
     },
     {
-     "index": 17,
-     "wall": "w10",
+     "index": 16,
+     "wall": "w7",
      "from": 1.2,
      "to": 2.4,
      "center": [
@@ -3551,8 +3489,8 @@
      ]
     },
     {
-     "index": 18,
-     "wall": "w8",
+     "index": 17,
+     "wall": "w5",
      "from": 1.101,
      "to": 2.301,
      "center": [
@@ -3561,8 +3499,8 @@
      ]
     },
     {
-     "index": 19,
-     "wall": "w6",
+     "index": 18,
+     "wall": "w3",
      "from": 1.3,
      "to": 2.9,
      "center": [
@@ -3571,8 +3509,8 @@
      ]
     },
     {
-     "index": 20,
-     "wall": "w7",
+     "index": 19,
+     "wall": "w4",
      "from": 2.101,
      "to": 3.301,
      "center": [
@@ -3581,8 +3519,8 @@
      ]
     },
     {
-     "index": 21,
-     "wall": "w33",
+     "index": 20,
+     "wall": "w32",
      "from": 0.9,
      "to": 1.5,
      "center": [
@@ -3591,8 +3529,8 @@
      ]
     },
     {
-     "index": 22,
-     "wall": "w34",
+     "index": 21,
+     "wall": "w33",
      "from": 1.301,
      "to": 2.701,
      "center": [
@@ -3601,8 +3539,8 @@
      ]
     },
     {
-     "index": 23,
-     "wall": "w36",
+     "index": 22,
+     "wall": "w35",
      "from": 1.999,
      "to": 3.599,
      "center": [
@@ -3611,8 +3549,8 @@
      ]
     },
     {
-     "index": 24,
-     "wall": "w35",
+     "index": 23,
+     "wall": "w34",
      "from": 2,
      "to": 3.4,
      "center": [
@@ -3625,8 +3563,8 @@
     "x0": -4.477,
     "y0": 0.222,
     "x1": 25.677,
-    "y1": 17,
-    "area": 209.339,
+    "y1": 22.799,
+    "area": 275.149,
     "outline": [
      [
       [
@@ -3642,12 +3580,20 @@
        3.859
       ],
       [
+       5,
+       8.536
+      ],
+      [
        7,
        12
       ],
       [
        15,
        12
+      ],
+      [
+       17,
+       8.536
       ],
       [
        18.2,
@@ -3674,12 +3620,12 @@
        14.7
       ],
       [
-       18.349,
-       17
+       15,
+       22.799
       ],
       [
-       3.651,
-       17
+       7,
+       22.799
       ],
       [
        2.323,
@@ -3700,8 +3646,9 @@
      ]
     ]
    },
-   "interiorArea": 209.336,
+   "interiorArea": 275.147,
    "streetOutdoor": [
+    "deck",
     "patio"
    ],
    "access": [
@@ -3712,11 +3659,16 @@
      ]
     ],
     [
+     "outdoor:deck",
+     [
+      "room:sala"
+     ]
+    ],
+    [
      "outdoor:patio",
      [
       "room:corr_e",
-      "room:corr_w",
-      "room:cozinha"
+      "room:corr_w"
      ]
     ],
     [
@@ -3730,9 +3682,9 @@
      [
       "outdoor:patio",
       "room:brincar",
-      "room:cozinha",
       "room:escritorio",
-      "room:lavandaria"
+      "room:lavandaria",
+      "room:sala"
      ]
     ],
     [
@@ -3744,14 +3696,6 @@
       "room:sala",
       "room:suite",
       "room:wc_w"
-     ]
-    ],
-    [
-     "room:cozinha",
-     [
-      "outdoor:patio",
-      "room:corr_e",
-      "room:sala"
      ]
     ],
     [
@@ -3782,8 +3726,9 @@
      "room:sala",
      [
       "exterior",
-      "room:corr_w",
-      "room:cozinha"
+      "outdoor:deck",
+      "room:corr_e",
+      "room:corr_w"
      ]
     ],
     [
