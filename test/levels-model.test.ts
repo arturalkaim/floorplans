@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { analyze, floorplan, parse, PlanError } from "../src/index.ts";
 import { has, rulesOf, sharedGridPlan, twoStoreys } from "./helpers.ts";
@@ -385,5 +386,74 @@ describe("structure.over_open_sky asks what is below, not which rooms are below 
       { kind: "outdoor", id: "alpendre" },
       { kind: "void", id: "vaz" },
     ]);
+  });
+});
+
+/**
+ * B14: two adjacent voids share no wall.
+ *
+ * `wallsOf` suppressed a wall only between two `isVoid` owners — open sky and undeclared
+ * gaps — so a boundary between two *declared* voids derived a partition: a wall in mid
+ * air, with no floor on either side to stand on. A declared void is still not open sky,
+ * so it keeps its wall against a room, against the street and against a courtyard, which
+ * is what the INVARIANT on `isVoid` is for.
+ */
+describe("a wall between two voids is not built (B14)", () => {
+  const twoVoids = {
+    walls: { exterior: 0.3, partition: 0.12 },
+    stack: ["p0", "p1"],
+    levels: {
+      p0: {
+        name: "Piso 0",
+        ground: true,
+        rooms: { sala: { name: "Sala", kind: "living", rect: [0, 0, 8, 6] } },
+        openings: [
+          { type: "door", between: ["exterior", "sala"], on: { room: "sala", side: "west" }, width: 1, entrance: true },
+        ],
+      },
+      p1: {
+        name: "Piso 1",
+        // an L of floor around two holes that meet each other along x = 4
+        rooms: { quarto: { name: "Quarto", kind: "bedroom", poly: [[0, 0], [8, 0], [8, 2], [2, 2], [2, 6], [0, 6]] } },
+        voids: {
+          vazio_sala: { name: "Vazio sala", rect: [2, 2, 2, 4] },
+          vazio_escada: { name: "Vazio escada", rect: [4, 2, 4, 4] },
+        },
+        openings: [{ type: "window", between: ["exterior", "quarto"], on: { room: "quarto", side: "north" }, width: 1.2 }],
+      },
+    },
+    vertical: [
+      {
+        id: "esc",
+        type: "stairs",
+        at: [
+          { level: "p0", in: "sala", rect: [4.2, 2.2, 1, 3 ] },
+          { level: "p1", in: "quarto", rect: [4.2, 0.2, 1, 1.6] },
+        ],
+      },
+    ],
+  };
+
+  it("derives no wall where two voids meet, and keeps every wall a void has to a room or the street", () => {
+    const upper = analyze(parse(twoVoids)).model.levels.find((l) => l.level.id === "p1")!;
+    const pairs = upper.walls.map((w) => [w.neg.kind === "void" ? w.neg.id : w.neg.kind, w.pos.kind === "void" ? w.pos.id : w.pos.kind]);
+    assert.deepEqual(pairs.filter(([a, b]) => a!.startsWith("vazio") && b!.startsWith("vazio")), []);
+    // the shared boundary is x = 4 from y 2 to 6; nothing stands on it
+    assert.deepEqual(upper.walls.filter((w) => w.axis === "v" && w.c === 4).map((w) => w.id), []);
+    // both voids keep their wall to the room, and vazio_escada keeps the envelope
+    assert.ok(pairs.some(([a, b]) => [a, b].includes("vazio_sala") && [a, b].includes("room")));
+    assert.ok(pairs.some(([a, b]) => [a, b].includes("vazio_escada") && [a, b].includes("exterior")));
+  });
+
+  it("removes exactly one wall from moradia's piso1 and renumbers the nine after it", () => {
+    const doc = JSON.parse(readFileSync(new URL("../fixtures/moradia-2-pisos.json", import.meta.url), "utf8"));
+    const piso1 = analyze(parse(doc)).model.levels.find((l) => l.level.id === "piso1")!;
+    assert.equal(piso1.walls.length, 27, "28 before: w19 was vazio_sala | vazio_escada, x = 4.9, y 3.2 → 5.2");
+    assert.deepEqual(piso1.walls.filter((w) => w.neg.kind === "void" && w.pos.kind === "void"), []);
+    // x = 4.9 still carries the walls either side of the voids, and nothing between them
+    assert.deepEqual(
+      piso1.walls.filter((w) => w.axis === "v" && w.c === 4.9).map((w) => [w.id, w.from, w.to]),
+      [["w17", 0, 1.4], ["w18", 1.4, 3.2], ["w19", 5.2, 7.2], ["w20", 7.2, 8.2], ["w21", 8.2, 10]],
+    );
   });
 });

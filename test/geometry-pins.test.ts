@@ -123,6 +123,63 @@ const CORRECTIONS: ReadonlyArray<readonly [string, string]> = [
   ['"usableArea": 27.314,', '"usableArea": 27.32,'],
 ];
 
+/** as much of a pinned level as the structural correction below has to read */
+interface PinnedLevel {
+  id: string;
+  walls: Array<{ id: string; axis?: string; c?: number; from: number; to: number; neg: { kind: string }; pos: { kind: string } }>;
+  openings: Array<{ wall: string }>;
+}
+
+/**
+ * The one wall the pins recorded that was never built, and the ids that close over it.
+ *
+ * moradia's piso1 has two voids side by side — `vazio_sala`, the double-height space over
+ * the living room, and `vazio_escada`, the stairwell — meeting along x = 4.9 between
+ * y 3.2 and 5.2. The pins recorded a 0.12 partition there, `w19`. Both sides are holes in
+ * the same slab: there is no floor on either side for a wall to stand on, so nothing is
+ * built between them and the pin was wrong.
+ *
+ * Wall ids are handed out after the sort, `w${i + 1}`, so removing the nineteenth of
+ * twenty-eight moves every wall after it down one: w20…w28 → w19…w27, and the four
+ * openings that named one of those walls follow their wall. That is the whole change:
+ * 28 − 1 = 27 walls, 9 renumbered, 4 openings repointed, and not one coordinate, owner,
+ * thickness or room metric moves.
+ *
+ * It is written on the parsed pins rather than as thirteen string pairs because it is one
+ * structural correction, and thirteen pairs would hide the arithmetic that makes it one.
+ */
+function dropVoidVoidWall(pins: Record<string, PinnedLevel[]>): Record<string, PinnedLevel[]> {
+  const all = Object.entries(pins).flatMap(([name, ls]) => ls.map((l) => [name, l] as const));
+  const voidVoid = all.filter(([, l]) => l.walls.some((w) => w.neg.kind === "void" && w.pos.kind === "void"));
+  assert.deepEqual(voidVoid.map(([n, l]) => `${n}/${l.id}`), ["moradia-2-pisos/piso1"], "only one level pinned a void–void wall");
+
+  const piso1 = voidVoid[0]![1];
+  assert.equal(piso1.walls.length, 28);
+  const gone = piso1.walls.filter((w) => w.neg.kind === "void" && w.pos.kind === "void");
+  assert.deepEqual(
+    gone.map((w) => [w.id, w.axis, w.c, w.from, w.to]),
+    [["w19", "v", 4.9, 3.2, 5.2]],
+    "the wall that goes is the one between the two voids, and only it",
+  );
+
+  const renamed = new Map<string, string>();
+  piso1.walls = piso1.walls.filter((w) => !gone.includes(w));
+  piso1.walls.forEach((w, i) => {
+    const id = `w${i + 1}`;
+    if (id !== w.id) renamed.set(w.id, id);
+    w.id = id;
+  });
+  assert.equal(piso1.walls.length, 27);
+  assert.deepEqual(
+    [...renamed],
+    [["w20", "w19"], ["w21", "w20"], ["w22", "w21"], ["w23", "w22"], ["w24", "w23"], ["w25", "w24"], ["w26", "w25"], ["w27", "w26"], ["w28", "w27"]],
+  );
+  const moved = piso1.openings.filter((o) => renamed.has(o.wall));
+  assert.equal(moved.length, 4);
+  for (const o of moved) o.wall = renamed.get(o.wall)!;
+  return pins;
+}
+
 describe("geometry pins: the derived model the arrangement rewrite must reproduce", () => {
   it("reproduces every pinned room metric, wall, opening and envelope", () => {
     let want = readFileSync(PINS, "utf8");
@@ -131,6 +188,11 @@ describe("geometry pins: the derived model the arrangement rewrite must reproduc
       assert.equal(hits, 1, `the correction ${was} matched ${hits} times, expected exactly one`);
       want = want.replace(was, now);
     }
+    // the pins were written by `JSON.stringify(…, null, 1)`, so a round trip through the
+    // parser is a no-op — which is what lets the structural correction below be written
+    // on the object instead of on the text
+    assert.equal(`${JSON.stringify(JSON.parse(want), null, 1)}\n`, want, "the pins do not round-trip");
+    want = `${JSON.stringify(dropVoidVoidWall(JSON.parse(want) as Record<string, PinnedLevel[]>), null, 1)}\n`;
     assert.equal(
       pinsFor(before),
       want,

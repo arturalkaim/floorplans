@@ -857,6 +857,12 @@ function wallsOf(arr: Arrangement, wallOwner: (face: number) => Owner, thickness
     const left = wallOwner(arr.half[he.twin]!.face);
     if (sameOwner(left, right)) continue;
     if (isVoid(left) && isVoid(right)) continue;
+    // Two declared voids are two holes in the same slab, side by side: neither has a
+    // floor for a wall to stand on, so nothing is built between them. This is not the
+    // `isVoid` case above — a void is *not* open sky, and keeps its wall against a room,
+    // against the street and against a courtyard, which is what makes the stairwell
+    // partition and the envelope past a double-height space derive at all.
+    if (left.kind === "void" && right.kind === "void") continue;
     const pair = [ownerKey(left), ownerKey(right)].sort().join("\u0000");
     pieces.push({ h, a: arr.verts[he.from]!, b: arr.verts[he.to]!, circle: he.circle, pair });
   }

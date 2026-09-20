@@ -474,9 +474,11 @@ being a `tiling.gap`, and both are owner classes, so a wall derives beside one.
 
 A void has the building over it, so it is *not* open sky: the wall between a room and a
 stairwell is an ordinary partition, a window onto a void is still `window.not_exterior`,
-and the envelope wall runs past a double-height space that reaches the façade. A void's
-area stays out of `interiorArea` and inside the envelope, and nothing opens into one —
-naming a void in an opening's `between` is a schema error.
+and the envelope wall runs past a double-height space that reaches the façade. Two voids
+that meet, though, share no wall: neither has a floor for one to stand on, so the
+boundary between a stairwell and the double-height space beside it derives nothing. A
+void's area stays out of `interiorArea` and inside the envelope, and nothing opens into
+one — naming a void in an opening's `between` is a schema error.
 
 A void has to reach an edge of the room around it. A room enclosing one completely would
 be a ring, and a single ring cannot express a hole.
