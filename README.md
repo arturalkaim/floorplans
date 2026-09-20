@@ -321,6 +321,11 @@ the building, because a level is a block header rather than a second document. A
 `at` is a collection of entities, so the shape rule makes it a block, exactly as it does
 `rooms`. That is the rule working, not an exception to it.
 
+Both figures were measured with `gpt-tokenizer`'s `o200k_base` (`model/gpt-4o`), the same
+BPE as the rows above; against today's fixtures that tokenizer reads casa-t3 as 1 502
+rather than the 1 501 recorded when the table was written, so treat the older rows as
+± 1 token rather than re-measuring them here.
+
 The third column is what this repository ships: the canonical form plus `rect` for every
 room and outdoor space that is a plain rectangle (see **Rooms**). casa-piscina's deck stays
 `poly`-authored on purpose, so the poly write-back path keeps its coverage.
