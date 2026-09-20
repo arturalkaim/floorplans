@@ -10,8 +10,7 @@
 // no exceptions at all: lint(json) → { findings, plan?, model? }, where a schema problem
 // is a `schema.*` finding carrying the same document path a geometry finding carries.
 
-import { derive, pointOn } from "./derive.ts";
-import { polyInside, shoelace } from "./geometry.ts";
+import { derive, overlapArea, pointOn, shapeArea } from "./derive.ts";
 import { parse, PlanError } from "./parse.ts";
 import { DslError, lineOf, readSource } from "./dsl.ts";
 import type { DslPositions } from "./dsl.ts";
@@ -24,7 +23,7 @@ import type { RenderOptions } from "./svg.ts";
 
 export { parse, PlanError, derive, checkRules, renderSvg, sortFindings };
 // the parser's own vocabularies, so documentation cannot drift from what it accepts
-export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES, VERTICAL_TYPES } from "./parse.ts";
+export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES, SWEEPS, VERTICAL_TYPES } from "./parse.ts";
 // the parser's own id constraint, so `--schema`'s legend prints the regex the parser
 // actually enforces rather than a hand-typed copy of it
 export { ID_RE } from "./parse.ts";
@@ -38,13 +37,16 @@ export { RULES, ruleById } from "./catalogue.ts";
 export { EXTERIOR, GAP, GROUND_LEVEL, inLevel, isOpenSky, isStreet, isVoid, outdoorOwner, ownerId, ownerKey, pathTo, roomOwner, sameOwner, voidOwner } from "./types.ts";
 export {
   applyDrag,
+  applyHandle,
   applyMove,
+  applyVertexHandle,
   draggableFixtureEdges,
   draggableOutdoorEdges,
   draggableWalls,
   movableFixtures,
+  wallHandles,
 } from "./edit.ts";
-export type { Draggable, Movable } from "./edit.ts";
+export type { Draggable, Handle, Movable, OffsetHandle, RadiusHandle, VertexHandle } from "./edit.ts";
 export { levelOf, projection } from "./svg.ts";
 export type { Projection } from "./svg.ts";
 export type { RuleDoc } from "./catalogue.ts";
@@ -154,16 +156,12 @@ function levelSchedule(lm: LevelModel): LevelSchedule {
     footprint: lm.envelope.area,
     waterArea: round(lm.fixtures.filter((f) => f.fixture.type === "pool").reduce((s, f) => s + f.area, 0)),
     outdoor: lm.level.outdoor.map((o) => {
-      const area = Math.abs(polyArea(o.poly));
-      // INVARIANT: deducts only fixtures fully contained in the outdoor space's own polygon
-      // (D3, same stopgap as RoomModel.fixtureArea in derive.ts) — one straddling the
-      // boundary deducts nothing here, and fixture.outside_space already told the author
-      // why. The exact intersection waits for the geometry core (docs/gaps-design.md
-      // §1.3.2).
+      const area = round(shapeArea(o));
+      // exactly the part of each fixture that stands on this deck, the same way a room
+      // deducts its own: the arrangement of the two rings, read with an intersection
+      // predicate (docs/gaps-design.md §1.3.2). A pool half off the deck deducts half.
       const fixtureArea = round(
-        lm.fixtures
-          .filter((f) => f.fixture.in === o.id && polyInside(f.fixture.poly, o.poly))
-          .reduce((s, f) => s + f.area, 0),
+        lm.fixtures.filter((f) => f.fixture.in === o.id).reduce((s, f) => s + overlapArea(f.fixture, o), 0),
       );
       return {
         id: o.id,
@@ -381,4 +379,3 @@ export function worstSeverity(findings: Finding[]): Severity | undefined {
 }
 
 const round = (n: number): number => Math.round(n * 1000) / 1000;
-const polyArea = (poly: Array<[number, number]>): number => round(shoelace(poly));

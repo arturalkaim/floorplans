@@ -9,7 +9,7 @@ line, about half the tokens, and the same document either way.
 
 - Rooms in, walls derived, openings attached to walls, findings out.
 - Zero runtime dependencies. ESM + TypeScript. `render` returns a string; no DOM.
-- Rectilinear plans, one or many levels. See `specs/floorplan-lib-plan.md` for scope.
+- Any simple polygon, straight or curved, one level or many. See `specs/floorplan-lib-plan.md` for scope.
 
 ```
 npm install          # dev deps only (typescript)
@@ -26,11 +26,11 @@ to read a plan back" below).
 
 | load | what it is | tokens |
 |---|---|---:|
-| `floorplan --schema` | one compact typed-signature line per object (with cardinality — `{id: room}`, `opening[]`), a legend, and a worked example — all 14 objects and 73 fields | 1 035 |
-| `floorplan --schema=dsl` | the line DSL's grammar — every statement and its tokens — plus the same legend and worked example, without the field-by-field index below | 1 045 |
-| `floorplan --schema=dsl-full` | `--schema=dsl` plus the field-by-field token index for all 73 fields | 1 668 |
-| `floorplan --schema=full` | the same JSON table with types, enums, cardinality and a one-sentence doc per field | 2 606 |
-| `floorplan --schema=md` | the full table as Markdown, for a human | 2 225 |
+| `floorplan --schema` | one compact typed-signature line per object (with cardinality — `{id: room}`, `opening[]`), a legend, and a worked example — all 15 objects and 77 fields | 1 062 |
+| `floorplan --schema=dsl` | the line DSL's grammar — every statement and its tokens — plus the same legend and worked example, without the field-by-field index below | 1 066 |
+| `floorplan --schema=dsl-full` | `--schema=dsl` plus the field-by-field token index for all 77 fields | 1 719 |
+| `floorplan --schema=full` | the same JSON table with types, enums, cardinality and a one-sentence doc per field | 2 806 |
+| `floorplan --schema=md` | the full table as Markdown, for a human | 2 407 |
 
 Take `--schema` when you are editing a document you already have, and
 `--schema=dsl` when you are writing one from scratch: the two now cost about
@@ -71,8 +71,10 @@ its ground-level thumbnail; opening it goes to the same editor as any other plan
 Walls in the drawing can be dragged, and a drag **edits the source**. The text stays the
 single source of truth: moving a wall works out the new coordinate, splices it into the
 document, and the ordinary pipeline redraws — text → parse → derive → rules → SVG, which
-measures 0.3–1.2 ms, so the whole plan is recomputed on every pointer move rather than
-patched. Nothing is held in two places, so the drawing and the editor cannot drift.
+measures 1.5–5.2 ms over this repository's fixtures (21 ms for `casa-redonda`, whose round
+hall is flattened to a hundred chords), so the whole plan is recomputed on every pointer
+move rather than patched. Nothing is held in two places, so the drawing and the editor
+cannot drift.
 
 A wall is offered for dragging only when the move has a representation in the source:
 
@@ -86,9 +88,30 @@ A wall is offered for dragging only when the move has a representation in the so
 | a fixture | its body moves, its four sides resize it | always; written back as `poly`, or as `at`/`size`, whichever the source uses |
 | a shared `grid` boundary | `grid.cols[i]` and `[i+1]` — **and the wall moves on every level using the grid**, which the status line says | the wall sits on a shared track boundary |
 
+A grid drag is offered only where the grid is what *placed* one of the spaces the wall
+separates. A poly-authored room whose wall happens to sit on a track line — quinta's
+detached shack does, a metre south of where the grid ends — is dragged by its own
+coordinates instead, or the drag would resize the house and leave the shack alone.
+
 A space is always written back **in the form it was authored in** — a `rect` room stays a
 `rect`, a `poly` room stays a `poly` — so a drag never reformats a document someone is
 still typing in. That is the contract fixtures have kept for `poly` versus `at`+`size`.
+
+### Handles: dragging what is not a grid line
+
+`wallHandles(text, model)` is the general form beside `draggableWalls`, for walls that
+are not one coordinate on one axis.
+
+| kind | what it moves | what it writes |
+|---|---|---|
+| `offset` | a straight wall along its own normal; the corners on it move and the edges running into them pivot | both coordinates of each moved corner — or, where the normal is on an axis, exactly what the coordinate drag writes |
+| `radius` | a curved wall's bulge | the `r` of the arc that made it: one number, in place |
+| `vertex` | one corner, in two dimensions | `poly[v][0]` and `poly[v][1]`, only the one that changes if only one does |
+
+An offset is refused when the wall's end is incident to a *third* space — a T-junction on
+its edge, or its corner — and the wall's normal does not run along that boundary: the end
+would come off a boundary it was sitting on and tear the plan. `applyHandle` (offset and
+radius) and `applyVertexHandle` snap and clamp exactly as `applyDrag` does.
 
 An outdoor space has no walls — nothing derives from it — so its own edges are the
 handles, and dragging one resizes the deck or terrace without touching the house. A
@@ -152,12 +175,12 @@ typed-signature line per object — name, required/`?`, type, enum values inline
 every nested-object field (`{id: room}` for an id-keyed map, `opening[]` for a list, bare
 `opening.on` for a single nested object) — plus the id format, the x/y ↔ compass axes, and
 one small worked example (`fixtures/cabin.json`, canonical form) at the end: no per-field
-doc text, 1 035 tokens for all 14 objects/73 fields. `--schema=full` prints the same table
+doc text, 1 062 tokens for all 15 objects/77 fields. `--schema=full` prints the same table
 as compact JSON with name, type, required, enum values, cardinality and the one-sentence
-doc, one field per line, 2 606 tokens. `--schema=md` prints the full table as Markdown.
+doc, one field per line, 2 806 tokens. `--schema=md` prints the full table as Markdown.
 `--schema=dsl` prints the line DSL's grammar instead, from its own table (see "The line
-DSL" below) plus the same legend and worked example, 1 045 tokens; `--schema=dsl-full`
-adds the field-by-field token index `--schema=dsl` omits, 1 668 tokens.
+DSL" below) plus the same legend and worked example, 1 066 tokens; `--schema=dsl-full`
+adds the field-by-field token index `--schema=dsl` omits, 1 719 tokens.
 
 `fmt` canonicalises a plan and converts it between the two syntaxes. Without `--to` the
 file keeps the syntax it is in; `--out` writes somewhere else, which is what a conversion
@@ -319,6 +342,22 @@ Rooms must tile the footprint exactly; walls are derived from shared edges.
 A void on the boundary is simply the shape of the building; an *enclosed* void is a
 `tiling.gap` error unless you declare it as an outdoor space (see below).
 
+### What shapes are allowed
+
+Any **simple polygon**: three corners or more, any winding, edges at any angle, and any
+edge may be a true **circular arc** (see below). What is refused, with the reason: fewer
+than three distinct corners, zero area, an arc whose radius cannot span its chord, and a
+boundary that crosses or touches itself.
+
+Rooms, outdoor spaces, voids, fixtures and stair footprints all take the same shape.
+`rect` and the `layout` track grid stay exactly as they were — they are sugar for the
+rectangles most rooms are, and they compile to polygons before anything else sees them.
+
+Inside, the library works in **integer millimetres**: the parser converts metres once at
+the boundary, and the geometry core compares with `===` instead of the six different
+tolerances it used to need. The API is metres throughout — `Room.poly`, `Wall.start`,
+`RoomModel.area` and everything else you can read are metres, exactly as before.
+
 Every object below (the top-level document, `walls`, `layout`, each room, each outdoor
 space, each opening and its `on`/`position`, each fixture) is checked against its known
 fields; a key that isn't one of them is a schema error, with a "did you mean" when it's
@@ -428,7 +467,7 @@ area stays out of `interiorArea` and inside the envelope, and nothing opens into
 naming a void in an opening's `between` is a schema error.
 
 A void has to reach an edge of the room around it. A room enclosing one completely would
-be a ring, and a single rectilinear ring cannot express a hole.
+be a ring, and a single ring cannot express a hole.
 
 ### Canonical form — how a plan should be written
 
@@ -513,7 +552,9 @@ text in and text out, is the one that preserves the author's form.
 ### Grid authoring (compiles to polygons)
 
 Most house plans sit on a small track grid. Author it like CSS `grid-template-areas`;
-same token in several cells makes one rectilinear room, `.` is void.
+same token in several cells makes one room, `.` is void. The grid is deliberately not
+grown toward angles: it is what an apartment wants, and a room that is not on it is a
+`poly` instead.
 
 ```jsonc
 {
@@ -570,7 +611,7 @@ count toward `interiorArea`, so deduct it if that matters to you.
 | `kind` | `bedroom` `living` `kitchen` `office` `bath` `wc` `hall` `corridor` `storage` `utility` `garage` `other` |
 | `habitable` / `wet` / `circulation` | derived from `kind`; set explicitly to override |
 | `zone` | free label used for fill colour (e.g. `night`, `day`) |
-| `poly` | rectilinear polygon, any winding; omit when placed via `layout` |
+| `poly` | any simple polygon, any winding, ≥3 corners, edges at any angle; omit when placed via `layout` |
 | `rect` | `[x, y, width, height]` — the same rectangle as four points, for the common case |
 
 `poly` and `rect` are mutually exclusive, exactly as a fixture's `poly` and `at`+`size`
@@ -579,6 +620,56 @@ nothing more — the parser expands it to four corners, so `derive`, the rules a
 renderer never see it — but it is worth having: it is 18 tokens cheaper per room and it is
 the one way to write a rectangle you cannot get wrong. Eleven of casa-t3's thirteen rooms
 are rectangles, and writing them as `rect` costs 186 tokens less.
+
+### Curved walls
+
+Any entry of a `poly` may be an **arc** instead of a corner:
+
+```jsonc
+{ "arc": [x, y], "r": 3.5, "sweep": "cw" | "ccw", "large": true }
+```
+
+It means *an arc from the previous corner to `[x, y]`, of radius `r`, turning that way*.
+`sweep` is which way it turns seen on the page, where y grows south, so `"cw"` from the
+top of a clock face goes east. `large` picks the arc of more than 180°; without it the
+minor arc is meant. The centre is derived and never stored, which is what lets `r` be
+edited on its own — a radius handle splices one number and the record cannot become
+inconsistent. A ring may not *start* with an arc: the first entry is the corner it starts
+from.
+
+```jsonc
+"rotunda": { "name": "Rotunda", "kind": "hall", "poly": [
+  [6, 1.5],
+  { "arc": [10, 1.5], "r": 2.5, "sweep": "cw" },
+  { "arc": [10, 4.5], "r": 2.5, "sweep": "cw" },
+  { "arc": [6, 4.5],  "r": 2.5, "sweep": "cw" },
+  { "arc": [6, 1.5],  "r": 2.5, "sweep": "cw" }
+]}
+```
+
+An arc is **exact** where it matters: a round room's area is πr², not the area of a
+polygon through some number of points; the clear floor is the same arc with its radius
+reduced; the drawing is an SVG `A` command, so it stays smooth at any zoom. It is
+flattened into chords only to work out the topology, and by a function that takes nothing
+but the arc — always subdividing from the lexicographically smaller endpoint, with a step
+fixed by the radius alone — so the two rooms that share a curved wall produce the
+identical chords and there is no comb of slivers between them.
+
+Two neighbours share a curved wall by writing the same arc, each in its own direction:
+one `{ "arc": [0, 3], "r": 3, "sweep": "cw" }`, the other `{ "arc": [0, -3], "r": 3,
+"sweep": "ccw" }`. `fixtures/casa-redonda.json` is a worked example.
+
+**What an arc costs.** Measured with `gpt-tokenizer`'s `o200k_base`: `casa-redonda` —
+two wings joined by a round hall, four arcs — is **534 tokens**; the same three rooms
+with the same areas to a hundredth of a square metre and the same seven openings, written
+as three plain rectangles, is **392**. So the curve costs 142 tokens, +36 %, for the
+whole house. Per room the geometry alone is 11 tokens as a `rect`, 21 as four explicit
+points, **56 as two arcs**, and **169 hand-flattened to 21 points** — which is also not
+1 mm correct and which the parser would have refused outright before, because its chords
+are not axis-aligned.
+
+An arc that bulges less than 5 mm past its chord is a straight edge written expensively,
+and `arc.too_shallow` says so.
 
 ### Openings
 
@@ -591,7 +682,7 @@ are rectangles, and writing them as `rect` costs 186 tokens less.
 | `position` | `"center"` (default), a number (metres from the wall's start to the opening centre), or `{ "from": "start"\|"end", "distance" }` |
 | `at` | `[x, y]`: place the opening by an absolute point instead of `on` + `position` — picks the nearest wall between the two spaces in `between` and projects the point onto it |
 | `width` | metres |
-| `hinge` | doors: `"start"` or `"end"` jamb. Walls run west→east and north→south. |
+| `hinge` | doors: `"start"` or `"end"` jamb. A wall's start is its west or north end; on a wall that is neither horizontal nor vertical it is whichever end the wall runs from — eastward, or northward when the wall is vertical. |
 | `swingInto` | doors: room the leaf opens into (default: the room in `between`, never the street or a terrace) |
 | `entrance` | doors: mark the main entrance. It must lead to the street, or you get `entrance.not_street` |
 | `glazed` | doors: `true` for a glazed door (default `false`) — counts as daylight for `habitable.no_window`, same as a window |
@@ -603,10 +694,11 @@ it is allowed, it joins the two spaces in the access graph, and it never satisfi
 can only get to by crossing a courtyard is reachable exactly when the courtyard is.
 
 `at` is mutually exclusive with `on` and `position`, exactly as a room's `poly` and `rect`
-are; giving both is `has both "at" and "on"/"position"; use one`. It is the selector that
-survives angled walls — `on.side` asks which compass side a *derived* wall segment starts
-from, which has no meaning once walls stop being axis-aligned, while `at` just names a
-point and lets the library find the nearest wall. If that point is farther from every
+are; giving both is `has both "at" and "on"/"position"; use one`. **It is the selector to
+use on an angled or curved wall**, and the only one: `on.side` names a compass side, which
+says nothing about a wall at 20°, so asking for one on such a wall is `wall.ambiguous`
+with a message naming `at` instead. `at` names a point, and the library finds the nearest
+wall between the two spaces and projects onto it — along the arc, if the wall is curved. If that point is farther from every
 candidate wall than half its thickness plus a small tolerance, that is `opening.off_wall`,
 naming the nearest wall and the distance; a point equidistant from two candidates is
 `wall.ambiguous`, exactly as an unresolved `on` would be.
@@ -630,7 +722,7 @@ do not divide space (no walls, no openings); they take up floor.
 | `id` | optional stable handle, `^[a-z][a-z0-9_]*$`, unique among the fixtures on its level. Synthesised when absent — see **Stable ids** |
 | `type` | `pool` `bath` `shower` `wc` `sink` `counter` `island` `stairs` `other` |
 | `in` | id of the room **or outdoor space** that contains it; the footprint must lie inside |
-| `poly` | rectilinear polygon, absolute metres — or use `at` + `size` |
+| `poly` | any simple polygon, absolute metres, arcs allowed — or use `at` + `size` |
 | `at` / `size` | convenience rectangle: `[x, y]` corner (absolute) and `[width, height]` |
 | `name` | defaults to the capitalised type |
 | `depth` | pools only, metres; shown in the tooltip |
@@ -640,11 +732,11 @@ an interior pool stops counting as floor you can stand on; outdoor spaces net of
 fixtures the same way, giving a deck's area clear of its pool. `schedule.waterArea`
 totals the pools wherever they stand.
 
-`fixtureArea` only deducts a fixture that is **fully inside** the room or outdoor space
-named in `in`; one that straddles or misses the boundary deducts nothing there —
-`fixture.outside_space` already says why — rather than silently reducing usable floor by
-its whole area. Deducting just the overlapping sliver of a straddling fixture needs exact
-polygon intersection, which the geometry core will add; this is the stopgap until then.
+`fixtureArea` deducts exactly the part of a fixture that stands on the floor of the room
+or outdoor space named in `in`. A fixture that straddles the boundary deducts what is
+inside and nothing more, and `fixture.outside_space` still says it is not where it says it
+is. The intersection is the arrangement of the two rings read with an intersection
+predicate — the same machinery that finds the walls, not a second one.
 
 A pool is a `pool` whether it sits in a spa room or on a terrace — that is why `in`
 accepts an outdoor id. Model the terrace as the `outdoor` space and the water as a
@@ -745,10 +837,6 @@ issue, all `error`, each with the issue's own document path:
 | `wet.opens_to_kitchen` | warning | WC door straight into a kitchen |
 | `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |
-
-`room.min_dimension` measures the narrow side of the largest rectangle of *unoccupied*
-floor, between the wall faces — not on centrelines and not through a fixture. A 2 × 1 m
-room drawn on centrelines is 1.88 × 0.79 m to stand in.
 | `opening.near_corner` | warning | sliver of wall < 0.1 m beside an opening |
 | `fixture.outside_space` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |
 | `outdoor.overlap` | error | a room is built over an outdoor space, which is open sky |
@@ -756,7 +844,17 @@ room drawn on centrelines is 1.88 × 0.79 m to stand in.
 | `door.swing_hits_fixture` | warning | a door leaf sweeps into a fixture |
 | `entrance.not_street` | warning | a door marked `"entrance": true` opens onto an enclosed courtyard, or onto another room |
 | `circulation.share` | info | halls and corridors above 10 % of the interior |
+| `arc.too_shallow` | warning | an arc bulging under 5 mm past its chord: a straight edge written as a curve |
+| `room.no_clear_floor` | error | a room its own walls leave no floor in: the inward offset turns inside out |
+| `geometry.sliver` | info | a face under 100 mm² that nothing covers: two edges meant to meet are a fraction apart |
+| `room.acute_corner` | info | a corner under 25°, where the mitred wall faces meet so far along each arm that the point of the room is wall |
 | `privacy.bedroom_off_living` / `entrance.multiple` / `door.swing_collision` | info | worth a look |
+
+`room.min_dimension` measures the narrow side of the largest rectangle of *unoccupied*
+floor, between the wall faces — not on centrelines and not through a fixture. A 2 × 1 m
+room drawn on centrelines is 1.88 × 0.79 m to stand in. For a room with an angled or
+curved wall it measures the largest circle that fits instead, and says so, because an
+axis-aligned rectangle understates a round room by a factor of √2 — see **Areas**.
 
 Across levels:
 
@@ -836,8 +934,8 @@ refuses such a document rather than dropping the key.
 
 ### The grammar
 
-Printed by `floorplan --schema=dsl` (1 045 tokens; `--schema=dsl-full` adds the
-field-by-field token index below, 1 668 tokens) and generated below from the same table, so
+Printed by `floorplan --schema=dsl` (1 066 tokens; `--schema=dsl-full` adds the
+field-by-field token index below, 1 719 tokens) and generated below from the same table, so
 neither can describe a token the parser does not take. `[...]` is optional.
 
 <!-- generated from DSL_SCHEMA by test/readme-dsl.test.ts; run it with UPDATE_README=1 after a grammar change -->
@@ -882,6 +980,9 @@ stairs|lift|ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <typ
         at <level> in:<space> rect <x>,<y> <w>x<h> | poly <x>,<y> …      (one indented line per level served)
     vertical circulation: the only entity that spans levels, joined by its id and never by overlap — one `at` line per level it serves, never one line per element
 
+  arc <x>,<y> r<radius> [cw|ccw] [large]
+    inside a poly: a circular edge from the previous corner round to <x>,<y>
+
 # anything after a # is ignored, as is a blank line
     comments and blank lines are not part of the document and are dropped by the printer
 
@@ -890,7 +991,7 @@ a poly element is a corner or an arc to it:
     arc <x>,<y> r<radius> [cw|ccw] [large]
 ```
 
-Every field of the JSON schema, and the token that writes it — all 73 of them, and
+Every field of the JSON schema, and the token that writes it — all 77 of them, and
 `test/dsl-schema.test.ts` fails if the parser grows a field with no spelling here.
 
 | field | token |
@@ -934,6 +1035,10 @@ Every field of the JSON schema, and the token that writes it — all 73 of them,
 | `void.poly` | `poly <x>,<y> …` |
 | `void.rect` | `rect <x>,<y> <w>x<h>` |
 | `void.name` | `"Name"` |
+| `arc.arc` | `<x>,<y>` |
+| `arc.r` | `r<radius>` |
+| `arc.sweep` | `cw|ccw` |
+| `arc.large` | `large` |
 | `opening.id` | `id:<id>` |
 | `opening.type` | `<type>` |
 | `opening.between` | `<a>><b>` |
@@ -985,13 +1090,41 @@ identical room polygons — for 9 936 tokens of JSON against 4 757 of DSL. That 
 also honest about why 0–0 is weaker evidence than it looks, and about the two real defects
 a follow-up probe found in the grammar (one of them silent) before they were fixed.
 
-## Areas
+## Areas, and what "clear" means
 
-Room polygons are centrelines, so the polygon area over-reports usable space.
-The model carries both: `area` (centreline) and `clearArea` (after deducting
-half of every bounding wall, exact for rectilinear rooms). Labels show clear
-area by default; `--areas centreline` switches. Fixtures are deducted again to give
-`usableArea` — see **Fixtures**.
+Room polygons are centrelines, so the polygon area over-reports usable space. The model
+carries both.
+
+- **`area`** — the centreline polygon's area. Exact over arcs: a round room measures
+  πr².
+- **`clearRing`** — the room's own ring brought inward to the *faces* of the walls along
+  it, mitred at every corner, each edge by half the thickness of the wall on it. An
+  exterior wall and a partition on the same room deduct differently, and an edge that is
+  exterior wall for part of its run and partition for the rest gets a step. An arc offsets
+  to the same arc on the same centre with its radius reduced or increased, so a curve
+  stays a curve.
+- **`clearArea`** — the area of that ring. Labels show it by default; `--areas
+  centreline` switches.
+- **`usableArea`** — `clearArea` less the fixtures standing on it.
+- **`inscribed`** — the largest circle that fits in the clear floor, as `{ at, r }`.
+- **`clearRect`** — the largest rectangle of unoccupied floor, in the room's own frame
+  (the bearing of its longest straight edge; 0° for a rectilinear room). It is what the
+  message quotes as "clear floor w × h", and what decides whether a room's name fits on
+  the drawing.
+- **`minDimension`** — how narrow the room is. For a rectilinear room it is the short
+  side of `clearRect`, which is the number this library has always printed, unchanged to
+  the millimetre. For a room with an angled or curved wall it is `2 × inscribed.r`,
+  because an axis-aligned rectangle understates a round room by a factor of √2 — a 3.4 m
+  round room would otherwise be reported as 2.4 m across. The `room.min_dimension`
+  message says which of the two it means.
+
+The clear ring is *constructed*, not estimated. The closed form it replaces —
+`A − Σ len·t/2 + Σ ±t₁t₂/4` — is exact only at right angles: measured against
+numerically integrated truth on an isoceles triangle with 5 m arms and 0.15 m of wall
+face, it is −0.6 % at a 90° apex, −4.2 % at 20° and −28 % at 10°. It was also reading
+the wrong thickness at a corner where a room's edge changes from exterior wall to
+partition, which is why seven of the 63 fixture rooms' clear areas moved by 5–140 cm²
+when it was replaced.
 
 ## Layout
 
@@ -1007,9 +1140,15 @@ src/edit.ts       which walls can be dragged, and what moving one writes
 src/cli.ts        command line (IO-free; takes a CliIo so tests can fake stdio/fs)
 src/bin.ts        the published executable ("bin" in package.json); wires real stdio/fs onto cli.ts
 app/              the playground (React, TanStack Router, Vite)
+src/ring.ts       rings in integer millimetres: arcs, exact areas, canonical flattening
+src/arrangement.ts the planar arrangement: DCEL, faces, snap-rounding, overlay/booleans
+src/offset.ts     the mitred inward offset, and the clear floor it defines
 fixtures/         casa-t3 (seed house), apartment-t2 (grid), cabin,
                   casa-patio (courtyard), quinta (garden + pool + shack),
                   casa-piscina (fixtures), broken,
+                  casa-angulo (a 45° wing and a canted bay),
+                  casa-redonda (two wings joined by a round hall, in arcs),
+                  broken-geometria (an overlap, a wedge, a corner too sharp),
                   moradia-2-pisos (two storeys, shared grid, void, stair),
                   broken-levels (one of every cross-level finding)
 test/__snapshots__/before-levels/

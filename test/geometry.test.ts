@@ -22,11 +22,12 @@ describe("normalizePoly", () => {
     assert.ok("poly" in res);
     assert.deepEqual(res.poly, [[0, 0], [4, 0], [4, 3], [0, 3]]);
   });
-  it("rejects a diagonal edge", () => {
+  it("accepts a diagonal edge, which it used to refuse", () => {
     const res = normalizePoly([[0, 0], [4, 0], [4, 3], [1, 2]]);
-    assert.ok("problem" in res && res.problem.kind === "not_rectilinear");
+    assert.ok("poly" in res, "any simple polygon is legal now (docs/gaps-design.md §1.2)");
+    assert.equal(res.poly.length, 4);
   });
-  it("rejects fewer than four corners and zero area", () => {
+  it("rejects fewer than three corners and zero area", () => {
     const few = normalizePoly([[0, 0], [4, 0], [4, 0]]);
     assert.ok("problem" in few && few.problem.kind === "too_few_points");
     const flat = normalizePoly([[0, 0], [4, 0], [4, 0], [0, 0]]);

@@ -46,13 +46,13 @@ describe("cli", () => {
     assert.equal(run(["missing.json"], fakeIo({}).io), 2);
   });
   it("exits 2 with the issue list on a schema error", () => {
-    const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [1, 1], [0, 1]] } } }) });
+    const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [4, 0], [4, 3], [2, 3], [2, -1], [0, -1]] } } }) });
     assert.equal(run(["plan.json"], t.io), 2);
     assert.match(t.err(), /rooms\.a\.poly/);
     assert.equal(t.out(), "", "text form belongs on stderr only; stdout must stay empty");
   });
   it("--json emits a JSON error envelope on stdout on a schema error, not text on stderr", () => {
-    const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [1, 1], [0, 1]] } } }) });
+    const t = fakeIo({ "plan.json": JSON.stringify({ rooms: { a: { poly: [[0, 0], [4, 0], [4, 3], [2, 3], [2, -1], [0, -1]] } } }) });
     assert.equal(run(["plan.json", "--json"], t.io), 2);
     assert.equal(t.err(), "", "schema errors under --json must not also print text to stderr");
     const parsed = JSON.parse(t.out());
@@ -197,7 +197,7 @@ describe("cli: --schema (terse, default)", () => {
 
   // The ~800-token budget (docs/agent-review.md B10) covered the bare field table; the
   // legend (id format, compass axes) and the worked example (fix 4, docs/eval/cold/cold-run.md)
-  // that now follow it are worth more than the budget, and push the true cost to ~1 035
+  // that now follow it are worth more than the budget, and push the true cost to ~1 062
   // gpt-tokenizer o200k_base tokens / 3 106 chars — see README.md's token table for the
   // measured, tokenizer-backed number. This asserts a char proxy so the suite carries no
   // tokenizer dependency, and exists only to catch an unbounded regression.

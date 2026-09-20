@@ -1,0 +1,26 @@
+{
+  "title": "Broken on purpose: geometry",
+  "units": "m",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "north": 0,
+  "_note": "What angled geometry gets wrong: an overlap that is now a face of its own, a shallow wedge of floor nobody covers, and a corner too sharp to stand in. A ring that crosses itself is a schema error rather than a finding, so it cannot live in a fixture — see parse.test.ts.",
+  "rooms": {
+    "hall": {"name":"Hall","kind":"hall","rect":[0,0,3,6]},
+    "sala": {"name":"Sala","kind":"living","rect":[3,0,6,6]},
+    "estufa": {"name":"Estufa","kind":"living","rect":[8,0,4,4]},
+    "nicho": {"name":"Nicho","kind":"storage","poly":[[9,4.01],[12,4],[12,6],[9,6]]},
+    "cunha": {"name":"Cunha","kind":"office","poly":[[3,6],[9,6],[9,6.4],[3,7.2]]},
+    "bico": {"name":"Bico","kind":"storage","poly":[[0,6],[3,6],[0,6.4]]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"west"},"width":1,"hinge":"start","swingInto":"hall","entrance":true},
+    {"type":"cased","between":["hall","sala"],"position":{"from":"start","distance":2},"width":1.4},
+    {"type":"cased","between":["sala","estufa"],"position":{"from":"start","distance":2},"width":1.2},
+    {"type":"door","between":["sala","nicho"],"at":[9,5],"width":0.8,"hinge":"start","swingInto":"nicho"},
+    {"type":"door","between":["sala","cunha"],"at":[6,6],"width":0.9,"hinge":"start","swingInto":"cunha"},
+    {"type":"door","between":["hall","bico"],"at":[1.5,6],"width":0.8,"hinge":"start","swingInto":"bico"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"position":2,"width":1.6},
+    {"type":"window","between":["exterior","estufa"],"on":{"room":"estufa","side":"east"},"width":1.6},
+    {"type":"window","between":["exterior","cunha"],"at":[6,6.9],"width":1.4}
+  ]
+}

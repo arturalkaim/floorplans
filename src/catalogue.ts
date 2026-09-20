@@ -28,7 +28,7 @@ export const RULES: readonly RuleDoc[] = [
   { id: "tiling.gap", severity: "error", catches: "a hole in the plan: somewhere inside the footprint no room covers the floor (one finding per contiguous hole, however many cells it spans)" },
   { id: "tiling.overlap", severity: "error", catches: "two or more rooms claim the same area (one finding per contiguous overlap, however many cells it spans)" },
   { id: "wall.unresolved", severity: "error", catches: "an opening names two spaces that share no wall" },
-  { id: "wall.ambiguous", severity: "error", catches: "the two spaces share several walls; say which with `on`, or `at` names a point equidistant from more than one" },
+  { id: "wall.ambiguous", severity: "error", catches: "the two spaces share several walls; say which with `on`, or `at` names a point equidistant from more than one — and `on.side` cannot name a wall that is not axis-aligned, where `at` must be used" },
   { id: "opening.off_wall", severity: "error", catches: "an opening's `at` point is farther from the nearest candidate wall than half its thickness plus a small tolerance" },
   { id: "opening.overflow", severity: "error", catches: "the opening is wider than the wall it sits on, at that position" },
   { id: "opening.collision", severity: "error", catches: "two openings overlap on the same wall" },
@@ -36,6 +36,9 @@ export const RULES: readonly RuleDoc[] = [
   { id: "fixture.outside_space", severity: "error", catches: "a fixture is not fully inside the room or outdoor space it names" },
   { id: "fixture.overlap", severity: "error", catches: "two fixtures in the same space collide" },
   { id: "outdoor.overlap", severity: "error", catches: "a room is built over an outdoor space, which is open sky" },
+  { id: "geometry.sliver", severity: "info", catches: "a face smaller than 100 mm² that nothing covers: two edges meant to meet are a fraction apart, named with the spaces either side" },
+  { id: "room.no_clear_floor", severity: "error", catches: "a room whose walls leave it no floor at all: the inward offset of its ring turns itself inside out" },
+  { id: "arc.too_shallow", severity: "warning", catches: "an arc that bulges less than 5 mm past its chord: a straight edge written as a curve" },
 
   // semantics, produced by checkRules()
   { id: "window.not_exterior", severity: "error", catches: "a window sits on an interior wall" },
@@ -55,7 +58,8 @@ export const RULES: readonly RuleDoc[] = [
   { id: "wet.no_window", severity: "warning", catches: "a bathroom or WC has no window; plan extraction" },
   { id: "wet.opens_to_kitchen", severity: "warning", catches: "a WC door opens straight into a kitchen" },
   { id: "privacy.bedroom_through_route", severity: "warning", catches: "a bedroom is the route to another bedroom" },
-  { id: "room.min_dimension", severity: "warning", catches: "a room is narrower than its kind wants, measured between the wall faces and clear of fixtures", option: "minDimension" },
+  { id: "room.min_dimension", severity: "warning", catches: "a room is narrower than its kind wants — the short side of its largest clear rectangle, or, for a room with an angled or curved wall, the diameter of the largest circle that fits", option: "minDimension" },
+  { id: "room.acute_corner", severity: "info", catches: "a corner under 25°: the mitred wall faces meet so far along each arm that the point of the room is wall rather than floor" },
   { id: "door.min_width", severity: "warning", catches: "a door is narrower than its role wants", option: "doorMinWidth" },
   { id: "fixture.clearance", severity: "warning", catches: "the gap between two fixtures is too narrow to walk through", option: "minClearance" },
   { id: "door.swing_hits_fixture", severity: "warning", catches: "a door leaf sweeps into a fixture" },

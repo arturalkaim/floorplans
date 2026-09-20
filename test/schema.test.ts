@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { FIXTURE_TYPES, ID_RE, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "../src/index.ts";
+import { FIXTURE_TYPES, ID_RE, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, SWEEPS, VERTICAL_TYPES } from "../src/index.ts";
 
 const SRC = readFileSync(new URL("../src/parse.ts", import.meta.url), "utf8");
 // Everything from here on is document-parsing logic: `obj["key"]`-style bracket access
@@ -66,6 +66,7 @@ describe("SCHEMA is the source checkKeys reads its known keys from", () => {
     assert.deepEqual(
       objects,
       [
+        "arc",
         "fixture",
         "grid",
         "layout",
@@ -85,7 +86,7 @@ describe("SCHEMA is the source checkKeys reads its known keys from", () => {
   });
 
   it("every enum field points at one of the parser's own exported vocabularies, by reference", () => {
-    const vocabularies = [ROOM_KINDS, SIDES, OPENING_TYPES, FIXTURE_TYPES, VERTICAL_TYPES];
+    const vocabularies = [ROOM_KINDS, SIDES, OPENING_TYPES, FIXTURE_TYPES, VERTICAL_TYPES, SWEEPS];
     for (const o of SCHEMA) {
       for (const f of o.fields) {
         if (f.type !== "enum") {
@@ -95,7 +96,7 @@ describe("SCHEMA is the source checkKeys reads its known keys from", () => {
         assert.ok(f.enum, `${o.object}.${f.name} has type "enum" but no enum set`);
         assert.ok(
           vocabularies.some((v) => v === f.enum),
-          `${o.object}.${f.name}.enum is not === one of ROOM_KINDS/SIDES/OPENING_TYPES/FIXTURE_TYPES/VERTICAL_TYPES — looks like a copy`,
+          `${o.object}.${f.name}.enum is not === one of ROOM_KINDS/SIDES/OPENING_TYPES/FIXTURE_TYPES/VERTICAL_TYPES/SWEEPS — looks like a copy`,
         );
       }
     }

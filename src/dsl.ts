@@ -56,6 +56,13 @@ export interface DslStatementDoc {
   doc: string;
   tokens: readonly DslTokenDoc[];
   /**
+   * True for a thing that is not a line of its own but an element inside another
+   * statement's token — today only `arc`, which lives inside a `poly`. It is in this
+   * table so the coverage test can see the SCHEMA fields it writes, and the grammar
+   * printer lists it under "poly elements" rather than among the statements.
+   */
+  element?: boolean;
+  /**
    * A concrete worked snippet, printed between `syntax` and `doc` — before the prose, not
    * after it, so the shape it demonstrates cannot be skimmed past as a parenthetical. Only
    * the "stairs | lift | ramp" statement has one: `docs/eval/cold/cold-run.md` found 4 of 20
@@ -67,6 +74,9 @@ export interface DslStatementDoc {
 }
 
 const GEOM = "rect <x>,<y> <w>x<h> | poly <x>,<y> …";
+
+/** An `arc` element inside a `poly`, spelled out once for the grammar table and the docs. */
+export const ARC_SYNTAX = "arc <x>,<y> r<radius> [cw|ccw] [large]";
 
 /**
  * Every statement kind, with every token it accepts and the SCHEMA field that token
@@ -236,15 +246,24 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
     ],
   },
   {
+    statement: "arc",
+    element: true,
+    syntax: `  ${ARC_SYNTAX}`,
+    doc: "inside a poly: a circular edge from the previous corner round to <x>,<y>",
+    tokens: [
+      { token: "<x>,<y>", field: "arc.arc", required: true, doc: "where the arc ends; it starts at the previous corner" },
+      { token: "r<radius>", field: "arc.r", required: true, doc: "radius, metres; at least half the chord" },
+      { token: "cw|ccw", field: "arc.sweep", required: true, doc: "which way it turns on the page, y growing south; default cw" },
+      { token: "large", field: "arc.large", required: false, doc: "the arc longer than a half circle; default the minor one" },
+    ],
+  },
+  {
     statement: "# comment",
     syntax: "# anything after a # is ignored, as is a blank line",
     doc: "comments and blank lines are not part of the document and are dropped by the printer",
     tokens: [],
   },
 ];
-
-/** An `arc` element inside a `poly`, spelled out once for the grammar table and the docs. */
-export const ARC_SYNTAX = "arc <x>,<y> r<radius> [cw|ccw] [large]";
 
 // ---------------------------------------------------------------------------
 // errors
@@ -1758,7 +1777,7 @@ export function lineOf(positions: DslPositions, path: string): number | undefine
 export const COMPASS_LINE = "axes: x east, y south; north = -y";
 
 export interface DslSchemaOptions {
-  /** include the 73-row `<object>.<field> → token` index (`--schema=dsl-full`); the default
+  /** include the 77-row `<object>.<field> → token` index (`--schema=dsl-full`); the default
    * omits it — it is what took `--schema=dsl` from 1 388 to well past a terse reference's
    * budget, and every field it lists is already implied by the statement grammar above it. */
   fieldIndex?: boolean;
@@ -1779,11 +1798,16 @@ export function dslSchemaText(opts: DslSchemaOptions = {}): string {
     "",
   ];
   for (const s of DSL_SCHEMA) {
+    if (s.element) continue;
     out.push(s.syntax.split("\n").join("\n"));
     if (s.example) out.push(s.example);
     out.push(`  — ${s.doc}`, "");
   }
-  out.push("## poly elements", "", "  <x>,<y>", `  ${ARC_SYNTAX}`);
+  out.push("## poly elements", "", "  <x>,<y>");
+  for (const s of DSL_SCHEMA) {
+    if (!s.element) continue;
+    out.push(s.syntax, `  — ${s.doc}`);
+  }
   if (opts.fieldIndex) {
     out.push("", "## every schema field, and the token that writes it", "");
     for (const o of SCHEMA) {

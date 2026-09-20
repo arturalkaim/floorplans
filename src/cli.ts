@@ -22,7 +22,7 @@
 //
 // `--schema` exists so an agent can load the field list instead of the README's prose
 // (docs/agent-review.md B10). The default is a terse typed-signature line per object, no
-// docs, 568 tokens for all 14 objects/73 fields; `--schema=full` is the same table as
+// docs, 568 tokens for all 15 objects/77 fields; `--schema=full` is the same table as
 // compact JSON with one-sentence docs (2 554 tokens), and `--schema=md` is the Markdown
 // form for a human reader. All three are printed from SCHEMA — see schemaTerse below.
 // `--schema=dsl` is the same idea for the line DSL: its grammar and every field's token,

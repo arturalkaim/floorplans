@@ -24,8 +24,8 @@ describe("projection", () => {
         const svg = renderSvg(model, opts);
         const p = projection(model, opts);
         const wall = model.walls.find((w) => w.axis === "v")!;
-        const [sx] = p.toScreen([wall.c, wall.from]);
-        const drawn = new RegExp(`data-wall="${wall.id}"[^>]*x1="${sx.toFixed(2).replace(/\.?0+$/, "")}"`);
+        const [sx] = p.toScreen([wall.c!, wall.from]);
+        const drawn = new RegExp(`data-wall="${wall.id}"[^>]*M${sx.toFixed(2).replace(/\.?0+$/, "")} `);
         assert.ok(
           drawn.test(svg) || svg.includes(`data-wall="${wall.id}" data-axis="v" data-c="${wall.c}"`),
           `${name} @${scale}: wall ${wall.id} not found at the projected x`,

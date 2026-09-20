@@ -1,5 +1,6 @@
 import {
   applyDrag,
+  applyHandle,
   applyMove,
   draggableFixtureEdges,
   draggableOutdoorEdges,
@@ -7,8 +8,9 @@ import {
   levelOf,
   movableFixtures,
   projection,
+  wallHandles,
 } from "floorplan";
-import type { Draggable, Finding, Model, Movable } from "floorplan";
+import type { Draggable, Finding, Model, Movable, OffsetHandle } from "floorplan";
 import { useEffect, useRef, useState } from "react";
 import type { RenderSettings } from "../lib/useFloorplan";
 
@@ -40,6 +42,42 @@ interface Props {
 const THRESHOLD_PX = 3;
 
 /**
+ * One scalar grip, whichever kind of thing is under the pointer.
+ *
+ * A coordinate drag is a number on an axis; an offset handle is a distance along a
+ * wall's own normal. The pointer maths is the same either way once the projection is a
+ * dot product — which for an axis-aligned normal is just taking one of the two
+ * coordinates, so the rectilinear path is unchanged (docs/gaps-design.md §1.3.8).
+ */
+interface Grip {
+  at: number;
+  writes: string;
+  /** which way the thing travels, as a unit vector */
+  normal: [number, number];
+  along: (m: [number, number]) => number;
+  apply: (from: string, next: number, free: boolean) => string;
+  label: (next: number) => string;
+}
+
+const fromDrag = (d: Draggable): Grip => ({
+  at: d.c,
+  writes: d.writes,
+  normal: d.axis === "v" ? [1, 0] : [0, 1],
+  along: (m) => (d.axis === "v" ? m[0] : m[1]),
+  apply: (from, next, free) => applyDrag(from, d, next, free),
+  label: (next) => `${d.axis === "v" ? "x" : "y"} = ${(Math.round(next * 100) / 100).toFixed(2)} m · ${d.writes}`,
+});
+
+const fromOffset = (h: OffsetHandle): Grip => ({
+  at: h.at,
+  writes: h.writes,
+  normal: h.normal,
+  along: (m) => m[0] * h.normal[0] + m[1] * h.normal[1],
+  apply: (from, next, free) => applyHandle(from, h, next, free),
+  label: (next) => `${(Math.round((next - h.at) * 100) / 100).toFixed(2)} m along the wall's normal · ${h.writes}`,
+});
+
+/**
  * The drawing, with its walls draggable. A drag never touches the model: it works out the
  * new coordinate, rewrites the source, and the ordinary pipeline redraws — so what you see
  * is always a pure function of the text in the editor.
@@ -49,7 +87,7 @@ export function Drawing({ svg, model, text, render, level, highlight, highlightN
   const host = useRef<HTMLDivElement>(null);
   const [hint, setHint] = useState<string | null>(null);
   const drag = useRef<{
-    d?: Draggable;
+    d?: Grip;
     /** set instead of `d` when a whole body is being carried rather than one edge */
     body?: Movable;
     grab?: [number, number];
@@ -68,11 +106,17 @@ export function Drawing({ svg, model, text, render, level, highlight, highlightN
 
   // walls come from the derived model; outdoor spaces have none, so their own edges are
   // the handles. One map, keyed by whatever the element under the pointer carries.
-  const wallHandles = draggableWalls(text, model, level);
-  const handles = new Map<string, Draggable>([
-    ...wallHandles,
-    ...draggableOutdoorEdges(text, model, level),
-    ...draggableFixtureEdges(text, model, level),
+  const wallDrags = draggableWalls(text, model, level);
+  // a wall that is not one coordinate on one axis — angled, or curved — slides along its
+  // own normal instead, and only when the coordinate drag has nothing to offer for it
+  const offsets = new Map<string, Grip>();
+  for (const h of wallHandles(text, model, level).values())
+    if (h.kind === "offset" && !wallDrags.has(h.wallId)) offsets.set(h.wallId, fromOffset(h));
+  const handles = new Map<string, Grip>([
+    ...[...wallDrags].map(([k, d]) => [k, fromDrag(d)] as const),
+    ...[...draggableOutdoorEdges(text, model, level)].map(([k, d]) => [k, fromDrag(d)] as const),
+    ...[...draggableFixtureEdges(text, model, level)].map(([k, d]) => [k, fromDrag(d)] as const),
+    ...offsets,
   ]);
   const bodies = movableFixtures(text, model, level);
 
@@ -94,7 +138,9 @@ export function Drawing({ svg, model, text, render, level, highlight, highlightN
     for (const el of root.querySelectorAll<SVGElement>("[data-wall], [data-outdoor], [data-fixture]")) {
       const body = bodyOf(el);
       const d = body ? undefined : handles.get(keyOf(el) ?? "");
-      el.style.cursor = body ? "move" : d ? (d.axis === "v" ? "ew-resize" : "ns-resize") : "";
+      // the cursor follows the normal's dominant component, so a 45° wall reads as the
+      // resize it is rather than always as one of the two axis cursors
+      el.style.cursor = body ? "move" : d ? (Math.abs(d.normal[0]) >= Math.abs(d.normal[1]) ? "ew-resize" : "ns-resize") : "";
       if (d || body) el.dataset["draggable"] = "true";
       else delete el.dataset["draggable"];
     }
@@ -130,8 +176,6 @@ export function Drawing({ svg, model, text, render, level, highlight, highlightN
     return projection(model, render).toModel(p.x, p.y) as [number, number];
   };
 
-  const along = (d: Draggable, m: [number, number]) => (d.axis === "v" ? m[0] : m[1]);
-
   const onPointerDown = (e: React.PointerEvent) => {
     if (stale || e.button !== 0) return;
     const target = e.target as SVGElement;
@@ -147,7 +191,7 @@ export function Drawing({ svg, model, text, render, level, highlight, highlightN
       ...(d ? { d } : {}),
       ...(body ? { body, grab: [m[0] - body.at[0], m[1] - body.at[1]] as [number, number] } : {}),
       startText: text,
-      offset: d ? along(d, m) - d.c : 0,
+      offset: d ? d.along(m) - d.at : 0,
       moved: false,
     };
   };
@@ -179,15 +223,15 @@ export function Drawing({ svg, model, text, render, level, highlight, highlightN
     }
 
     if (!active.d) return;
-    const next = along(active.d, m) - active.offset;
+    const next = active.d.along(m) - active.offset;
     if (!active.moved) {
-      if (Math.abs(next - active.d.c) * scale < THRESHOLD_PX) return; // a click is not a drag
+      if (Math.abs(next - active.d.at) * scale < THRESHOLD_PX) return; // a click is not a drag
       active.moved = true;
       onDragStart();
     }
     // always re-apply from where the gesture started, so moves cannot compound
-    const out = applyDrag(active.startText, active.d, next, e.altKey);
-    setHint(`${active.d.axis === "v" ? "x" : "y"} = ${(Math.round(next * 100) / 100).toFixed(2)} m · ${active.d.writes}`);
+    const out = active.d.apply(active.startText, next, e.altKey);
+    setHint(active.d.label(next));
     if (out !== text) onChange(out);
   };
 
@@ -203,7 +247,7 @@ export function Drawing({ svg, model, text, render, level, highlight, highlightN
       <div className="panel-head">
         <h2>Drawing</h2>
         <span className={stale ? "note stale-note" : "note"}>
-          {stale ?? hint ?? `${wallHandles.size}/${lm.walls.length} walls · ${bodies.size} fixtures · drag to move, edges to resize`}
+          {stale ?? hint ?? `${wallDrags.size + offsets.size}/${lm.walls.length} walls · ${bodies.size} fixtures · drag to move, edges to resize`}
         </span>
       </div>
       <div

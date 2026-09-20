@@ -11,7 +11,10 @@ const rulesFor = (doc: unknown) => lint(doc).findings.map((f) => f.rule);
 
 describe("lint never throws", () => {
   it("turns a schema failure into findings, where parse() throws", () => {
-    const bad = { rooms: { a: { poly: [[0, 0], [1, 1], [0, 1]] } } };
+    // A bow tie: the two diagonals cross, so it is not a simple polygon and never can be
+    // a room. (It used to be a triangle here, which the rectilinear-only parser rejected
+    // for its slanted edge; W4 accepts any simple polygon, so a triangle is now a room.)
+    const bad = { rooms: { a: { poly: [[0, 0], [2, 2], [2, 0], [0, 2]] } } };
     assert.throws(() => parse(bad), PlanError);
     assert.throws(() => floorplan(bad), PlanError);
     const { findings, plan, model } = lint(bad);
@@ -23,7 +26,7 @@ describe("lint never throws", () => {
   });
 
   it("carries the issue's own document path onto the finding", () => {
-    const f = lint({ rooms: { a: { poly: [[0, 0], [1, 1], [0, 1]] } } }).findings[0]!;
+    const f = lint({ rooms: { a: { poly: [[0, 0], [2, 2], [2, 0], [0, 2]] } } }).findings[0]!;
     assert.equal(f.path, "rooms.a.poly");
   });
 
@@ -62,7 +65,7 @@ describe("the schema.* vocabulary", () => {
     assert.ok(only(twoRooms({ openings: [{ type: "door", between: ["a", "nowhere"], width: 0.8 }] })).includes("schema.reference"));
   });
   it("geometry: a polygon that cannot be a shape", () => {
-    assert.ok(only({ rooms: { a: { poly: [[0, 0], [1, 1], [0, 1]] } } }).includes("schema.geometry"));
+    assert.ok(only({ rooms: { a: { poly: [[0, 0], [2, 2], [2, 0], [0, 2]] } } }).includes("schema.geometry"));
   });
   it("conflict: two mutually exclusive forms", () => {
     assert.ok(only({ rooms: { a: { poly: rect(0, 0, 2, 2), rect: [0, 0, 2, 2] } } }).includes("schema.conflict"));
