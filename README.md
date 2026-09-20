@@ -20,18 +20,23 @@ node src/bin.ts fixtures/casa-t3.json --out casa.svg --lint
 
 **If you are an agent authoring or editing a plan**, load one of the generated
 schemas instead of this README's prose, and then `floorplan <plan> --lint` for
-what is wrong with a document you already have:
+what is wrong with a document you already have (105 tokens on casa-t3's two
+findings) or `--json` for the same thing as data (174; see "What an agent pays
+to read a plan back" below).
 
 | load | what it is | tokens |
 |---|---|---:|
-| `floorplan --schema` | the JSON field list — all 14 objects and 73 fields, with types, enums and one-sentence docs | 2 554 |
-| `floorplan --schema=md` | the same table, for a human | 2 200 |
-| `floorplan --schema=dsl` | the line DSL's grammar: every statement, and the token that writes every one of those 73 fields | 1 388 |
+| `floorplan --schema` | one compact typed-signature line per object, no docs — all 14 objects and 73 fields | 568 |
+| `floorplan --schema=dsl` | the line DSL's grammar: every statement, and the token that writes each of those 73 fields | 1 388 |
+| `floorplan --schema=full` | the same JSON table with types, enums and a one-sentence doc per field | 2 554 |
+| `floorplan --schema=md` | the full table as Markdown, for a human | 2 200 |
 
-`--schema=dsl` is the cheapest way in and the one to prefer when you are writing
-a plan from scratch, because the documents it teaches you to write are about
-half the size too. All three are generated from the library itself, so none can
-list a field, a token or a rule the parser and linter do not actually have.
+Take `--schema` when you are editing a document you already have, and
+`--schema=dsl` when you are writing one from scratch: it costs 820 tokens more
+and the documents it teaches you to write are about half the size, so it pays
+for itself on the first house. All four are generated from the library itself,
+so none can list a field, a token or a rule the parser and linter do not
+actually have.
 
 ## Playground app
 
@@ -124,7 +129,7 @@ floorplan <plan.json> [--out plan.svg] [--level id] [--lint]
 floorplan set <plan.json> <path> <value> [--json] [--dry-run]
 floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
 floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
-floorplan --schema[=md|=dsl]
+floorplan --schema[=full|md|dsl]
 ```
 
 A plan file may be JSON or the line DSL, and every command takes either: the first
@@ -138,11 +143,14 @@ written (`--out plan-{level}.svg` → `plan-piso0.svg`, `plan-piso1.svg`). `--li
 each finding with the level it is about once there is more than one, and a building-wide
 finding shows `—`.
 
-`--schema` needs no input file: it prints every object's field list — name, type,
-required, enum values, one-sentence doc, and mutual exclusions — read straight from the
-table the parser itself validates against (see "Plan format" below). Default is compact
-JSON, one field per line; `--schema=md` prints the same table as Markdown, and
-`--schema=dsl` prints the line DSL's grammar (see "The line DSL" below).
+`--schema` needs no input file: it prints every object's field list, read straight from
+the table the parser itself validates against (see "Plan format" below). Default is one
+typed-signature line per object — name, required/`?`, type, enum values inlined at ≤6 or a
+`enum(NAME)` reference otherwise, spelled out once in a trailing legend — no doc text, 568
+tokens for all 14 objects/73 fields. `--schema=full` prints the same table as compact JSON
+with name, type, required, enum values and the one-sentence doc, one field per line, 2 554
+tokens. `--schema=md` prints the full table as Markdown. `--schema=dsl` prints the line
+DSL's grammar instead, from its own table (see "The line DSL" below), 1 388 tokens.
 
 `fmt` canonicalises a plan and converts it between the two syntaxes. Without `--to` the
 file keeps the syntax it is in; `--out` writes somewhere else, which is what a conversion
@@ -312,9 +320,10 @@ close to a real field (`"positon"` → `did you mean "position"?`). A key prefix
 (`"_note"`, `"x-generator"`) and it is silently ignored.
 
 The prose and examples below teach the shape; **`floorplan --schema` is the authoritative
-field list** — every object, field, type, default and mutual exclusion, read directly from
-the same table `checkKeys` validates against, so it cannot list a field the parser does not
-also accept (`--schema=md` prints the same table as Markdown for a human reader).
+field list** — every object, field, type and mutual exclusion, terse, read directly from the
+same table `checkKeys` validates against, so it cannot list a field the parser does not also
+accept. `--schema=full` adds each field's one-sentence doc (units, defaults, what reads it)
+as compact JSON; `--schema=md` prints that same detail as Markdown for a human reader.
 
 ```jsonc
 {

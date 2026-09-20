@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { formatFindings, run } from "../src/cli.ts";
 import type { CliIo } from "../src/cli.ts";
-import { SCHEMA } from "../src/index.ts";
+import { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "../src/index.ts";
 import { twoRooms } from "./helpers.ts";
 
 function fakeIo(files: Record<string, string>, stdin = "") {
@@ -135,7 +135,7 @@ describe("cli", () => {
   });
 });
 
-describe("cli: --schema", () => {
+describe("cli: --schema (terse, default)", () => {
   it("needs no input file and exits 0", () => {
     const t = fakeIo({});
     assert.equal(run(["--schema"], t.io), 0);
@@ -143,9 +143,73 @@ describe("cli: --schema", () => {
     assert.equal(t.err(), "");
   });
 
-  it("prints JSON that parses, and round-trips SCHEMA (modulo enum sets becoming arrays)", () => {
+  it("mentions every field of every SCHEMA object exactly once", () => {
     const t = fakeIo({});
     run(["--schema"], t.io);
+    const out = t.out();
+    for (const o of SCHEMA) {
+      const line = new RegExp(`^${o.object.replace(/\./g, "\\.")} \\{([^}]*)\\}`, "m").exec(out);
+      assert.ok(line, `--schema has no line for object ${o.object}`);
+      const body = line[1]!;
+      for (const f of o.fields) {
+        const occurrences = body.split(new RegExp(`\\b${f.name}\\??:`)).length - 1;
+        assert.equal(occurrences, 1, `${o.object}.${f.name} should appear exactly once in --schema's ${o.object} line, found ${occurrences} in: ${body}`);
+      }
+    }
+  });
+
+  it("mentions every enum vocabulary's full value list exactly once, and never twice", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const out = t.out();
+    for (const vocab of [ROOM_KINDS, SIDES, OPENING_TYPES, FIXTURE_TYPES, VERTICAL_TYPES]) {
+      const joined = [...vocab].join("|");
+      const occurrences = out.split(joined).length - 1;
+      assert.equal(occurrences, 1, `vocabulary "${joined}" should appear exactly once in --schema, found ${occurrences}`);
+    }
+  });
+
+  it("marks required fields bare and optional fields with a trailing ?", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const out = t.out();
+    for (const o of SCHEMA) {
+      const line = new RegExp(`^${o.object.replace(/\./g, "\\.")} \\{([^}]*)\\}`, "m").exec(out)!;
+      const body = line[1]!;
+      for (const f of o.fields) {
+        const re = new RegExp(`\\b${f.name}(\\??):`);
+        const m = re.exec(body);
+        assert.ok(m, `${o.object}.${f.name} not found`);
+        assert.equal(m[1] === "?", !f.required, `${o.object}.${f.name} required=${f.required} but printed as "${m[0]}"`);
+      }
+    }
+  });
+
+  it("drops every field's one-sentence doc text (that is --schema=full's job)", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const out = t.out();
+    for (const o of SCHEMA) for (const f of o.fields) if (f.doc.length > 20) assert.ok(!out.includes(f.doc), `--schema still contains the doc text for ${o.object}.${f.name}`);
+  });
+
+  it("stays well under the ~800-token budget (docs/agent-review.md B10): measured 1 826 chars / 568 gpt-tokenizer o200k_base tokens for all 14 objects/73 fields; this asserts a char proxy so the suite carries no tokenizer dependency", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    assert.ok(t.out().length < 2400, `--schema terse form grew to ${t.out().length} chars, past the regression ceiling`);
+  });
+});
+
+describe("cli: --schema=full", () => {
+  it("needs no input file and exits 0", () => {
+    const t = fakeIo({});
+    assert.equal(run(["--schema=full"], t.io), 0);
+    assert.notEqual(t.out(), "");
+    assert.equal(t.err(), "");
+  });
+
+  it("prints JSON that parses, and round-trips SCHEMA (modulo enum sets becoming arrays)", () => {
+    const t = fakeIo({});
+    run(["--schema=full"], t.io);
     const printed = JSON.parse(t.out());
     assert.ok(Array.isArray(printed));
     const plain = SCHEMA.map((o) => ({
@@ -164,18 +228,28 @@ describe("cli: --schema", () => {
 
   it("documents every object the parser's checkKeys calls need", () => {
     const t = fakeIo({});
-    run(["--schema"], t.io);
+    run(["--schema=full"], t.io);
     const objects = JSON.parse(t.out()).map((o: { object: string }) => o.object);
     for (const name of ["plan", "room", "outdoor", "void", "opening", "opening.on", "opening.position", "fixture", "vertical", "vertical.footprint", "walls", "grid", "layout", "level"])
-      assert.ok(objects.includes(name), `--schema is missing ${name}`);
+      assert.ok(objects.includes(name), `--schema=full is missing ${name}`);
   });
+});
 
-  it("--schema=md prints a Markdown table per object and needs no input file", () => {
+describe("cli: --schema=md", () => {
+  it("prints a Markdown table per object and needs no input file", () => {
     const t = fakeIo({});
     assert.equal(run(["--schema=md"], t.io), 0);
     assert.match(t.out(), /^## plan\b/m);
     assert.match(t.out(), /^## room\b/m);
     assert.match(t.out(), /\| field \| type \| required \| enum \| doc \|/);
+  });
+});
+
+describe("cli: --schema rejects unknown modes", () => {
+  it("exits 2 on --schema=bogus", () => {
+    const t = fakeIo({});
+    assert.equal(run(["--schema=bogus"], t.io), 2);
+    assert.match(t.err(), /unknown option/);
   });
 });
 
