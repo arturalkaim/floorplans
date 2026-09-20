@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { DslError, floorplan, isDslText, lint, parse, parseDsl, toDsl } from "../src/index.ts";
+import { DslError, floorplan, isDslText, isSchemaFinding, lint, OPENING_TYPES, parse, parseDsl, toDsl, VERTICAL_TYPES } from "../src/index.ts";
 import { twoStoreys } from "./helpers.ts";
 
 const doc = (text: string) => parseDsl(text).doc;
@@ -317,4 +317,89 @@ describe("findings carry the line an agent can act on", () => {
     const b = lint(load("cabin", "dsl")).findings.map((f) => f.path);
     assert.deepEqual(b, a);
   });
+});
+
+/**
+ * docs/eval/cold3a/cold-run.md, "the one failure mode": a fresh agent given only
+ * `--schema=dsl` indented every room/door/window line under `level`, because the
+ * reference's own worked example rendered that way — and hit "an indented line continues
+ * the statement above it, and there is no statement above this one" on 3 of 20 plans. The
+ * fix: an indented line whose first token is a statement keyword is a statement, not a
+ * continuation, so nesting under `level` means exactly what the flat form means.
+ */
+describe("an indented level body is accepted", () => {
+  const STATEMENT_KEYWORDS = new Set<string>([
+    "plan",
+    "walls",
+    "north",
+    "grid",
+    "level",
+    "room",
+    "outdoor",
+    "void",
+    "layout",
+    "fixture",
+    "vertical",
+    ...OPENING_TYPES,
+    ...VERTICAL_TYPES,
+  ]);
+
+  /**
+   * The flat form of a DSL text: de-indent every line whose first token is a statement
+   * keyword, leaving a genuine continuation line (a vertical element's `at` line, a
+   * layout row) exactly as indented — the same distinction the parser now makes.
+   */
+  const flatten = (text: string): string =>
+    text
+      .split("\n")
+      .map((line) => {
+        const trimmed = line.replace(/^[ \t]+/, "");
+        const first = trimmed.split(/\s+/)[0] ?? "";
+        return STATEMENT_KEYWORDS.has(first) ? trimmed : line;
+      })
+      .join("\n");
+
+  const loadEval = (name: string) => readFileSync(new URL(`../docs/eval/cold3a/dsl/${name}.dsl`, import.meta.url), "utf8");
+
+  it("means exactly the flat form for room/door/window lines indented under level", () => {
+    const indented =
+      'level ground h2.6 ground\n  room hall rect 0,0 3x3\n  door hall.south w0.9 entrance\n  window hall.north w1.2\nlevel loft h1.9\n  room loft_room rect 0,0 3x2';
+    const flat =
+      'level ground h2.6 ground\nroom hall rect 0,0 3x3\ndoor hall.south w0.9 entrance\nwindow hall.north w1.2\nlevel loft h1.9\nroom loft_room rect 0,0 3x2';
+    assert.equal(flatten(indented), flat, "the flatten() helper should agree with the hand-written flat form");
+    assert.deepEqual(doc(indented), doc(flat));
+  });
+
+  it("is not dedent-sensitive: further nested indentation still means the same flat statement", () => {
+    assert.deepEqual(doc("level ground\n    room hall rect 0,0 3x3"), doc("level ground\nroom hall rect 0,0 3x3"));
+  });
+
+  it("still refuses a genuinely orphaned continuation line (no keyword, nothing pending)", () => {
+    assert.match(issuesOf("  at piso0 in:hall rect 0,0 1x1")[0]!.message, /an indented line continues the statement above it/);
+    assert.match(issuesOf("  a a")[0]!.message, /an indented line continues the statement above it/);
+  });
+
+  // the three files docs/eval/cold3a/cold-run.md logged as parse failures (briefs 07/08/20,
+  // 5+18+16 syntax issues) — a real agent's own indentation, not a hand-crafted repro
+  for (const [name, findingCount] of [
+    ["07", 4],
+    ["08", 10],
+    ["20", 8],
+  ] as const) {
+    it(`docs/eval/cold3a/dsl/${name}.dsl now parses, with no schema.* findings, and means its own flat form`, () => {
+      const text = loadEval(name);
+      const r = lint(text);
+      assert.ok(r.plan, `${name}.dsl failed to parse: ${JSON.stringify(r.error?.issues)}`);
+      assert.deepEqual(r.findings.filter(isSchemaFinding), []);
+      assert.equal(r.findings.length, findingCount);
+
+      const flat = flatten(text);
+      assert.notEqual(flat, text, `${name}.dsl should actually contain lines indented under level`);
+      assert.deepEqual(parseDsl(text).doc, parseDsl(flat).doc);
+      assert.deepEqual(parse(parseDsl(text).doc), parse(parseDsl(flat).doc));
+
+      // canonical stays flat: toDsl never reproduces the input's level-body indentation
+      assert.doesNotMatch(toDsl(parseDsl(text).doc), /\n[ \t]+(room|door|window|void) /);
+    });
+  }
 });

@@ -27,8 +27,8 @@ to read a plan back" below).
 | load | what it is | tokens |
 |---|---|---:|
 | `floorplan --schema` | one compact typed-signature line per object (with cardinality — `{id: room}`, `opening[]`), a legend, and a worked example — all 15 objects and 77 fields | 1 181 |
-| `floorplan --schema=dsl` | the line DSL's grammar — every statement and its tokens — plus the same legend and worked example, without the field-by-field index below | 1 363 |
-| `floorplan --schema=dsl-full` | `--schema=dsl` plus the field-by-field token index for all 77 fields | 2 016 |
+| `floorplan --schema=dsl` | the line DSL's grammar — every statement and its tokens — plus the same legend and worked example, without the field-by-field index below | 1 376 |
+| `floorplan --schema=dsl-full` | `--schema=dsl` plus the field-by-field token index for all 77 fields | 2 029 |
 | `floorplan --schema=full` | the same JSON table with types, enums, cardinality and a one-sentence doc per field | 2 806 |
 | `floorplan --schema=md` | the full table as Markdown, for a human | 2 407 |
 | `floorplan --rules` | every rule id and its one-line `catches`, compact | 1 119 |
@@ -188,8 +188,8 @@ and the one-sentence doc, one field per line, 2 806 tokens. `--schema=md` prints
 table as Markdown. `--schema=dsl` prints the line DSL's grammar instead, from its own table
 (see "The line DSL" below), sharing `--schema`'s own legend so a vocabulary cannot drift
 between the two, plus worked examples for `level` (two levels, so the statement-scoping rule
-is shown as well as told) and `layout`, 1 363 tokens; `--schema=dsl-full` adds the
-field-by-field token index `--schema=dsl` omits, 2 016 tokens. `--rules` prints the rule
+is shown as well as told) and `layout`, 1 376 tokens; `--schema=dsl-full` adds the
+field-by-field token index `--schema=dsl` omits, 2 029 tokens. `--rules` prints the rule
 catalogue — every rule id and its one-line `catches`, compact, 1 119 tokens — which both
 schemas' preambles now point at for a rule (a habitable room needs a window; a room reached
 only by a stair still needs a door) that only `--lint` can teach.
@@ -946,8 +946,8 @@ refuses such a document rather than dropping the key.
 
 ### The grammar
 
-Printed by `floorplan --schema=dsl` (1 363 tokens, legend and worked examples included;
-`--schema=dsl-full` adds the field-by-field token index below, 2 016 tokens) and generated
+Printed by `floorplan --schema=dsl` (1 376 tokens, legend and worked examples included;
+`--schema=dsl-full` adds the field-by-field token index below, 2 029 tokens) and generated
 below from the same table, so neither can describe a token the parser does not take.
 `[...]` is optional. The block below omits `--schema=dsl`'s worked examples and vocabulary
 legend to stay short; load `--schema=dsl` itself for those.
@@ -968,7 +968,7 @@ grid cols <n>,… rows <n>,…
     the shared track grid every level's layout may sit on
 
 level <id> ["Name"] [h<height>] [ground]
-    a storey header: statements belong to the most recent level line, until the next one
+    a storey header: statements belong to the most recent level line, until the next one. Indenting statements under a level line is allowed and changes nothing
 
 room <id> ["Name"] [<kind> [<zone>]] [rect <x>,<y> <w>x<h> | poly <x>,<y> …] [habitable] [wet] [circulation]
     one room; the two bare words are the kind then the zone, in that order — the kind must be a real one, and a zone with no kind is written zone:<z>
