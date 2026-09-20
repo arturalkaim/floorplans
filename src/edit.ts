@@ -939,7 +939,7 @@ export function applyHandle(text: string, h: OffsetHandle | RadiusHandle, rawNex
   const next = Math.round(Math.min(Math.max(snapped, h.min), h.max) * 1000) / 1000;
   if (near(next, h.at)) return text;
   const edits = h.edits(next);
-  return edits.length === 0 ? text : spliceAll(text, edits);
+  return edits.length === 0 ? text : applyEdits(text, edits);
 }
 
 /** Apply a vertex handle: a corner moves in both directions at once. */
@@ -947,5 +947,5 @@ export function applyVertexHandle(text: string, h: VertexHandle, to: Pt, free = 
   const grid = free ? 0.001 : SNAP;
   const at2: Pt = [Math.round(to[0] / grid) * grid, Math.round(to[1] / grid) * grid];
   const edits = h.edits([snapMm(at2[0]), snapMm(at2[1])]);
-  return edits.length === 0 ? text : spliceAll(text, edits);
+  return edits.length === 0 ? text : applyEdits(text, edits);
 }
