@@ -1,0 +1,9 @@
+{
+  "summary": {"error":2,"warning":1,"info":1},
+  "findings": [
+    {"rule":"opening.collision","severity":"error","message":"openings #10 and #5 overlap on the wall between living and the exterior","path":"openings[5]","at":[3.75,8],"opening":"door:exterior-living:0"},
+    {"rule":"opening.overflow","severity":"error","message":"opening #4 (door, 0.9 m) does not fit the 1.5 m wall between hall and living at that position","path":"openings[4].width","at":[3.3,6],"opening":"door:hall-living:0"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 1.85 m at its narrowest; comfort minimum is 3 m (clear floor 7.3 × 1.85 m)","path":"rooms.living.rect","rooms":["living"],"at":[3.75,7],"measured":1.85,"minimum":3,"rect":[0.1,6.05,7.3,1.85]},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 15 % of the interior (9 m²); above 10 % is worth questioning","path":"rooms","rooms":["hall"]}
+  ]
+}

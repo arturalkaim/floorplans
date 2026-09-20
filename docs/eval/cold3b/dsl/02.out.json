@@ -1,0 +1,14 @@
+{
+  "summary": {"error":3,"warning":5,"info":1},
+  "findings": [
+    {"rule":"opening.overflow","severity":"error","message":"opening #3 (door, 0.7 m) does not fit the 0.7 m wall between hall and bath at that position","path":"openings[3].width","at":[1.5,3.5],"opening":"door:bath-hall:0","line":11},
+    {"rule":"wall.unresolved","severity":"error","message":"opening #4: living has no wall to the exterior on its south side","path":"openings[4].on","opening":"window:exterior-living:0","rooms":["living"],"line":13},
+    {"rule":"wall.unresolved","severity":"error","message":"opening #5: bedroom has no wall to the exterior on its south side","path":"openings[5].on","opening":"window:bedroom-exterior:0","rooms":["bedroom"],"line":14},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living and kitchen is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/east)","path":"rooms.living","rooms":["living"],"at":[3.5,1],"line":4},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the east)","path":"rooms.bedroom","rooms":["bedroom"],"at":[3.5,2.65],"line":5},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living and kitchen (living): 1.85 m at its narrowest; comfort minimum is 3 m (clear floor 3.85 × 1.85 m)","path":"rooms.living.rect","rooms":["living"],"at":[3.5,1],"measured":1.85,"minimum":3,"rect":[1.55,0.1,3.85,1.85],"line":4},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom (bedroom): 1.2 m at its narrowest; comfort minimum is 2.4 m (clear floor 3.85 × 1.2 m)","path":"rooms.bedroom.rect","rooms":["bedroom"],"at":[3.5,2.65],"measured":1.2,"minimum":2.4,"rect":[1.55,2.05,3.85,1.2],"line":5},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bathroom (bath): 0.55 m at its narrowest; comfort minimum is 1.5 m (clear floor 3.85 × 0.55 m)","path":"rooms.bath.rect","rooms":["bath"],"at":[3.5,3.65],"measured":0.55,"minimum":1.5,"rect":[1.55,3.35,3.85,0.55],"line":6},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 27 % of the interior (6 m²); above 10 % is worth questioning","path":"rooms","rooms":["hall"]}
+  ]
+}

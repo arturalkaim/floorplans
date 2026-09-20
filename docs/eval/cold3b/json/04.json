@@ -1,0 +1,20 @@
+{
+  "title": "Cottage with a porch",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "living": {"kind": "living", "name": "Living room", "rect": [0, 0, 3, 4]},
+    "bedroom": {"kind": "bedroom", "name": "Bedroom", "rect": [3, 0, 3, 4]},
+    "kitchen": {"kind": "kitchen", "name": "Kitchen", "rect": [6, 0, 3, 4]}
+  },
+  "outdoor": {
+    "porch": {"name": "Porch", "covered": true, "rect": [0, 4, 9, 1.5]}
+  },
+  "openings": [
+    {"type": "door", "between": ["porch", "living"], "at": [1.5, 4], "width": 1.5, "entrance": true, "hinge": "start", "swingInto": "porch"},
+    {"type": "door", "between": ["living", "bedroom"], "position": {"from": "start", "distance": 1}, "width": 0.9},
+    {"type": "door", "between": ["bedroom", "kitchen"], "position": {"from": "start", "distance": 1}, "width": 0.9},
+    {"type": "window", "between": ["exterior", "living"], "on": {"room": "living", "side": "north"}, "width": 1.5},
+    {"type": "window", "between": ["exterior", "bedroom"], "on": {"room": "bedroom", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "kitchen"], "on": {"room": "kitchen", "side": "north"}, "width": 1.5}
+  ]
+}

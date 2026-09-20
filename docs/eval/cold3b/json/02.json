@@ -1,0 +1,19 @@
+{
+  "title": "One-bedroom flat",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "hall": {"kind": "hall", "name": "Hall", "rect": [0, 0, 1.5, 4]},
+    "living": {"kind": "living", "name": "Living and kitchen", "rect": [1.5, 0, 4, 2]},
+    "bedroom": {"kind": "bedroom", "name": "Bedroom", "rect": [1.5, 2, 4, 1.3]},
+    "bath": {"kind": "bath", "name": "Bathroom", "rect": [1.5, 3.3, 4, 0.7]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "hall"], "on": {"room": "hall", "side": "west"}, "width": 0.9, "entrance": true},
+    {"type": "door", "between": ["hall", "living"], "position": {"from": "start", "distance": 0.8}, "width": 0.9},
+    {"type": "door", "between": ["hall", "bedroom"], "position": {"from": "start", "distance": 0.5}, "width": 0.8},
+    {"type": "door", "between": ["hall", "bath"], "position": {"from": "start", "distance": 0.2}, "width": 0.7},
+    {"type": "window", "between": ["exterior", "living"], "on": {"room": "living", "side": "south"}, "width": 2},
+    {"type": "window", "between": ["exterior", "bedroom"], "on": {"room": "bedroom", "side": "south"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bath"], "on": {"room": "bath", "side": "south"}, "width": 0.6}
+  ]
+}

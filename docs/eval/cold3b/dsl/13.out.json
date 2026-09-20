@@ -1,0 +1,7 @@
+{
+  "summary": {"error":0,"warning":1,"info":1},
+  "findings": [
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #2 swings into Pool in Deck; rehang it or move the fixture","path":"openings[2].hinge","at":[0.25,3],"rooms":["deck"],"opening":"door:changing-deck:0","fixture":"pool1","line":9},
+    {"rule":"entrance.multiple","severity":"info","message":"2 doors lead outside (Changing room, Changing room); the main one is Changing room","path":"openings"}
+  ]
+}

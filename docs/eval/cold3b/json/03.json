@@ -1,0 +1,22 @@
+{
+  "title": "Two-bedroom flat",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "bedroom1": {"kind": "bedroom", "name": "Bedroom 1", "rect": [0, 0, 2.5, 2]},
+    "bedroom2": {"kind": "bedroom", "name": "Bedroom 2", "rect": [2.5, 0, 2.5, 2]},
+    "corridor": {"kind": "corridor", "name": "Corridor", "rect": [0, 2, 5, 1.2]},
+    "bath": {"kind": "bath", "name": "Bathroom", "rect": [0, 3.2, 5, 1]},
+    "living": {"kind": "living", "name": "Living room", "rect": [5, 0, 3, 4.2]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "corridor"], "on": {"room": "corridor", "side": "west"}, "width": 0.9, "entrance": true},
+    {"type": "door", "between": ["corridor", "bedroom1"], "position": {"from": "start", "distance": 0.5}, "width": 0.8},
+    {"type": "door", "between": ["corridor", "bedroom2"], "on": {"room": "bedroom2", "side": "south"}, "position": 0.5, "width": 0.8},
+    {"type": "door", "between": ["corridor", "bath"], "position": {"from": "start", "distance": 1}, "width": 0.7},
+    {"type": "door", "between": ["corridor", "living"], "position": {"from": "start", "distance": 0.3}, "width": 0.9},
+    {"type": "window", "between": ["exterior", "bedroom1"], "on": {"room": "bedroom1", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bedroom2"], "on": {"room": "bedroom2", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bath"], "on": {"room": "bath", "side": "south"}, "width": 0.5},
+    {"type": "window", "between": ["exterior", "living"], "on": {"room": "living", "side": "east"}, "width": 2}
+  ]
+}

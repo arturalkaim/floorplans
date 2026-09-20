@@ -1,0 +1,19 @@
+{
+  "error": {
+    "issues": [
+      {"path":"","message":"line 4: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":4},
+      {"path":"","message":"line 5: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":5},
+      {"path":"","message":"line 6: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":6},
+      {"path":"","message":"line 7: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":7},
+      {"path":"","message":"line 8: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":8},
+      {"path":"","message":"line 11: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":11},
+      {"path":"","message":"line 12: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":12},
+      {"path":"","message":"line 13: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":13},
+      {"path":"","message":"line 14: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":14},
+      {"path":"","message":"line 15: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":15},
+      {"path":"","message":"line 16: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":16},
+      {"path":"","message":"line 17: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":17},
+      {"path":"","message":"line 18: an indented line continues the statement above it, and there is no statement above this one","kind":"syntax","line":18}
+    ]
+  }
+}

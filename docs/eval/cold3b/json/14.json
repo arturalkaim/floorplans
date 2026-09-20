@@ -1,0 +1,22 @@
+{
+  "title": "Office suite",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "corridor": {"kind": "corridor", "name": "Corridor", "rect": [3, 0, 1.2, 5]},
+    "reception": {"kind": "other", "name": "Reception", "rect": [0, 0, 3, 2.5]},
+    "office1": {"kind": "office", "name": "Office 1", "rect": [0, 2.5, 3, 2.5]},
+    "office2": {"kind": "office", "name": "Office 2", "rect": [4.2, 0, 3, 2.5]},
+    "meeting": {"kind": "other", "name": "Meeting room", "rect": [4.2, 2.5, 3, 2.5]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "corridor"], "on": {"room": "corridor", "side": "north"}, "width": 0.9, "entrance": true},
+    {"type": "door", "between": ["corridor", "reception"], "position": {"from": "start", "distance": 0.5}, "width": 0.9},
+    {"type": "door", "between": ["corridor", "office1"], "position": {"from": "start", "distance": 0.5}, "width": 0.8},
+    {"type": "door", "between": ["corridor", "office2"], "on": {"room": "office2", "side": "west"}, "position": 0.5, "width": 0.8},
+    {"type": "door", "between": ["corridor", "meeting"], "on": {"room": "meeting", "side": "west"}, "position": 1.5, "width": 0.8},
+    {"type": "window", "between": ["exterior", "reception"], "on": {"room": "reception", "side": "west"}, "width": 1.5},
+    {"type": "window", "between": ["exterior", "office1"], "on": {"room": "office1", "side": "west"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "office2"], "on": {"room": "office2", "side": "east"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "meeting"], "on": {"room": "meeting", "side": "east"}, "width": 1.2}
+  ]
+}

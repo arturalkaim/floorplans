@@ -1,0 +1,24 @@
+{
+  "title": "Holiday let",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "living": {"kind": "living", "name": "Living room", "rect": [0, 0, 5, 4]},
+    "bedroom1": {"kind": "bedroom", "name": "Bedroom 1", "rect": [5, 0, 3, 4]},
+    "bedroom2": {"kind": "bedroom", "name": "Bedroom 2", "rect": [8, 0, 3, 4]}
+  },
+  "outdoor": {
+    "terrace": {"name": "Terrace", "covered": true, "rect": [0, 4, 5, 2]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "living"], "on": {"room": "living", "side": "west"}, "width": 0.9, "entrance": true},
+    {"type": "door", "between": ["living", "bedroom1"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["bedroom1", "bedroom2"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["living", "terrace"], "position": {"from": "start", "distance": 1}, "width": 1.8, "hinge": "start", "swingInto": "terrace"},
+    {"type": "window", "between": ["exterior", "bedroom1"], "on": {"room": "bedroom1", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bedroom2"], "on": {"room": "bedroom2", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "living"], "on": {"room": "living", "side": "north"}, "width": 2}
+  ],
+  "fixtures": [
+    {"id": "outdoorshower", "type": "shower", "in": "terrace", "at": [0.5, 4.3], "size": [1, 1], "name": "Outdoor shower"}
+  ]
+}

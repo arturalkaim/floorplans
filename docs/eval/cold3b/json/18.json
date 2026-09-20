@@ -1,0 +1,16 @@
+{
+  "title": "Shop",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "shop": {"kind": "other", "name": "Shop floor", "rect": [0, 0, 6, 4]},
+    "storeroom": {"kind": "storage", "name": "Storeroom", "rect": [0, 4, 4, 2]},
+    "staffwc": {"kind": "wc", "name": "Staff WC", "rect": [4, 4, 2, 2]}
+  },
+  "openings": [
+    {"id": "frontdoor", "type": "door", "between": ["exterior", "shop"], "on": {"room": "shop", "side": "north"}, "width": 1.8, "entrance": true},
+    {"type": "door", "between": ["shop", "storeroom"], "position": {"from": "start", "distance": 1}, "width": 0.9},
+    {"type": "door", "between": ["storeroom", "staffwc"], "position": {"from": "start", "distance": 0.3}, "width": 0.7},
+    {"type": "window", "between": ["exterior", "shop"], "on": {"room": "shop", "side": "north"}, "width": 2},
+    {"type": "window", "between": ["exterior", "storeroom"], "on": {"room": "storeroom", "side": "west"}, "width": 1}
+  ]
+}

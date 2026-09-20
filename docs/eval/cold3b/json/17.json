@@ -1,0 +1,38 @@
+{
+  "title": "Loft conversion",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "levels": {
+    "ground": {
+      "rooms": {
+        "hall": {"kind": "hall", "name": "Hall", "rect": [0, 0, 2, 2]}
+      },
+      "openings": [
+        {"type": "door", "between": ["exterior", "hall"], "on": {"room": "hall", "side": "south"}, "width": 0.9, "entrance": true}
+      ]
+    },
+    "loft": {
+      "height": 2.4,
+      "rooms": {
+        "loftroom": {"kind": "living", "name": "Loft room", "rect": [0, 0, 6, 4]},
+        "shower": {"kind": "bath", "name": "Shower room", "rect": [6, 0, 1.5, 4]}
+      },
+      "openings": [
+        {"type": "door", "between": ["loftroom", "shower"], "position": {"from": "start", "distance": 0.5}, "width": 0.7},
+        {"type": "window", "between": ["exterior", "loftroom"], "on": {"room": "loftroom", "side": "north"}, "width": 2},
+        {"type": "window", "between": ["exterior", "shower"], "on": {"room": "shower", "side": "east"}, "width": 0.5}
+      ]
+    }
+  },
+  "vertical": [
+    {
+      "id": "main",
+      "type": "stairs",
+      "name": "Stair",
+      "risers": 14,
+      "at": [
+        {"level": "ground", "in": "hall", "rect": [0.2, 0.2, 1, 1.6]},
+        {"level": "loft", "in": "loftroom", "rect": [4.8, 0.2, 1, 1.6]}
+      ]
+    }
+  ]
+}

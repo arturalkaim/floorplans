@@ -1,0 +1,13 @@
+{
+  "summary": {"error":2,"warning":4,"info":2},
+  "findings": [
+    {"rule":"space.no_access","severity":"error","message":"Bedroom 2 has no door or cased opening","path":"levels.first.rooms.bedroom2","rooms":["bedroom2"],"at":[4.5,4],"level":"first"},
+    {"rule":"wall.unresolved","severity":"error","message":"opening #1 (door): landing and bedroom2 share no wall. landing touches: the exterior, bedroom1, overliving; bedroom2 touches: overliving, the exterior, bedroom1","path":"levels.first.openings[1].between","opening":"door:bedroom2-landing:0","rooms":["landing","bedroom2"],"level":"first"},
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #0 swings into Main stair in Hall; rehang it or move the fixture","path":"levels.ground.openings[0]","at":[0,2.05],"rooms":["hall"],"opening":"door:exterior-hall:0","vertical":"main","level":"ground"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Landing (hall): 0.75 m at its narrowest; comfort minimum is 1 m (clear floor 0.75 × 1.85 m)","path":"levels.first.rooms.landing.rect","rooms":["landing"],"at":[1.6,1],"measured":0.75,"minimum":1,"rect":[1.2,0.1,0.75,1.85],"level":"first"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 1 (bedroom): 1.85 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.85 × 2.85 m)","path":"levels.first.rooms.bedroom1.rect","rooms":["bedroom1"],"at":[1,3.5],"measured":1.85,"minimum":2.4,"rect":[0.1,2.05,1.85,2.85],"level":"first"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 2 (bedroom): 1.85 m at its narrowest; comfort minimum is 2.4 m (clear floor 4.85 × 1.85 m)","path":"levels.first.rooms.bedroom2.rect","rooms":["bedroom2"],"at":[4.5,4],"measured":1.85,"minimum":2.4,"rect":[2.05,3.05,4.85,1.85],"level":"first"},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 29 % of the interior (10 m²); above 10 % is worth questioning","path":"levels.ground.rooms","rooms":["hall"],"level":"ground"},
+    {"rule":"circulation.share","severity":"info","message":"Landing take 20 % of the interior (4 m²); above 10 % is worth questioning","path":"levels.first.rooms","rooms":["landing"],"level":"first"}
+  ]
+}

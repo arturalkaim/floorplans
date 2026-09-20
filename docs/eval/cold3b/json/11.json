@@ -1,0 +1,18 @@
+{
+  "title": "Kitchen extension",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "kitchen": {"kind": "kitchen", "name": "Kitchen", "rect": [0, 0, 4, 4]}
+  },
+  "outdoor": {
+    "terrace": {"name": "Terrace", "rect": [0, 4, 4, 3]}
+  },
+  "openings": [
+    {"type": "door", "between": ["kitchen", "terrace"], "position": {"from": "start", "distance": 0.5}, "width": 2.4, "glazed": true, "hinge": "start", "swingInto": "terrace"},
+    {"type": "door", "between": ["exterior", "kitchen"], "on": {"room": "kitchen", "side": "west"}, "width": 0.9, "entrance": true},
+    {"type": "window", "between": ["exterior", "kitchen"], "on": {"room": "kitchen", "side": "north"}, "width": 1.5}
+  ],
+  "fixtures": [
+    {"id": "counter1", "type": "counter", "in": "kitchen", "at": [0.2, 0.2], "size": [3, 0.6], "depth": 0.6, "name": "Counter run"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "summary": {"error":1,"warning":2,"info":1},
+  "findings": [
+    {"rule":"wall.unresolved","severity":"error","message":"opening #6: living has no wall to the exterior on its south side","path":"openings[6].on","opening":"window:exterior-living:0","rooms":["living"]},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"rooms.living","rooms":["living"],"at":[2,2]},
+    {"rule":"opening.near_corner","severity":"warning","message":"opening #3 leaves a 0.05 m sliver of wall at a corner; move it to the corner or leave ≥ 0.1 m","path":"openings[3].position","at":[4,4.5],"opening":"door:utility-yard:0"},
+    {"rule":"entrance.multiple","severity":"info","message":"2 doors lead outside (Living room, Utility); the main one is Living room","path":"openings"}
+  ]
+}

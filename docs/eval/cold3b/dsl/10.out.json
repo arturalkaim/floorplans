@@ -1,0 +1,18 @@
+{
+  "summary": {"error":4,"warning":8,"info":1},
+  "findings": [
+    {"rule":"opening.overflow","severity":"error","message":"opening #2 (door, 0.7 m) does not fit the 1 m wall between ensuite1 and corridor at that position","path":"openings[2].width","at":[2.3,4],"opening":"door:corridor-ensuite1:0","line":15},
+    {"rule":"opening.overflow","severity":"error","message":"opening #4 (door, 0.7 m) does not fit the 1 m wall between ensuite2 and corridor at that position","path":"openings[4].width","at":[5.3,4],"opening":"door:corridor-ensuite2:0","line":17},
+    {"rule":"opening.overflow","severity":"error","message":"opening #6 (door, 0.7 m) does not fit the 1 m wall between ensuite3 and corridor at that position","path":"openings[6].width","at":[8.3,4],"opening":"door:corridor-ensuite3:0","line":19},
+    {"rule":"opening.overflow","severity":"error","message":"opening #8 (door, 0.7 m) does not fit the 1 m wall between ensuite4 and corridor at that position","path":"openings[8].width","at":[11.3,4],"opening":"door:corridor-ensuite4:0","line":21},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 1 (bedroom): 1.85 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.85 × 3.85 m)","path":"rooms.bedroom1.rect","rooms":["bedroom1"],"at":[1,2],"measured":1.85,"minimum":2.4,"rect":[0.1,0.1,1.85,3.85],"line":3},
+    {"rule":"room.min_dimension","severity":"warning","message":"Ensuite 1 (bath): 0.9 m at its narrowest; comfort minimum is 1.5 m (clear floor 0.9 × 3.85 m)","path":"rooms.ensuite1.rect","rooms":["ensuite1"],"at":[2.5,2],"measured":0.9,"minimum":1.5,"rect":[2.05,0.1,0.9,3.85],"line":4},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 2 (bedroom): 1.9 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.9 × 3.85 m)","path":"rooms.bedroom2.rect","rooms":["bedroom2"],"at":[4,2],"measured":1.9,"minimum":2.4,"rect":[3.05,0.1,1.9,3.85],"line":5},
+    {"rule":"room.min_dimension","severity":"warning","message":"Ensuite 2 (bath): 0.9 m at its narrowest; comfort minimum is 1.5 m (clear floor 0.9 × 3.85 m)","path":"rooms.ensuite2.rect","rooms":["ensuite2"],"at":[5.5,2],"measured":0.9,"minimum":1.5,"rect":[5.05,0.1,0.9,3.85],"line":6},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 3 (bedroom): 1.9 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.9 × 3.85 m)","path":"rooms.bedroom3.rect","rooms":["bedroom3"],"at":[7,2],"measured":1.9,"minimum":2.4,"rect":[6.05,0.1,1.9,3.85],"line":7},
+    {"rule":"room.min_dimension","severity":"warning","message":"Ensuite 3 (bath): 0.9 m at its narrowest; comfort minimum is 1.5 m (clear floor 0.9 × 3.85 m)","path":"rooms.ensuite3.rect","rooms":["ensuite3"],"at":[8.5,2],"measured":0.9,"minimum":1.5,"rect":[8.05,0.1,0.9,3.85],"line":8},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 4 (bedroom): 1.9 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.9 × 3.85 m)","path":"rooms.bedroom4.rect","rooms":["bedroom4"],"at":[10,2],"measured":1.9,"minimum":2.4,"rect":[9.05,0.1,1.9,3.85],"line":9},
+    {"rule":"room.min_dimension","severity":"warning","message":"Ensuite 4 (bath): 0.85 m at its narrowest; comfort minimum is 1.5 m (clear floor 0.85 × 3.85 m)","path":"rooms.ensuite4.rect","rooms":["ensuite4"],"at":[11.5,2],"measured":0.85,"minimum":1.5,"rect":[11.05,0.1,0.85,3.85],"line":10},
+    {"rule":"circulation.share","severity":"info","message":"Corridor take 23 % of the interior (14.4 m²); above 10 % is worth questioning","path":"rooms","rooms":["corridor"]}
+  ]
+}

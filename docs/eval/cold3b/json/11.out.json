@@ -1,0 +1,7 @@
+{
+  "summary": {"error":1,"warning":0,"info":1},
+  "findings": [
+    {"rule":"opening.overflow","severity":"error","message":"opening #0 (door, 2.4 m) does not fit the 4 m wall between kitchen and terrace at that position","path":"openings[0].width","at":[0.5,4],"opening":"door:kitchen-terrace:0"},
+    {"rule":"entrance.multiple","severity":"info","message":"2 doors lead outside (Kitchen, Kitchen); the main one is Kitchen","path":"openings"}
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "title": "Guest house",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "bedroom1": {"kind": "bedroom", "name": "Bedroom 1", "rect": [0, 0, 2, 4]},
+    "ensuite1": {"kind": "bath", "name": "Ensuite 1", "rect": [2, 0, 1, 4]},
+    "bedroom2": {"kind": "bedroom", "name": "Bedroom 2", "rect": [3, 0, 2, 4]},
+    "ensuite2": {"kind": "bath", "name": "Ensuite 2", "rect": [5, 0, 1, 4]},
+    "bedroom3": {"kind": "bedroom", "name": "Bedroom 3", "rect": [6, 0, 2, 4]},
+    "ensuite3": {"kind": "bath", "name": "Ensuite 3", "rect": [8, 0, 1, 4]},
+    "bedroom4": {"kind": "bedroom", "name": "Bedroom 4", "rect": [9, 0, 2, 4]},
+    "ensuite4": {"kind": "bath", "name": "Ensuite 4", "rect": [11, 0, 1, 4]},
+    "corridor": {"kind": "corridor", "name": "Corridor", "rect": [0, 4, 12, 1.2]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "corridor"], "on": {"room": "corridor", "side": "south"}, "width": 0.9, "entrance": true},
+    {"type": "door", "between": ["corridor", "bedroom1"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["corridor", "ensuite1"], "position": {"from": "start", "distance": 0.3}, "width": 0.7},
+    {"type": "door", "between": ["corridor", "bedroom2"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["corridor", "ensuite2"], "position": {"from": "start", "distance": 0.3}, "width": 0.7},
+    {"type": "door", "between": ["corridor", "bedroom3"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["corridor", "ensuite3"], "position": {"from": "start", "distance": 0.3}, "width": 0.7},
+    {"type": "door", "between": ["corridor", "bedroom4"], "position": {"from": "start", "distance": 1}, "width": 0.8},
+    {"type": "door", "between": ["corridor", "ensuite4"], "position": {"from": "start", "distance": 0.3}, "width": 0.7},
+    {"type": "window", "between": ["exterior", "bedroom1"], "on": {"room": "bedroom1", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bedroom2"], "on": {"room": "bedroom2", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bedroom3"], "on": {"room": "bedroom3", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "bedroom4"], "on": {"room": "bedroom4", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior", "ensuite1"], "on": {"room": "ensuite1", "side": "north"}, "width": 0.5},
+    {"type": "window", "between": ["exterior", "ensuite2"], "on": {"room": "ensuite2", "side": "north"}, "width": 0.5},
+    {"type": "window", "between": ["exterior", "ensuite3"], "on": {"room": "ensuite3", "side": "north"}, "width": 0.5},
+    {"type": "window", "between": ["exterior", "ensuite4"], "on": {"room": "ensuite4", "side": "north"}, "width": 0.5}
+  ]
+}

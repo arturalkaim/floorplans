@@ -1,0 +1,8 @@
+{
+  "summary": {"error":0,"warning":1,"info":2},
+  "findings": [
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 2.8 m at its narrowest; comfort minimum is 3 m (clear floor 2.9 × 2.8 m)","path":"rooms.room2.rect","rooms":["room2"],"at":[3.5,1.5],"measured":2.8,"minimum":3,"rect":[2.05,0.1,2.9,2.8],"line":4},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 15 % of the interior (6 m²); above 10 % is worth questioning","path":"rooms","rooms":["room1"]},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom opens directly off Kitchen","path":"openings[3]","rooms":["room3","room4"],"at":[8,1],"opening":"door:room3-room4:0","line":12}
+  ]
+}

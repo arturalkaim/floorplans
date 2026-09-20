@@ -1,0 +1,9 @@
+{
+  "summary": {"error":0,"warning":2,"info":2},
+  "findings": [
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #3 swings into Outdoor shower in Terrace; rehang it or move the fixture","path":"openings[3].hinge","at":[0.1,4],"rooms":["terrace"],"opening":"door:living-terrace:0","fixture":"outdoorshower","line":11},
+    {"rule":"privacy.bedroom_through_route","severity":"warning","message":"Bedroom 1 and Bedroom 2 connect directly; one bedroom is a route to the other","path":"openings[2]","rooms":["bedroom1","bedroom2"],"at":[8,1],"opening":"door:bedroom1-bedroom2:0","line":10},
+    {"rule":"entrance.multiple","severity":"info","message":"2 doors lead outside (Living room, Living room); the main one is Living room","path":"openings"},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom 1 opens directly off Living room","path":"openings[1]","rooms":["living","bedroom1"],"at":[5,1],"opening":"door:bedroom1-living:0","line":9}
+  ]
+}

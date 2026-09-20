@@ -1,0 +1,6 @@
+{
+  "summary": {"error":1,"warning":0,"info":0},
+  "findings": [
+    {"rule":"space.no_access","severity":"error","message":"Sleeping loft has no door or cased opening","path":"levels.loft.rooms.loft","rooms":["loft"],"at":[2.5,1.7],"level":"loft"}
+  ]
+}

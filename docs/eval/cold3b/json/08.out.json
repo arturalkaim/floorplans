@@ -1,0 +1,16 @@
+{
+  "summary": {"error":1,"warning":8,"info":2},
+  "findings": [
+    {"rule":"wall.unresolved","severity":"error","message":"opening #3: living has no wall to the exterior on its south side","path":"levels.ground.openings[3].on","opening":"window:exterior-living:0","rooms":["living"],"level":"ground"},
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #0 swings into Main stair in Hall; rehang it or move the fixture","path":"levels.ground.openings[0]","at":[0,1.05],"rooms":["hall"],"opening":"door:exterior-hall:0","vertical":"main","level":"ground"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/east)","path":"levels.ground.rooms.living","rooms":["living"],"at":[4,1.5],"level":"ground"},
+    {"rule":"opening.near_corner","severity":"warning","message":"opening #1 leaves a 0.05 m sliver of wall at a corner; move it to the corner or leave ≥ 0.1 m","path":"levels.ground.openings[1].position","at":[2,0.5],"opening":"door:hall-living:0","level":"ground"},
+    {"rule":"opening.near_corner","severity":"warning","message":"opening #2 leaves a 0.05 m sliver of wall at a corner; move it to the corner or leave ≥ 0.1 m","path":"levels.ground.openings[2].position","at":[0.5,3],"opening":"door:hall-kitchen:0","level":"ground"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 2.85 m at its narrowest; comfort minimum is 3 m (clear floor 3.85 × 2.85 m)","path":"levels.ground.rooms.living.rect","rooms":["living"],"at":[4,1.5],"measured":2.85,"minimum":3,"rect":[2.05,0.1,3.85,2.85],"level":"ground"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 1 (bedroom): 2.35 m at its narrowest; comfort minimum is 2.4 m (clear floor 2.35 × 2.35 m)","path":"levels.first.rooms.bedroom1.rect","rooms":["bedroom1"],"at":[1.25,1.25],"measured":2.35,"minimum":2.4,"rect":[0.1,0.1,2.35,2.35],"level":"first"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 2 (bedroom): 1.85 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.85 × 4.8 m)","path":"levels.first.rooms.bedroom2.rect","rooms":["bedroom2"],"at":[5,2.5],"measured":1.85,"minimum":2.4,"rect":[4.05,0.1,1.85,4.8],"level":"first"},
+    {"level":"first","rule":"stair.misaligned","severity":"warning","message":"Main stair does not sit over itself: its footprints on ground and first do not overlap at all","path":"vertical[0].at[1]","at":[3.1,0.85],"vertical":"main"},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 20 % of the interior (6 m²); above 10 % is worth questioning","path":"levels.ground.rooms","rooms":["hall"],"level":"ground"},
+    {"rule":"circulation.share","severity":"info","message":"Landing take 25 % of the interior (7.5 m²); above 10 % is worth questioning","path":"levels.first.rooms","rooms":["landing"],"level":"first"}
+  ]
+}
