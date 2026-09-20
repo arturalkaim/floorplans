@@ -1115,6 +1115,19 @@ function acuteCorners(ring: MmRing, dist: number[]): Array<{ at: P; deg: number;
   return out;
 }
 
+const snapPt = (p: Pt): Pt => [snap(p[0]), snap(p[1])];
+
+/**
+ * Is a coordinate on a line of the sweep grid, at the grid's own resolution?
+ *
+ * INVARIANT: the grid is built from millimetre-snapped rotated coordinates, so a
+ * comparison against it has to be made on the same lattice and cannot be exact. One
+ * millimetre is the whole tolerance: it is what a coordinate can lose to `snap`, and it
+ * is also what a wall's far end drifts across when the frame's bearing — itself snapped,
+ * to a thousandth of a degree — is a few thousandths off the wall's own.
+ */
+const onLine = (v: number, c: number): boolean => Math.abs(Math.round((v - c) * 1000)) <= 1;
+
 /** A rotation about the origin by `deg` clockwise on the page. */
 function rotator(deg: number): (p: Pt) => Pt {
   if (deg === 0) return (p) => p;
@@ -1146,6 +1159,12 @@ function longestEdgeBearing(room: Shape): number {
  * authored on centrelines, so a comfort minimum has to come off both faces; a side that
  * does not sit on a wall deducts nothing. Where a side spans walls of different thickness
  * the thickest wins, which is the conservative reading for a comfort check.
+ *
+ * The wall's endpoints are rotated into the room's frame and snapped exactly as
+ * `buildGrid` snapped the ring points that produced `c`. Comparing the unsnapped rotation
+ * against the snapped grid was B9: at any bearing but 0 the residue is sub-millimetre,
+ * larger than the 1e-6 the test used, so no wall matched and every angled room's
+ * `clearRect` was its centreline `largestRect`.
  */
 function halfWallAlong(
   walls: Wall[],
@@ -1159,11 +1178,11 @@ function halfWallAlong(
   let t = 0;
   for (const w of walls) {
     if (w.geometry.kind !== "segment") continue;
-    const a = g.rot(w.geometry.a);
-    const b = g.rot(w.geometry.b);
+    const a = snapPt(g.rot(w.geometry.a));
+    const b = snapPt(g.rot(w.geometry.b));
     const wc = axis === "h" ? a[1] : a[0];
     const other = axis === "h" ? b[1] : b[0];
-    if (!eq(wc, other) || !eq(wc, c)) continue;
+    if (!onLine(wc, c) || !onLine(other, c)) continue;
     const lo = Math.min(axis === "h" ? a[0] : a[1], axis === "h" ? b[0] : b[1]);
     const hi = Math.max(axis === "h" ? a[0] : a[1], axis === "h" ? b[0] : b[1]);
     if (w.neg.kind !== "room" && w.pos.kind !== "room") continue;

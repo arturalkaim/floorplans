@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { analyze, floorplan, parse } from "../src/index.ts";
+import { snap } from "../src/geometry.ts";
 import { has, rulesOf } from "./helpers.ts";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));
@@ -329,5 +330,92 @@ describe("a wall that runs smoothly from straight into curved is one wall", () =
     assert.equal(door.wall.geometry.kind, "chain");
     assert.deepEqual(door.center, [0, 1.5]);
     assert.ok(door.from >= 0 && door.to <= door.wall.length);
+  });
+});
+
+/**
+ * B9: the clear rectangle used to deduct nothing at all from an angled room.
+ *
+ * `buildGrid` snaps every rotated coordinate to the millimetre before it sweeps, but
+ * `halfWallAlong` rotated each wall's endpoints *unsnapped* and asked for equality at
+ * 1e-6. A rotation by 30° or 45° leaves sub-millimetre residue, so no wall ever matched
+ * the grid line it runs along and `clearRect === largestRect` — a centreline rectangle
+ * quoted as clear floor, overstated by half a wall on each of the four sides.
+ */
+describe("the clear rectangle deducts wall thickness in a rotated frame (B9)", () => {
+  it("takes half a wall off each side of a 45° room, exactly as it does at 0°", () => {
+    const diamond = {
+      walls: { exterior: 0.3, partition: 0.12 },
+      rooms: { sala: { name: "Sala", kind: "living", poly: [[5, 0], [10, 5], [5, 10], [0, 5]] } },
+      openings: [{ type: "door", between: ["exterior", "sala"], at: [7.5, 2.5], width: 1, entrance: true }],
+    };
+    const m = analyze(parse(diamond)).model.rooms[0]!;
+    assert.equal(m.bearing, 45, "the frame is the bearing of the longest edge");
+    const L = m.largestRect;
+    // the square's side is 5√2 = 7.0710678…, which the millimetre grid carries as
+    // 7.071 one way and 7.072 the other
+    assert.deepEqual([snap(L.x1 - L.x0), snap(L.y1 - L.y0)], [7.071, 7.072]);
+    // four exterior walls, 0.3 thick: 0.15 off each side, 0.3 off each dimension
+    assert.deepEqual([m.clearRect.w, m.clearRect.h], [7.071 - 0.3, snap(7.072 - 0.3)]);
+    // and it now agrees with the wholly independent measure: the inscribed circle of the
+    // offset ring, which was right all along
+    assert.equal(m.minDimension, m.clearRect.w);
+    assert.equal(snap(2 * m.inscribed.r), m.clearRect.h);
+  });
+
+  /**
+   * casa-v's twelve angled rooms, before → after. `largest` is unchanged (the sweep grid
+   * never moved); `clear` is what B9 left as a copy of it. Every deduction is a sum of
+   * two half-thicknesses drawn from {0.15 exterior, 0.06 partition}, which is why every
+   * entry below is one of 0.12, 0.21, 0.3 — and `sala` is 0/0 because its largest free
+   * rectangle is bounded by its own counter and island, not by walls.
+   */
+  const CASA_V: ReadonlyArray<readonly [string, number, number, number, number]> = [
+    // id, largest w, largest h, deducted along w, deducted along h
+    ["sala", 7.077, 8.793, 0, 0],
+    ["corr_w", 9.4, 1.399, 0.12, 0.21],
+    ["wc_w", 2.399, 4.001, 0.12, 0.21],
+    ["quarto1", 3.6, 4, 0.12, 0.21],
+    ["quarto2", 3.401, 4, 0.12, 0.21],
+    ["suite", 2.4, 5.4, 0.12, 0.3],
+    ["wc_suite", 1.8, 2.8, 0.21, 0.21],
+    ["corr_e", 1.4, 6.4, 0.21, 0.12],
+    ["lavandaria", 4.001, 2.399, 0.12, 0.12],
+    ["escritorio", 4.001, 4.001, 0.21, 0.12],
+    ["brincar", 5.4, 5.599, 0.3, 0.21],
+    ["garagem", 5.799, 8.6, 0.21, 0.3],
+  ];
+
+  it("deducts on eleven of casa-v's twelve angled rooms, and rightly on none of sala", () => {
+    const { model } = analyze(parse(load("casa-v")));
+    assert.equal(model.rooms.length, CASA_V.length);
+    for (const [id, lw, lh, dw, dh] of CASA_V) {
+      const m = model.rooms.find((r) => r.room.id === id)!;
+      assert.ok(m.bearing !== 0, `${id} is meant to be angled`);
+      const L = m.largestRect;
+      assert.deepEqual([snap(L.x1 - L.x0), snap(L.y1 - L.y0)], [lw, lh], `${id}: largestRect moved`);
+      assert.deepEqual([m.clearRect.w, m.clearRect.h], [snap(lw - dw), snap(lh - dh)], `${id}: clearRect`);
+      for (const d of [dw, dh]) assert.ok([0, 0.12, 0.21, 0.3].includes(d), `${id}: ${d} is not two half-walls`);
+    }
+  });
+
+  it("leaves the narrowest side agreeing with the inscribed circle, to the millimetre", () => {
+    const { model } = analyze(parse(load("casa-v")));
+    // the two measures come from different code on different geometry — the sweep grid
+    // and the mitred offset ring. Before B9 not one of the twelve agreed, because the
+    // rectangle was still on centrelines. The two that still differ are the two whose
+    // largest free rectangle is not the thing the circle fits in: `sala`'s is bounded by
+    // its counter and island, and `suite` is wider away from its narrow rectangle.
+    const differ = model.rooms
+      .filter((m) => Math.round(Math.abs(Math.min(m.clearRect.w, m.clearRect.h) - m.minDimension) * 1000) > 1)
+      .map((m) => m.room.id);
+    assert.deepEqual(differ, ["sala", "suite"]);
+  });
+
+  it("does not move a rectilinear room: casa-t3 and casa-angulo deduct exactly as before", () => {
+    for (const [name, id, w, h] of [["casa-t3", "distrib", 11.99, 1.28], ["casa-angulo", "estudio", 5, 2.79]] as const) {
+      const m = analyze(parse(load(name))).model.rooms.find((r) => r.room.id === id)!;
+      assert.deepEqual([m.clearRect.w, m.clearRect.h], [w, h], `${name}/${id}`);
+    }
   });
 });
