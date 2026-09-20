@@ -2423,21 +2423,21 @@
      "minDimension": 10.499,
      "largestRect": {
       "x0": 12.063,
-      "y0": 5.104,
+      "y0": 5.669,
       "x1": 19.14,
       "y1": 14.462
      },
      "clearRect": {
       "x0": 12.063,
-      "y0": 5.104,
+      "y0": 5.669,
       "x1": 19.14,
       "y1": 14.462,
       "w": 7.077,
-      "h": 9.358
+      "h": 8.793
      },
      "labelAt": [
-      8.619,
-      16.274
+      8.477,
+      16.519
      ],
      "fixtureArea": 5.13,
      "usableArea": 125.95,
@@ -2575,34 +2575,66 @@
     },
     {
      "id": "suite",
-     "corners": 4,
-     "area": 22.68,
-     "clearArea": 20.349,
-     "minDimension": 3.99,
+     "corners": 6,
+     "area": 17.64,
+     "clearArea": 15.715,
+     "minDimension": 2.737,
      "largestRect": {
-      "x0": 0.292,
+      "x0": 2.092,
       "y0": -0.062,
       "x1": 4.492,
       "y1": 5.338
      },
      "clearRect": {
-      "x0": 0.292,
+      "x0": 2.092,
       "y0": -0.062,
       "x1": 4.492,
       "y1": 5.338,
-      "w": 4.2,
+      "w": 2.4,
       "h": 5.4
      },
      "labelAt": [
-      -1.089,
-      3.39
+      -0.639,
+      4.17
      ],
      "fixtureArea": 0,
-     "usableArea": 20.349,
+     "usableArea": 15.715,
      "exteriorFaces": [
       "east",
       "south",
       "west"
+     ],
+     "exteriorWindow": true
+    },
+    {
+     "id": "wc_suite",
+     "corners": 4,
+     "area": 5.041,
+     "clearArea": 4.119,
+     "minDimension": 1.59,
+     "largestRect": {
+      "x0": 0.292,
+      "y0": 2.538,
+      "x1": 2.092,
+      "y1": 5.338
+     },
+     "clearRect": {
+      "x0": 0.292,
+      "y0": 2.538,
+      "x1": 2.092,
+      "y1": 5.338,
+      "w": 1.8,
+      "h": 2.8
+     },
+     "labelAt": [
+      -2.814,
+      3.001
+     ],
+     "fixtureArea": 0,
+     "usableArea": 4.119,
+     "exteriorFaces": [
+      "east",
+      "south"
      ],
      "exteriorWindow": true
     },
@@ -2770,12 +2802,12 @@
     {
      "id": "w3",
      "from": 0,
-     "to": 4.2,
+     "to": 1.8,
      "kind": "exterior",
      "thickness": 0.3,
      "neg": {
       "kind": "room",
-      "id": "suite"
+      "id": "wc_suite"
      },
      "pos": {
       "kind": "exterior"
@@ -2784,7 +2816,7 @@
     {
      "id": "w4",
      "from": 0,
-     "to": 5.4,
+     "to": 2.8,
      "kind": "exterior",
      "thickness": 0.3,
      "neg": {
@@ -2792,18 +2824,18 @@
      },
      "pos": {
       "kind": "room",
-      "id": "suite"
+      "id": "wc_suite"
      }
     },
     {
      "id": "w5",
      "from": 0,
-     "to": 3.4,
+     "to": 2.4,
      "kind": "exterior",
      "thickness": 0.3,
      "neg": {
       "kind": "room",
-      "id": "quarto2"
+      "id": "suite"
      },
      "pos": {
       "kind": "exterior"
@@ -2812,27 +2844,27 @@
     {
      "id": "w6",
      "from": 0,
-     "to": 4.001,
+     "to": 2.8,
      "kind": "partition",
      "thickness": 0.12,
      "neg": {
       "kind": "room",
-      "id": "suite"
+      "id": "wc_suite"
      },
      "pos": {
       "kind": "room",
-      "id": "quarto2"
+      "id": "suite"
      }
     },
     {
      "id": "w7",
      "from": 0,
-     "to": 3.6,
+     "to": 3.4,
      "kind": "exterior",
      "thickness": 0.3,
      "neg": {
       "kind": "room",
-      "id": "quarto1"
+      "id": "quarto2"
      },
      "pos": {
       "kind": "exterior"
@@ -2846,6 +2878,64 @@
      "thickness": 0.12,
      "neg": {
       "kind": "room",
+      "id": "suite"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "quarto2"
+     }
+    },
+    {
+     "id": "w9",
+     "from": 0,
+     "to": 1.8,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "suite"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "wc_suite"
+     }
+    },
+    {
+     "id": "w10",
+     "from": 0,
+     "to": 2.6,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "exterior"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "suite"
+     }
+    },
+    {
+     "id": "w11",
+     "from": 0,
+     "to": 3.6,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "room",
+      "id": "quarto1"
+     },
+     "pos": {
+      "kind": "exterior"
+     }
+    },
+    {
+     "id": "w12",
+     "from": 0,
+     "to": 4.001,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
       "id": "quarto2"
      },
      "pos": {
@@ -2854,7 +2944,7 @@
      }
     },
     {
-     "id": "w9",
+     "id": "w13",
      "from": 0,
      "to": 4.2,
      "kind": "exterior",
@@ -2869,7 +2959,7 @@
      }
     },
     {
-     "id": "w10",
+     "id": "w14",
      "from": 0,
      "to": 1.4,
      "kind": "partition",
@@ -2884,7 +2974,7 @@
      }
     },
     {
-     "id": "w11",
+     "id": "w15",
      "from": 0,
      "to": 3.4,
      "kind": "partition",
@@ -2899,7 +2989,7 @@
      }
     },
     {
-     "id": "w12",
+     "id": "w16",
      "from": 0,
      "to": 2.4,
      "kind": "exterior",
@@ -2913,7 +3003,7 @@
      }
     },
     {
-     "id": "w13",
+     "id": "w17",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -2928,7 +3018,7 @@
      }
     },
     {
-     "id": "w14",
+     "id": "w18",
      "from": 0,
      "to": 5.4,
      "kind": "exterior",
@@ -2943,7 +3033,7 @@
      }
     },
     {
-     "id": "w15",
+     "id": "w19",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -2958,7 +3048,7 @@
      }
     },
     {
-     "id": "w16",
+     "id": "w20",
      "from": 0,
      "to": 9.352,
      "kind": "exterior",
@@ -2972,7 +3062,7 @@
      }
     },
     {
-     "id": "w17",
+     "id": "w21",
      "from": 0,
      "to": 3.6,
      "kind": "partition",
@@ -2987,7 +3077,7 @@
      }
     },
     {
-     "id": "w18",
+     "id": "w22",
      "from": 0,
      "to": 2.4,
      "kind": "partition",
@@ -3002,67 +3092,67 @@
      }
     },
     {
-     "id": "w19",
-     "from": 0,
-     "to": 4,
-     "kind": "exterior",
-     "thickness": 0.3,
-     "neg": {
-      "kind": "outdoor",
-      "id": "deck"
-     },
-     "pos": {
-      "kind": "room",
-      "id": "corr_w"
-     }
-    },
-    {
-     "id": "w20",
-     "from": 0,
-     "to": 1.4,
-     "kind": "partition",
-     "thickness": 0.12,
-     "neg": {
-      "kind": "room",
-      "id": "corr_w"
-     },
-     "pos": {
-      "kind": "room",
-      "id": "sala"
-     }
-    },
-    {
-     "id": "w21",
-     "from": 0,
-     "to": 1.4,
-     "kind": "partition",
-     "thickness": 0.12,
-     "neg": {
-      "kind": "room",
-      "id": "corr_e"
-     },
-     "pos": {
-      "kind": "room",
-      "id": "sala"
-     }
-    },
-    {
-     "id": "w22",
-     "from": 0,
-     "to": 4,
-     "kind": "exterior",
-     "thickness": 0.3,
-     "neg": {
-      "kind": "outdoor",
-      "id": "deck"
-     },
-     "pos": {
-      "kind": "room",
-      "id": "corr_e"
-     }
-    },
-    {
      "id": "w23",
+     "from": 0,
+     "to": 4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "deck"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "corr_w"
+     }
+    },
+    {
+     "id": "w24",
+     "from": 0,
+     "to": 1.4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "corr_w"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w25",
+     "from": 0,
+     "to": 1.4,
+     "kind": "partition",
+     "thickness": 0.12,
+     "neg": {
+      "kind": "room",
+      "id": "corr_e"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "sala"
+     }
+    },
+    {
+     "id": "w26",
+     "from": 0,
+     "to": 4,
+     "kind": "exterior",
+     "thickness": 0.3,
+     "neg": {
+      "kind": "outdoor",
+      "id": "deck"
+     },
+     "pos": {
+      "kind": "room",
+      "id": "corr_e"
+     }
+    },
+    {
+     "id": "w27",
      "from": 0,
      "to": 9.352,
      "kind": "exterior",
@@ -3076,7 +3166,7 @@
      }
     },
     {
-     "id": "w24",
+     "id": "w28",
      "from": 0,
      "to": 2.4,
      "kind": "partition",
@@ -3091,7 +3181,7 @@
      }
     },
     {
-     "id": "w25",
+     "id": "w29",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -3106,7 +3196,7 @@
      }
     },
     {
-     "id": "w26",
+     "id": "w30",
      "from": 0,
      "to": 2.4,
      "kind": "exterior",
@@ -3121,7 +3211,7 @@
      }
     },
     {
-     "id": "w27",
+     "id": "w31",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -3136,7 +3226,7 @@
      }
     },
     {
-     "id": "w28",
+     "id": "w32",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -3151,7 +3241,7 @@
      }
     },
     {
-     "id": "w29",
+     "id": "w33",
      "from": 0,
      "to": 1.4,
      "kind": "partition",
@@ -3166,7 +3256,7 @@
      }
     },
     {
-     "id": "w30",
+     "id": "w34",
      "from": 0,
      "to": 5.599,
      "kind": "exterior",
@@ -3181,7 +3271,7 @@
      }
     },
     {
-     "id": "w31",
+     "id": "w35",
      "from": 0,
      "to": 4.001,
      "kind": "partition",
@@ -3196,7 +3286,7 @@
      }
     },
     {
-     "id": "w32",
+     "id": "w36",
      "from": 0,
      "to": 2.4,
      "kind": "exterior",
@@ -3210,7 +3300,7 @@
      }
     },
     {
-     "id": "w33",
+     "id": "w37",
      "from": 0,
      "to": 4.001,
      "kind": "exterior",
@@ -3224,7 +3314,7 @@
      }
     },
     {
-     "id": "w34",
+     "id": "w38",
      "from": 0,
      "to": 5.4,
      "kind": "exterior",
@@ -3238,7 +3328,7 @@
      }
     },
     {
-     "id": "w35",
+     "id": "w39",
      "from": 0,
      "to": 5.599,
      "kind": "exterior",
@@ -3281,31 +3371,26 @@
     {
      "index": 2,
      "wall": "w1",
-     "from": 7.2,
-     "to": 13,
+     "from": 7.15,
+     "to": 11.65,
      "center": [
-      10.1,
+      9.4,
       12
      ]
     },
     {
      "index": 3,
      "wall": "w1",
-     "from": 13.2,
-     "to": 14.6,
+     "from": 11.85,
+     "to": 14.85,
      "center": [
-      13.9,
+      13.35,
       12
-     ],
-     "hinge": [
-      13.2,
-      12
-     ],
-     "swingRoom": "deck"
+     ]
     },
     {
      "index": 4,
-     "wall": "w20",
+     "wall": "w24",
      "from": 0.25,
      "to": 1.15,
      "center": [
@@ -3320,7 +3405,7 @@
     },
     {
      "index": 5,
-     "wall": "w21",
+     "wall": "w25",
      "from": 0.25,
      "to": 1.15,
      "center": [
@@ -3335,7 +3420,7 @@
     },
     {
      "index": 6,
-     "wall": "w18",
+     "wall": "w22",
      "from": 0.8,
      "to": 1.6,
      "center": [
@@ -3350,7 +3435,7 @@
     },
     {
      "index": 7,
-     "wall": "w17",
+     "wall": "w21",
      "from": 1.35,
      "to": 2.25,
      "center": [
@@ -3365,7 +3450,7 @@
     },
     {
      "index": 8,
-     "wall": "w11",
+     "wall": "w15",
      "from": 1.251,
      "to": 2.151,
      "center": [
@@ -3380,7 +3465,7 @@
     },
     {
      "index": 9,
-     "wall": "w10",
+     "wall": "w14",
      "from": 0.25,
      "to": 1.15,
      "center": [
@@ -3395,7 +3480,22 @@
     },
     {
      "index": 10,
-     "wall": "w14",
+     "wall": "w6",
+     "from": 1,
+     "to": 1.8,
+     "center": [
+      -2.364,
+      3.781
+     ],
+     "hinge": [
+      -2.711,
+      3.981
+     ],
+     "swingRoom": "wc_suite"
+    },
+    {
+     "index": 11,
+     "wall": "w18",
      "from": 2.9,
      "to": 3.9,
      "center": [
@@ -3409,8 +3509,8 @@
      "swingRoom": "patio"
     },
     {
-     "index": 11,
-     "wall": "w24",
+     "index": 12,
+     "wall": "w28",
      "from": 0.8,
      "to": 1.6,
      "center": [
@@ -3424,8 +3524,8 @@
      "swingRoom": "lavandaria"
     },
     {
-     "index": 12,
-     "wall": "w27",
+     "index": 13,
+     "wall": "w31",
      "from": 1.551,
      "to": 2.451,
      "center": [
@@ -3439,8 +3539,8 @@
      "swingRoom": "escritorio"
     },
     {
-     "index": 13,
-     "wall": "w29",
+     "index": 14,
+     "wall": "w33",
      "from": 0.2,
      "to": 1.2,
      "center": [
@@ -3454,8 +3554,8 @@
      "swingRoom": "brincar"
     },
     {
-     "index": 14,
-     "wall": "w26",
+     "index": 15,
+     "wall": "w30",
      "from": 1,
      "to": 2,
      "center": [
@@ -3469,8 +3569,8 @@
      "swingRoom": "patio"
     },
     {
-     "index": 15,
-     "wall": "w12",
+     "index": 16,
+     "wall": "w16",
      "from": 0.9,
      "to": 1.5,
      "center": [
@@ -3479,8 +3579,8 @@
      ]
     },
     {
-     "index": 16,
-     "wall": "w7",
+     "index": 17,
+     "wall": "w11",
      "from": 1.2,
      "to": 2.4,
      "center": [
@@ -3489,8 +3589,8 @@
      ]
     },
     {
-     "index": 17,
-     "wall": "w5",
+     "index": 18,
+     "wall": "w7",
      "from": 1.101,
      "to": 2.301,
      "center": [
@@ -3499,28 +3599,38 @@
      ]
     },
     {
-     "index": 18,
-     "wall": "w3",
-     "from": 1.3,
-     "to": 2.9,
-     "center": [
-      -3.427,
-      4.741
-     ]
-    },
-    {
      "index": 19,
-     "wall": "w4",
-     "from": 2.101,
-     "to": 3.301,
+     "wall": "w5",
+     "from": 0.4,
+     "to": 2,
      "center": [
-      -2.138,
-      1.572
+      -2.977,
+      5.52
      ]
     },
     {
      "index": 20,
-     "wall": "w32",
+     "wall": "w10",
+     "from": 0.7,
+     "to": 1.9,
+     "center": [
+      -0.926,
+      0.872
+     ]
+    },
+    {
+     "index": 21,
+     "wall": "w4",
+     "from": 1.1,
+     "to": 1.7,
+     "center": [
+      -3.264,
+      2.222
+     ]
+    },
+    {
+     "index": 22,
+     "wall": "w36",
      "from": 0.9,
      "to": 1.5,
      "center": [
@@ -3529,8 +3639,8 @@
      ]
     },
     {
-     "index": 21,
-     "wall": "w33",
+     "index": 23,
+     "wall": "w37",
      "from": 1.301,
      "to": 2.701,
      "center": [
@@ -3539,8 +3649,8 @@
      ]
     },
     {
-     "index": 22,
-     "wall": "w35",
+     "index": 24,
+     "wall": "w39",
      "from": 1.999,
      "to": 3.599,
      "center": [
@@ -3549,8 +3659,8 @@
      ]
     },
     {
-     "index": 23,
-     "wall": "w34",
+     "index": 25,
+     "wall": "w38",
      "from": 2,
      "to": 3.4,
      "center": [
@@ -3564,12 +3674,16 @@
     "y0": 0.222,
     "x1": 25.677,
     "y1": 22.799,
-    "area": 275.149,
+    "area": 275.15,
     "outline": [
      [
       [
        -4.477,
        2.922
+      ],
+      [
+       -2.052,
+       1.522
       ],
       [
        0.2,
@@ -3642,11 +3756,15 @@
       [
        -2.377,
        6.559
+      ],
+      [
+       -3.577,
+       4.481
       ]
      ]
     ]
    },
-   "interiorArea": 275.147,
+   "interiorArea": 275.148,
    "streetOutdoor": [
     "deck",
     "patio"
@@ -3734,7 +3852,14 @@
     [
      "room:suite",
      [
-      "room:corr_w"
+      "room:corr_w",
+      "room:wc_suite"
+     ]
+    ],
+    [
+     "room:wc_suite",
+     [
+      "room:suite"
      ]
     ],
     [
