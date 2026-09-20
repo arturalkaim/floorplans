@@ -6,7 +6,7 @@ validator tells you what is wrong with the house before you draw it.
 
 Seeded 2026-09-08 from the `casa-t3.html` artifact. v1 of this plan was
 reviewed (Claude + GPT-5.5 via PAL, same day); v2 records the decisions and
-the state of the build. **Status: M0–M3 built, 84 tests green.** Sections
+the state of the build. **Status: M0–M3 built, tests green.** Sections
 marked ▶ are open.
 
 ---
@@ -164,7 +164,7 @@ CLI: `floorplan plan.json --out plan.svg --lint`; exit 0 clean, 1 warning+,
 
 ## 9. Testing (as built)
 
-84 tests under `node --test`: geometry primitives, schema errors with paths,
+Tests under `node --test` cover: geometry primitives, schema errors with paths,
 grid compilation (L-shapes, voids, split rooms), wall derivation (segment
 splitting, T-junction merging, gaps vs exterior), clear-area exactness,
 opening resolution and every error, one minimal plan per rule, CLI exit

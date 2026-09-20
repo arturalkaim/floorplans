@@ -7,14 +7,23 @@ import {
   movableFixtures,
   projection,
 } from "floorplan";
-import type { Draggable, Model, Movable } from "floorplan";
+import type { Draggable, Finding, Model, Movable } from "floorplan";
 import { useEffect, useRef, useState } from "react";
+import type { RenderSettings } from "../lib/useFloorplan";
 
 interface Props {
   svg: string;
   model: Model;
   text: string;
-  scale: number;
+  /** the exact options `svg` was rendered with, so `projection` here agrees with the
+   *  transform the renderer used rather than one reconstructed from a subset of them */
+  render: RenderSettings;
+  /** the finding previewed from the findings panel (hover or click), if any: its
+   *  `rooms` get a highlight class via the room `<g data-id>` the SVG already emits */
+  highlight?: Finding | null;
+  /** the same finding's marker number, as drawn in the SVG (`String(i + 1)` in the
+   *  marker text); null when the finding fell outside `markFindings` and has no marker */
+  highlightNumber?: number | null;
   /** called once per gesture, before the first change, so undo has one entry per drag */
   onDragStart: () => void;
   /** set while the source does not parse: the drawing shown is the last one that did */
@@ -30,7 +39,8 @@ const THRESHOLD_PX = 3;
  * new coordinate, rewrites the source, and the ordinary pipeline redraws — so what you see
  * is always a pure function of the text in the editor.
  */
-export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange }: Props) {
+export function Drawing({ svg, model, text, render, highlight, highlightNumber, stale, onDragStart, onChange }: Props) {
+  const scale = render.scale;
   const host = useRef<HTMLDivElement>(null);
   const [hint, setHint] = useState<string | null>(null);
   const drag = useRef<{
@@ -81,6 +91,23 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
     }
   });
 
+  // links a findings-panel row back to the drawing: the room fill already carries
+  // `data-id` (src/svg.ts), and a marker's number is the text content of its `.mk`
+  // label — there is no `data-*` on the marker itself, so that text is the only handle.
+  useEffect(() => {
+    const root = host.current?.querySelector("svg");
+    if (!root) return;
+    for (const el of root.querySelectorAll(".hl-room, .hl-marker")) el.classList.remove("hl-room", "hl-marker");
+    for (const id of highlight?.rooms ?? []) {
+      root.querySelector(`.room[data-id="${CSS.escape(id)}"]`)?.classList.add("hl-room");
+    }
+    if (highlightNumber != null) {
+      for (const g of root.querySelectorAll(".finding")) {
+        if (g.querySelector(".mk")?.textContent === String(highlightNumber)) g.classList.add("hl-marker");
+      }
+    }
+  });
+
   /**
    * Client pixels to metres. The SVG node is looked up every time, never cached: each
    * redraw replaces it, and getScreenCTM() on the old detached node returns nonsense.
@@ -91,7 +118,7 @@ export function Drawing({ svg, model, text, scale, stale, onDragStart, onChange 
     const ctm = root.getScreenCTM();
     if (!ctm) return null;
     const p = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
-    return projection(model, { scale }).toModel(p.x, p.y) as [number, number];
+    return projection(model, render).toModel(p.x, p.y) as [number, number];
   };
 
   const along = (d: Draggable, m: [number, number]) => (d.axis === "v" ? m[0] : m[1]);

@@ -72,6 +72,10 @@ a { color: var(--accent); }
 .drawing-col { display: flex; flex-direction: column; gap: 16px; }
 .sheet-body { overflow-x: auto; padding: 14px; }
 .sheet-body svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+/* linked from a findings-panel row (see Drawing.tsx); .room[data-id] and the marker's
+   .mk text are the only handles the SVG exposes for this */
+.sheet-body .room.hl-room polygon { stroke: #e2451c; stroke-width: 3; fill-opacity: .4; }
+.sheet-body .finding.hl-marker circle { stroke: #e2451c; stroke-width: 2.5; r: 11; }
 
 textarea.source-text {
   display: block; width: 100%; border: 0; resize: vertical; background: transparent; color: var(--ink);
@@ -101,11 +105,17 @@ tfoot td { font-weight: 600; font-variant-numeric: tabular-nums; border-top: 1px
 
 /* findings */
 .findings { list-style: none; margin: 0; padding: 0; }
-.findings li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; padding: 10px 14px; border-bottom: 1px solid var(--rule-soft); border-left: 3px solid var(--sev); }
+.findings li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: start; gap: 4px 10px; padding: 10px 14px; border-bottom: 1px solid var(--rule-soft); border-left: 3px solid var(--sev); cursor: pointer; }
 .findings li:last-child { border-bottom: 0; }
+.findings li:hover, .findings li.active { background: var(--sev-bg); }
 .findings li.error { --sev: var(--sev-error); --sev-bg: var(--sev-error-bg); }
 .findings li.warning { --sev: var(--sev-warning); --sev-bg: var(--sev-warning-bg); }
 .findings li.info { --sev: var(--sev-info); --sev-bg: var(--sev-info-bg); }
+.findings .num {
+  grid-row: span 2; align-self: start; display: flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; border-radius: 50%; background: var(--sev); color: var(--sheet);
+  font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+}
 .chip { grid-row: span 2; align-self: start; font-family: var(--cond); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--sev); background: var(--sev-bg); padding: 3px 7px; white-space: nowrap; }
 .findings .rule { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
 .findings .msg { font-size: 13.5px; }

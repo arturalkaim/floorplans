@@ -10,7 +10,7 @@ house before you draw it. "Mermaid for floor plans."
 
 ```
 npm install          # dev deps only (typescript)
-npm run check        # typecheck + tests (node --test, 84 tests)
+npm run check        # typecheck + tests (node --test)
 npm run examples     # renders fixtures/*.json → examples/*.svg
 node src/bin.ts fixtures/casa-t3.json --out casa.svg --lint
 ```

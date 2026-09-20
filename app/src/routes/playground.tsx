@@ -1,6 +1,6 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { formatText } from "floorplan";
-import type { Severity } from "floorplan";
+import type { Finding, Severity } from "floorplan";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Drawing } from "../components/Drawing";
 import { EXAMPLES, byId } from "../lib/plans";
@@ -11,6 +11,9 @@ const DEFAULTS: Omit<Options, "theme"> = { scale: 40, areas: "clear", labels: "a
 /** how many steps of history to keep, each way */
 const HISTORY = 50;
 const EMPTY_HISTORY = { past: [] as string[], future: [] as string[] };
+/** mirrors src/rules.ts's SEVERITY_RANK: lower sorts first, and is what `markFindings`
+ *  filters against, so this is also the ordering `sortFindings` already returned findings in. */
+const SEVERITY_RANK: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
 
 /** Follows the page's resolved theme so the drawing inverts with it. */
 function useResolvedTheme(): "light" | "dark" {
@@ -42,6 +45,11 @@ export function Playground() {
   const [hist, setHist] = useState<{ past: string[]; future: string[] }>(EMPTY_HISTORY);
   const [opts, setOpts] = useState(DEFAULTS);
   const theme = useResolvedTheme();
+  // which finding row is previewed (hover) or pinned (click); pin wins so a click survives
+  // the pointer moving off the row
+  const [hoverFinding, setHoverFinding] = useState<number | null>(null);
+  const [pinFinding, setPinFinding] = useState<number | null>(null);
+  const activeFinding = pinFinding ?? hoverFinding;
 
   /**
    * The last outcome that parsed. Editing a number goes through states like `3.` that are
@@ -55,6 +63,8 @@ export function Playground() {
     if (example) {
       setText(example.source);
       setHist(EMPTY_HISTORY);
+      setPinFinding(null);
+      setHoverFinding(null);
     }
   }, [example]);
 
@@ -137,6 +147,15 @@ export function Playground() {
   const stale = outcome.ok
     ? undefined
     : `${outcome.title} — showing the last valid drawing · ${outcome.issues[0]?.message ?? ""}`;
+
+  // how many leading findings (in sortFindings order) floorplan() actually marked in the
+  // SVG — see src/index.ts's `marked` and src/svg.ts's marker loop; a row past this count
+  // has no marker to link to
+  const markThreshold = opts.mark;
+  const markedFindings =
+    shown && markThreshold !== "none"
+      ? shown.result.findings.filter((f) => SEVERITY_RANK[f.severity] <= SEVERITY_RANK[markThreshold]).length
+      : 0;
 
   // confirm the edit landed, once, when the document becomes valid again
   const [toast, setToast] = useState(false);
@@ -287,7 +306,9 @@ export function Playground() {
               svg={shown.result.svg}
               model={shown.result.model}
               text={text}
-              scale={opts.scale}
+              render={shown.render}
+              highlight={activeFinding !== null ? (shown.result.findings[activeFinding] ?? null) : null}
+              highlightNumber={activeFinding !== null && activeFinding < markedFindings ? activeFinding + 1 : null}
               stale={stale}
               onDragStart={mark}
               onChange={setText}
@@ -313,7 +334,16 @@ export function Playground() {
           )}
 
           {shown && <ScheduleTable schedule={shown.result.schedule} />}
-          {shown && <FindingsList findings={shown.result.findings} />}
+          {shown && (
+            <FindingsList
+              findings={shown.result.findings}
+              markedCount={markedFindings}
+              active={activeFinding}
+              onEnter={setHoverFinding}
+              onLeave={() => setHoverFinding(null)}
+              onToggle={(i) => setPinFinding((p) => (p === i ? null : i))}
+            />
+          )}
         </div>
       </div>
       {toast && (
@@ -375,7 +405,17 @@ function ScheduleTable({ schedule }: { schedule: Sched }) {
   );
 }
 
-function FindingsList({ findings }: { findings: Sched extends never ? never : import("floorplan").Finding[] }) {
+interface FindingsListProps {
+  findings: Finding[];
+  /** how many leading findings (sortFindings order) got a numbered marker in the SVG */
+  markedCount: number;
+  active: number | null;
+  onEnter: (i: number) => void;
+  onLeave: () => void;
+  onToggle: (i: number) => void;
+}
+
+function FindingsList({ findings, markedCount, active, onEnter, onLeave, onToggle }: FindingsListProps) {
   return (
     <section className="panel">
       <div className="panel-head">
@@ -389,7 +429,14 @@ function FindingsList({ findings }: { findings: Sched extends never ? never : im
       ) : (
         <ul className="findings">
           {findings.map((f, i) => (
-            <li key={i} className={f.severity}>
+            <li
+              key={i}
+              className={active === i ? `${f.severity} active` : f.severity}
+              onMouseEnter={() => onEnter(i)}
+              onMouseLeave={onLeave}
+              onClick={() => onToggle(i)}
+            >
+              {i < markedCount && <span className="num">{i + 1}</span>}
               <span className="chip">{f.severity}</span>
               <span className="rule">{f.rule}</span>
               <span className="msg">{f.message}</span>

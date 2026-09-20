@@ -1,8 +1,11 @@
-// Canonical formatting for plan documents. The playground rewrites the source on every
-// drag, so the document is kept in this form at all times and an edit is just
-// parse -> mutate -> format. JSON.stringify(v, null, 2) is unusable here: it puts every
-// number on its own line, exploding a four-corner polygon into thirteen. Coordinates are
-// read as rows, so arrays of numbers and arrays of points stay on one line while they fit.
+// Canonical formatting for plan documents. A drag edits the source in place via
+// jsonpos/edit splices — it does not reformat — so this is a separate, on-demand
+// canonicalization: given a parsed value, formatPlan always produces the same text
+// (indent 2, wrap at column 140, deterministic key order from the object), so it is
+// idempotent — formatting already-canonical output changes nothing.
+// JSON.stringify(v, null, 2) is unusable here: it puts every number on its own line,
+// exploding a four-corner polygon into thirteen. Coordinates are read as rows, so
+// arrays of numbers and arrays of points stay on one line while they fit.
 
 export interface FormatOptions {
   /** spaces per level (default 2) */
@@ -19,7 +22,7 @@ const isFlat = (v: unknown[]): boolean =>
 
 const isPointList = (v: unknown[]): boolean => v.length > 0 && v.every(isPoint);
 
-/** Format a parsed plan the way the fixtures are written. */
+/** Format a parsed plan into its canonical form (see header comment); not how any shipped fixture is written today. */
 export function formatPlan(value: unknown, opts: FormatOptions = {}): string {
   const step = " ".repeat(opts.indent ?? 2);
   const width = opts.width ?? 140;

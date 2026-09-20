@@ -7,10 +7,6 @@ export interface PlanIssueLike {
   message: string;
 }
 
-export type Outcome =
-  | { ok: true; result: FloorplanResult; exit: 0 | 1; worst: Severity | undefined }
-  | { ok: false; title: string; issues: PlanIssueLike[]; exit: 2 };
-
 export interface Options {
   scale: number;
   areas: NonNullable<RenderOptions["areas"]>;
@@ -18,6 +14,15 @@ export interface Options {
   mark: Severity | "none";
   theme: "light" | "dark";
 }
+
+/** The render options that shaped `result.svg`, kept as one object so a consumer that
+ *  needs to agree with the drawing's pixel math (e.g. `projection`) uses the exact same
+ *  values rather than reconstructing them and risking drift. */
+export type RenderSettings = Pick<Options, "scale" | "areas" | "labels" | "theme">;
+
+export type Outcome =
+  | { ok: true; result: FloorplanResult; exit: 0 | 1; worst: Severity | undefined; render: RenderSettings }
+  | { ok: false; title: string; issues: PlanIssueLike[]; exit: 2 };
 
 /**
  * The whole pipeline, recomputed from the text. Measured at 0.3-1.2 ms end to end, so
@@ -31,14 +36,12 @@ export function useFloorplan(text: string, opts: Options): Outcome {
     } catch (e) {
       return { ok: false, title: "Not valid JSON", issues: [{ path: "", message: (e as Error).message }], exit: 2 };
     }
+    const render: RenderSettings = { scale: opts.scale, areas: opts.areas, labels: opts.labels, theme: opts.theme };
     try {
-      const result = floorplan(doc, {
-        render: { scale: opts.scale, areas: opts.areas, labels: opts.labels, theme: opts.theme },
-        markFindings: opts.mark,
-      });
+      const result = floorplan(doc, { render, markFindings: opts.mark });
       const worst = worstSeverity(result.findings);
       const exit = worst === "error" || worst === "warning" ? 1 : 0;
-      return { ok: true, result, exit, worst };
+      return { ok: true, result, exit, worst, render };
     } catch (e) {
       if (e instanceof PlanError) return { ok: false, title: "Invalid plan", issues: e.issues, exit: 2 };
       return { ok: false, title: "Render failed", issues: [{ path: "", message: (e as Error).message }], exit: 2 };
