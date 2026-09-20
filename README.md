@@ -111,6 +111,13 @@ Rooms must tile the footprint exactly; walls are derived from shared edges.
 A void on the boundary is simply the shape of the building; an *enclosed* void is a
 `tiling.gap` error unless you declare it as an outdoor space (see below).
 
+Every object below (the top-level document, `walls`, `layout`, each room, each outdoor
+space, each opening and its `on`/`position`, each fixture) is checked against its known
+fields; a key that isn't one of them is a schema error, with a "did you mean" when it's
+close to a real field (`"positon"` → `did you mean "position"?`). A key prefixed with
+`_` or `x-` is exempt — use it for private notes or authoring-tool metadata
+(`"_note"`, `"x-generator"`) and it is silently ignored.
+
 ```jsonc
 {
   "title": "Casa T3",
