@@ -116,12 +116,12 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
   {
     statement: "room",
     syntax: `room <id> ["Name"] [<kind>] [<zone>] [${GEOM}] [habitable] [wet] [circulation]`,
-    doc: "one room; a bare word is a kind when it is one of the room kinds, otherwise a zone",
+    doc: "one room; the two bare words are the kind then the zone, and the kind must be a real one",
     tokens: [
       { token: "<id>", field: "level.rooms", required: true, doc: "room id, unique on its level" },
       { token: '"Name"', field: "room.name", required: false, doc: "display name; default the id" },
-      { token: "<kind>", field: "room.kind", required: false, doc: "one of the room kinds; default other" },
-      { token: "<zone>", field: "room.zone", required: false, doc: "fill-colour label; or zone:<z> when the zone is also a kind name" },
+      { token: "<kind>", field: "room.kind", required: false, doc: "one of the room kinds, and a word that is not one is an error, not a zone; default other" },
+      { token: "<zone>", field: "room.zone", required: false, doc: "fill-colour label, after the kind; zone:<z> when the room has no kind" },
       { token: "rect <x>,<y> <w>x<h>", field: "room.rect", required: false, doc: "metres" },
       { token: "poly <x>,<y> …", field: "room.poly", required: false, doc: "corners; may contain arc tokens" },
       { token: "habitable", field: "room.habitable", required: false, doc: "override; `habitable:false` to deny it" },

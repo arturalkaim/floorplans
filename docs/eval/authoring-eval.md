@@ -142,7 +142,7 @@ What it does establish, and these are not nothing:
 
 ## 5. What would change the conclusion
 
-A cold-agent run: give a fresh session only `floorplan --schema=dsl` (1 387 tokens) and the
+A cold-agent run: give a fresh session only `floorplan --schema=dsl` (1 388 tokens) and the
 same twenty briefs, and count again. If the DSL's first-time failure rate is materially
 worse than JSON's there, the right response is not to drop the DSL but to spend the
 difference on the schema output — the two defects found here were both cases where the

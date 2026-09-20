@@ -1,8 +1,11 @@
 # floorplan
 
-Declarative floor-plan renderer and linter. A JSON description of rooms and
-openings becomes a scaled SVG, and a validator tells you what is wrong with the
-house before you draw it. "Mermaid for floor plans."
+Declarative floor-plan renderer and linter. A description of rooms and openings
+becomes a scaled SVG, and a validator tells you what is wrong with the house
+before you draw it. "Mermaid for floor plans."
+
+Write the plan as JSON, or in the [line DSL](#the-line-dsl) — one entity per
+line, about half the tokens, and the same document either way.
 
 - Rooms in, walls derived, openings attached to walls, findings out.
 - Zero runtime dependencies. ESM + TypeScript. `render` returns a string; no DOM.
@@ -15,13 +18,20 @@ npm run examples     # renders fixtures/*.json → examples/*.svg
 node src/bin.ts fixtures/casa-t3.json --out casa.svg --lint
 ```
 
-**If you are an agent authoring or editing a plan**, load `floorplan --schema`
-(the field list, generated from the parser — 2 459 tokens JSON, `o200k_base`,
-covering all 14 objects and 71 fields; `--schema=md` prints the same table for
-a human) and `floorplan <plan.json> --lint` (what is wrong with a document you
-already have) instead of this README's prose. Both are generated from the
-library itself, so neither can list a field or a rule the parser and linter
-do not actually have.
+**If you are an agent authoring or editing a plan**, load one of the generated
+schemas instead of this README's prose, and then `floorplan <plan> --lint` for
+what is wrong with a document you already have:
+
+| load | what it is | tokens |
+|---|---|---:|
+| `floorplan --schema` | the JSON field list — all 14 objects and 73 fields, with types, enums and one-sentence docs | 2 554 |
+| `floorplan --schema=md` | the same table, for a human | 2 200 |
+| `floorplan --schema=dsl` | the line DSL's grammar: every statement, and the token that writes every one of those 73 fields | 1 388 |
+
+`--schema=dsl` is the cheapest way in and the one to prefer when you are writing
+a plan from scratch, because the documents it teaches you to write are about
+half the size too. All three are generated from the library itself, so none can
+list a field, a token or a rule the parser and linter do not actually have.
 
 ## Playground app
 
@@ -113,8 +123,12 @@ floorplan <plan.json> [--out plan.svg] [--level id] [--lint]
                       [--areas clear|centreline|none] [--mark error|warning|info|none]
 floorplan set <plan.json> <path> <value> [--json] [--dry-run]
 floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
-floorplan --schema[=md]
+floorplan fmt <plan> [--to json|dsl] [--out file] [--stdout] [--dry-run]
+floorplan --schema[=md|=dsl]
 ```
+
+A plan file may be JSON or the line DSL, and every command takes either: the first
+non-space character decides, so `floorplan plan.dsl --lint` and `--json` need no flag.
 
 Exit codes: `0` clean or info only, `1` findings at warning or above, `2` usage or schema error.
 
@@ -127,7 +141,14 @@ finding shows `—`.
 `--schema` needs no input file: it prints every object's field list — name, type,
 required, enum values, one-sentence doc, and mutual exclusions — read straight from the
 table the parser itself validates against (see "Plan format" below). Default is compact
-JSON, one field per line; `--schema=md` prints the same table as Markdown.
+JSON, one field per line; `--schema=md` prints the same table as Markdown, and
+`--schema=dsl` prints the line DSL's grammar (see "The line DSL" below).
+
+`fmt` canonicalises a plan and converts it between the two syntaxes. Without `--to` the
+file keeps the syntax it is in; `--out` writes somewhere else, which is what a conversion
+usually wants (`floorplan fmt plan.json --to dsl --out plan.dsl`); `--stdout` and
+`--dry-run` print the result and write nothing. Like `set` and `patch`, it validates
+before it writes, so a file is replaced only once its replacement is known good.
 
 #### `--json`: findings first
 
@@ -275,6 +296,9 @@ cannot get a plan at all should be told so unmistakably.
 
 ## Plan format
 
+This section is the JSON document: the canonical model, and what both syntaxes mean. The
+[line DSL](#the-line-dsl) is the other way to write exactly this, and compiles to it.
+
 Coordinates are metres on **wall centrelines**, y grows downwards (north up).
 Rooms must tile the footprint exactly; walls are derived from shared edges.
 A void on the boundary is simply the shape of the building; an *enclosed* void is a
@@ -415,18 +439,25 @@ chosen for the reader who pays per token:
 
 Measured with the `o200k_base` BPE, this repository's seven fixtures:
 
-| fixture | before | canonical | as shipped, with `rect` | lines (old formatter → now) |
-|---|---:|---:|---:|---|
-| casa-t3 | 2 322 | 1 687 | **1 501** (−35 %) | 141 → 49 |
-| apartment-t2 | 1 079 | 794 | 794 (−26 %) | 74 → 38 |
-| casa-piscina | 1 169 | 868 | 868 (−26 %) | 47 → 46 |
-| quinta | 1 042 | 791 | 763 (−27 %) | 50 → 44 |
-| casa-patio | 805 | 607 | 585 (−27 %) | 42 → 36 |
-| broken | 677 | 483 | 411 (−39 %) | 23 → 23 |
-| cabin | 644 | 473 | 429 (−33 %) | 41 → 21 |
-| **all seven** | **7 738** | **5 703** | **5 351 (−31 %)** | 418 → 257 |
-| moradia-2-pisos | — | — | **1 594** | 94 |
-| broken-levels | — | — | **770** | 62 |
+| fixture | before | canonical | as shipped, with `rect` | as the line DSL | lines (old formatter → now) |
+|---|---:|---:|---:|---:|---|
+| casa-t3 | 2 322 | 1 687 | **1 502** (−35 %) | **788** (−48 %) | 141 → 49 → 40 |
+| apartment-t2 | 1 079 | 794 | 794 (−26 %) | **361** (−55 %) | 74 → 38 → 27 |
+| casa-piscina | 1 169 | 868 | 866 (−26 %) | **478** (−45 %) | 47 → 46 → 30 |
+| quinta | 1 042 | 791 | 767 (−26 %) | **380** (−50 %) | 50 → 44 → 29 |
+| casa-patio | 805 | 607 | 585 (−27 %) | **272** (−54 %) | 42 → 36 → 22 |
+| broken | 677 | 483 | 411 (−39 %) | **205** (−50 %) | 23 → 23 → 18 |
+| cabin | 644 | 473 | 417 (−35 %) | **196** (−53 %) | 41 → 21 → 14 |
+| **all seven** | **7 738** | **5 703** | **5 342 (−31 %)** | **2 680 (−65 %)** | 418 → 257 → 180 |
+| moradia-2-pisos | — | — | **1 594** | **849** (−47 %) | 94 → 56 |
+| broken-levels | — | — | **770** | — | 62 |
+
+The DSL column is `floorplan fmt <fixture> --to dsl` on each one, measured with the same
+`o200k_base` BPE. broken-levels has no DSL column because it carries an `x-`/`_` private
+key, which is the one thing the DSL has no spelling for (see **The line DSL**). The
+review's own hand-written casa-t3 sample (`docs/agent-review.md`, 733 tokens) parses in
+this grammar and prints back at exactly 733; the shipped fixture is 788 because it also
+authors `swingInto` on all thirteen doors, `units` and `north`, which the sample left out.
 
 The two-storey house costs 1 594 tokens — 6 % more than casa-t3's single storey for twice
 the building, because a level is a block header rather than a second document. A
@@ -729,6 +760,212 @@ Everything else is judged per level.
 
 Thresholds are options on `analyze(plan, rules)`; `stairPitch` and `minHeadroom` are
 conventions rather than a code, which is exactly why they are options.
+
+## The line DSL
+
+The same document, one entity per line. It is an **authoring** syntax: it compiles to the
+JSON above, and the geometry, the rules and the drawing never learn which one you wrote.
+
+```
+plan "Cabana" walls 0.2/0.1
+
+room sala "Sala e cozinha" living rect 0,0 5x4
+room wc "Casa de banho" wc rect 5,0 1.2x2
+room arrumos "Arrumos" storage rect 5,2 1.2x2
+outdoor deck "Deck" rect 0,4 5x2
+
+door deck>sala at:0.9,4 w0.9 hinge:start swing:sala
+door sala>wc @-0.5 w0.7 hinge:end swing:wc
+door sala>arrumos @0.5 w0.7 hinge:start swing:arrumos
+window sala.north @2.5 w2.4
+window deck>sala @3.4 w2 on:sala.south
+window sala.west w1.2
+window wc.east w0.6
+```
+
+That is `fixtures/cabin.dsl`, the exact twin of `fixtures/cabin.json`: 196 tokens against
+417, and a test renders both and compares the SVG byte for byte. `fixtures/casa-t3.dsl`
+and `fixtures/moradia-2-pisos.dsl` are the other two.
+
+**Which syntax a file is in is decided by its first non-space character**: `{` is JSON,
+anything else is the DSL. Every entry point sniffs — `parse()`, `floorplan()`, `lint()`,
+every CLI command, the playground editor — so a `.dsl` file needs no flag anywhere, and a
+JSON document behaves exactly as it always did, down to the byte.
+
+`floorplan fmt <file> --to json|dsl` converts, and the **JSON | DSL** toggle above the
+playground editor does the same in the browser. The conversion preserves *meaning*, not
+your choice between synonyms: JSON has two spellings for an opening's position (`2` and
+`{"from":"start","distance":2}`) and two for a centred one (`"center"` and nothing at
+all), `parse()` folds each pair together, and the DSL has one spelling for each, so a
+round trip picks it. The one thing it cannot carry is a private `_`/`x-` key; `toDsl`
+refuses such a document rather than dropping the key.
+
+### Editing, findings and ids
+
+- **A finding's `path` is unchanged** — still `openings[3].width`, still the JSON path,
+  because that is the contract. A DSL document's findings gain **`line`** beside it, which
+  is the address worth having when one entity is one line.
+- **`set` and drags splice one token.** `floorplan set plan.dsl openings[3].width 1.1`
+  resolves the JSON path to the token on its line and replaces exactly that, leaving the
+  rest of the line and every other line alone — the line-based twin of what `jsonpos`
+  does for JSON. `applyDrag`/`applyMove` go through the same primitive, so dragging a wall
+  in the playground rewrites the room's `rect` in place.
+- `patch`'s `set` op works the same way. `remove`, `append` and `insert` do not: adding or
+  removing an entity in the DSL is adding or removing a whole line in a group whose place
+  the printer decides, which is `fmt`'s job. They say so and write nothing.
+- **Ids are identical.** A DSL document and its JSON twin synthesise the same
+  `door:hall-wc:0` — the rule in **Stable ids** is applied after the compile, to the same
+  document, and a test checks the ids agree fixture by fixture.
+
+### The grammar
+
+Printed by `floorplan --schema=dsl` (1 388 tokens) and generated below from the same
+table, so neither can describe a token the parser does not take. `[...]` is optional.
+
+<!-- generated from DSL_SCHEMA by test/readme-dsl.test.ts; run it with UPDATE_README=1 after a grammar change -->
+
+```
+plan ["Title"] [units:m] [walls <ext>/<part>] [north <deg>] [stack <id>,…]
+    document header; every part is optional, so a plan may have no plan line at all
+
+walls <ext>/<part> | walls exterior:<n> | walls partition:<n>
+    wall thicknesses; the canonical printer folds this onto the plan line
+
+north <deg>
+    bearing of "up" in degrees; the canonical printer folds this onto the plan line
+
+grid cols <n>,… rows <n>,…
+    the shared track grid every level's layout may sit on
+
+level <id> ["Name"] [h<height>] [ground]
+    a storey header: every statement after it belongs to that level, until the next one
+
+room <id> ["Name"] [<kind>] [<zone>] [rect <x>,<y> <w>x<h> | poly <x>,<y> …] [habitable] [wet] [circulation]
+    one room; the two bare words are the kind then the zone, and the kind must be a real one
+
+outdoor <id> ["Name"] [covered] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
+    a terrace, courtyard or garden: outside, but not the street
+
+void <id> ["Name"] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
+    a hole in this storey's floor: a stairwell, or the void over a double-height room
+
+layout [cols <n>,…] [rows <n>,…]
+        <cell> <cell> …   (one indented row per grid row)
+    the one multi-line statement: an ASCII picture placing already-declared spaces on the track grid
+
+<type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at:<x>,<y>]  w<width>
+        [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [id:<id>]
+    one opening. `<room>[.<side>]` alone is the short form of `exterior><room>` with an `on`
+
+fixture <type> in:<space> (at <x>,<y> size <w>x<h> | poly <x>,<y> …) ["Name"] [depth:<n>] [id:<id>]
+    a thing standing in a space: a pool, a bath, a counter
+
+stairs|lift|ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)
+        at <level> in:<space> rect <x>,<y> <w>x<h> | poly <x>,<y> …      (one indented line per level served)
+    vertical circulation: the only entity that spans levels, joined by its id and never by overlap
+
+# anything after a # is ignored, as is a blank line
+    comments and blank lines are not part of the document and are dropped by the printer
+
+a poly element is a corner or an arc to it:
+    <x>,<y>
+    arc <x>,<y> r<radius> [cw|ccw] [large]
+```
+
+Every field of the JSON schema, and the token that writes it — all 73 of them, and
+`test/dsl-schema.test.ts` fails if the parser grows a field with no spelling here.
+
+| field | token |
+|---|---|
+| `plan.title` | `"Title"` |
+| `plan.units` | `units:m` |
+| `plan.walls` | `walls <ext>/<part>` |
+| `plan.north` | `north <deg>` · `<deg>` |
+| `plan.stack` | `stack <id>,…` |
+| `plan.levels` | `<id>` |
+| `plan.vertical` | `stairs|lift|ramp` |
+| `plan.grid` | `grid` |
+| `walls.exterior` | `<ext>` |
+| `walls.partition` | `<part>` |
+| `grid.cols` | `cols <n>,…` |
+| `grid.rows` | `rows <n>,…` |
+| `layout.cols` | `cols <n>,…` |
+| `layout.rows` | `rows <n>,…` |
+| `layout.areas` | `<cell> …` |
+| `level.name` | `"Name"` |
+| `level.height` | `h<height>` |
+| `level.ground` | `ground` |
+| `level.rooms` | `<id>` |
+| `level.outdoor` | `<id>` |
+| `level.voids` | `<id>` |
+| `level.layout` | `layout` |
+| `level.openings` | `<a>><b>` |
+| `level.fixtures` | `fixture` |
+| `room.poly` | `poly <x>,<y> …` |
+| `room.rect` | `rect <x>,<y> <w>x<h>` |
+| `room.kind` | `<kind>` |
+| `room.name` | `"Name"` |
+| `room.zone` | `<zone>` |
+| `room.habitable` | `habitable` |
+| `room.wet` | `wet` |
+| `room.circulation` | `circulation` |
+| `outdoor.poly` | `poly <x>,<y> …` |
+| `outdoor.rect` | `rect <x>,<y> <w>x<h>` |
+| `outdoor.name` | `"Name"` |
+| `outdoor.covered` | `covered` |
+| `void.poly` | `poly <x>,<y> …` |
+| `void.rect` | `rect <x>,<y> <w>x<h>` |
+| `void.name` | `"Name"` |
+| `opening.id` | `id:<id>` |
+| `opening.type` | `<type>` |
+| `opening.between` | `<a>><b>` |
+| `opening.width` | `w<width>` |
+| `opening.position` | `@<d>` |
+| `opening.on` | `on:<room>` |
+| `opening.at` | `at:<x>,<y>` |
+| `opening.hinge` | `hinge:start|end` |
+| `opening.swingInto` | `swing:<space>` |
+| `opening.entrance` | `entrance` |
+| `opening.glazed` | `glazed` |
+| `opening.on.room` | `on:<room>` |
+| `opening.on.side` | `on:<room>.<side>` |
+| `opening.on.near` | `near:<x>,<y>` |
+| `opening.position.from` | `@-<d>` |
+| `opening.position.distance` | `@-<d>` |
+| `fixture.id` | `id:<id>` |
+| `fixture.type` | `<type>` |
+| `fixture.in` | `in:<space>` |
+| `fixture.poly` | `poly <x>,<y> …` |
+| `fixture.at` | `at <x>,<y>` |
+| `fixture.size` | `size <w>x<h>` |
+| `fixture.depth` | `depth:<n>` |
+| `fixture.name` | `"Name"` |
+| `vertical.id` | `<id>` |
+| `vertical.type` | `stairs|lift|ramp` |
+| `vertical.name` | `"Name"` |
+| `vertical.at` | `at <level> …` |
+| `vertical.up` | `up:<deg>` |
+| `vertical.risers` | `risers:<n>` |
+| `vertical.footprint.level` | `at <level>` |
+| `vertical.footprint.in` | `in:<space>` |
+| `vertical.footprint.poly` | `poly <x>,<y> …` |
+| `vertical.footprint.rect` | `rect <x>,<y> <w>x<h>` |
+
+<!-- /generated -->
+
+Numbers print shortest round-trip, in metres. A boolean is its own name for true and
+`name:false` for false. `#` starts a comment; blank lines and comments are not part of the
+document and the printer drops them. `layout` and the vertical statements are the only
+ones that continue onto indented lines.
+
+### What it cost, and what it is worth
+
+`docs/eval/authoring-eval.md` is the eval `docs/agent-review.md` §C asked for: twenty
+briefs written by hand in both syntaxes, schema failures counted. **0 of 20 in each**, and
+the twenty pairs produced the same building every time — identical rule findings and
+identical room polygons — for 9 936 tokens of JSON against 4 757 of DSL. That write-up is
+also honest about why 0–0 is weaker evidence than it looks, and about the two real defects
+a follow-up probe found in the grammar (one of them silent) before they were fixed.
 
 ## Areas
 
