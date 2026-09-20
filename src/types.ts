@@ -64,6 +64,13 @@ export interface Fixture {
   poly: Pt[];
   /** pools only, metres */
   depth: number | undefined;
+  /**
+   * Set when this fixture is not authored in `fixtures` at all but stands for a `Vertical`
+   * on this level. A stair is an obstacle exactly as a `stairs` fixture is, so it reuses
+   * that machinery — but `index` then addresses nothing in the document, so an edit or a
+   * finding must name the vertical element instead.
+   */
+  vertical: string | undefined;
 }
 
 export type OpeningType = "door" | "window" | "cased";
@@ -92,16 +99,88 @@ export interface Opening {
   entrance: boolean; // doors only: marks the main entrance
 }
 
+/**
+ * A declared absence of floor on one level: a stairwell, a double-height room, the
+ * underside of a cantilever. The dual of an `Outdoor` space, which is a declared absence
+ * of roof — same mechanism, same owner union, so a cell inside the footprint that a void
+ * covers is not a `tiling.gap`.
+ */
+export interface Void {
+  id: string;
+  name: string;
+  poly: Pt[];
+}
+
+/** One storey. Everything that is drawn lives on exactly one of these. */
+export interface Level {
+  id: string;
+  name: string;
+  /** floor to floor, metres; only `stair.pitch`/`stair.headroom` need it */
+  height: number | undefined;
+  /** the level the street meets. Exactly one by default: `stack[0]` */
+  ground: boolean;
+  rooms: Room[];
+  outdoor: Outdoor[];
+  voids: Void[];
+  openings: Opening[];
+  fixtures: Fixture[];
+}
+
+export type VerticalType = "stairs" | "lift" | "ramp";
+
+/** One footprint of a vertical element, on one of the levels it serves. */
+export interface VerticalAt {
+  level: string;
+  /** the room or outdoor space you step off it into, on that level */
+  in: string;
+  poly: Pt[];
+}
+
+/**
+ * Vertical circulation: the only entity that spans levels. Matched between levels by its
+ * own `id` and never by footprint overlap — which is what lets `stair.misaligned` exist as
+ * a rule at all, and what stops a lift and the duct beside it being silently joined.
+ */
+export interface Vertical {
+  index: number; // position in the authored list, for error messages
+  id: string;
+  type: VerticalType;
+  name: string;
+  /** one footprint per level it serves, in stack order */
+  at: VerticalAt[];
+  /** bearing of travel upward, degrees clockwise from north */
+  up: number | undefined;
+  /** risers between the levels it joins: with `height`, gives going, pitch and headroom */
+  risers: number | undefined;
+}
+
 export interface Plan {
   title: string | undefined;
   units: "m";
   walls: { exterior: number; partition: number };
   north: number; // degrees clockwise from up
+  /**
+   * Did the document author a `levels` block? A document without one is normalised to a
+   * single level with the id GROUND_LEVEL, and this stays false — which is what keeps its
+   * findings, its schedule and every document path byte-identical to a plan written
+   * before levels existed. Nothing else may branch on the number of levels.
+   */
+  levelled: boolean;
+  /** every level, ground-up: the authored `stack` order */
+  levels: Level[];
+  vertical: Vertical[];
+  /** optional shared track grid; a level using it supplies only `layout.areas` */
+  grid: { cols: number[]; rows: number[] } | undefined;
+  // The ground (or only) level's collections, so a single-level consumer reads a Plan
+  // exactly as it did before levels existed.
   rooms: Room[];
   outdoor: Outdoor[];
   openings: Opening[];
   fixtures: Fixture[];
 }
+
+/** The id a document with no `levels` block is normalised onto. */
+export const GROUND_LEVEL = "ground";
 
 // ---------- derived ----------
 
@@ -118,6 +197,7 @@ export interface Plan {
 export type Owner =
   | { kind: "room"; id: string }
   | { kind: "outdoor"; id: string }
+  | { kind: "void"; id: string }
   | { kind: "exterior" }
   | { kind: "gap" }
   | { kind: "overlap"; ids: string[] };
@@ -126,14 +206,18 @@ export const EXTERIOR: Owner = { kind: "exterior" };
 export const GAP: Owner = { kind: "gap" };
 export const roomOwner = (id: string): Owner => ({ kind: "room", id });
 export const outdoorOwner = (id: string): Owner => ({ kind: "outdoor", id });
+export const voidOwner = (id: string): Owner => ({ kind: "void", id });
+
+/** every owner kind that names a declared space in the document */
+const DECLARED = new Set(["room", "outdoor", "void"]);
 
 /** the space id an owner names, or undefined for the exterior, a gap or an overlap */
-export const ownerId = (o: Owner): string | undefined => (o.kind === "room" || o.kind === "outdoor" ? o.id : undefined);
+export const ownerId = (o: Owner): string | undefined => (DECLARED.has(o.kind) ? (o as { id: string }).id : undefined);
 
 /** Stable key for maps and sets. Kinds are distinct, so a room "exterior" is not the street. */
 export const ownerKey = (o: Owner): string =>
-  o.kind === "room" || o.kind === "outdoor"
-    ? `${o.kind}:${o.id}`
+  DECLARED.has(o.kind)
+    ? `${o.kind}:${(o as { id: string }).id}`
     : o.kind === "overlap"
       ? `overlap:${[...o.ids].sort().join("+")}`
       : o.kind;
@@ -150,7 +234,15 @@ export const sameOwner = (a: Owner, b: Owner): boolean => ownerKey(a) === ownerK
  */
 export const isOpenSky = (o: Owner): boolean => o.kind === "exterior" || o.kind === "outdoor";
 
-/** No floor: open sky, or an undeclared hole. Two voids never have a wall between them. */
+/**
+ * No floor and no roof: open sky, or an undeclared hole. Two of these never have a wall
+ * between them.
+ *
+ * INVARIANT: a declared `void` is floorless but is NOT one of these, and deliberately so.
+ * It has the building over it, so the wall beside a stairwell derives as a partition, the
+ * envelope wall still runs past a double-height space that reaches the façade, and a
+ * window onto a void is still `window.not_exterior`.
+ */
 export const isVoid = (o: Owner): boolean => isOpenSky(o) || o.kind === "gap";
 
 /**
@@ -215,16 +307,23 @@ export interface FixtureModel {
   area: number;
 }
 
-export interface Model {
-  plan: Plan;
+/** One level, derived. Everything here is computed from that level alone. */
+export interface LevelModel {
+  level: Level;
   rooms: RoomModel[];
   walls: WallSegment[];
   openings: ResolvedOpening[];
+  /** authored fixtures, plus one per `Vertical` standing on this level */
   fixtures: FixtureModel[];
-  envelope: { x0: number; y0: number; x1: number; y1: number; area: number };
   /**
-   * Access graph, keyed by `ownerKey(owner)`: every room, every outdoor space and the
-   * street ("exterior") is a node; doors and cased openings are the edges.
+   * The level's outline and bounding box. `outline` is the real boundary of the floor
+   * plate — one ring per connected piece — which is what the ghost layer under an upper
+   * level needs and what a bbox cannot give.
+   */
+  envelope: { x0: number; y0: number; x1: number; y1: number; area: number; outline: Pt[][] };
+  /**
+   * Access graph within this level, keyed by `ownerKey(owner)`: every room, every outdoor
+   * space and the street ("exterior") is a node; doors and cased openings are the edges.
    */
   access: Map<string, Set<string>>;
   /**
@@ -235,16 +334,49 @@ export interface Model {
   interiorArea: number;
 }
 
+/**
+ * The whole building. Its own `rooms`, `walls`, `openings`, `fixtures`, `envelope`,
+ * `access`, `streetOutdoor` and `interiorArea` are the **ground level's**, so a
+ * single-level plan reads exactly as it did before levels existed; `levels` holds every
+ * storey and `building` holds what only exists across them.
+ */
+export interface Model extends LevelModel {
+  plan: Plan;
+  /** every level, ground-up */
+  levels: LevelModel[];
+  building: {
+    /**
+     * The combined access graph. Nodes are `${levelId}/${ownerKey(owner)}` except the
+     * street, which is the single node "exterior" however many levels reach it; each
+     * vertical element joins the nodes of the levels it serves.
+     */
+    access: Map<string, Set<string>>;
+    /** the levels' footprints, unioned per level then summed: gross floor area */
+    grossArea: number;
+    /** the largest single level footprint: what the building stands on */
+    footprint: number;
+    storeys: number;
+  };
+}
+
 export type Severity = "error" | "warning" | "info";
 
 export interface Finding {
   rule: string;
   severity: Severity;
   message: string;
+  /**
+   * Which level produced it. Absent on a building-wide finding, and absent on *every*
+   * finding of a document that did not author `levels` — a single-level plan's findings
+   * are byte-identical to what they were before levels existed.
+   */
+  level?: string;
   at?: Pt;
   rooms?: string[];
   opening?: number;
   fixture?: number;
+  /** id of the vertical element a stair rule is about */
+  vertical?: string;
 }
 
 export interface Analysis {

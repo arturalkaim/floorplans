@@ -5,7 +5,7 @@ import { RULES, ruleById } from "../src/catalogue.ts";
 import { floorplan } from "../src/index.ts";
 
 const SRC = new URL("../src/", import.meta.url);
-const FIXTURES = ["casa-t3", "casa-piscina", "quinta", "cabin", "broken", "apartment-t2", "casa-patio"];
+const FIXTURES = ["casa-t3", "casa-piscina", "quinta", "cabin", "broken", "apartment-t2", "casa-patio", "moradia-2-pisos", "broken-levels"];
 
 /**
  * Every rule id written in the library. A rule is named in exactly two places: as the
@@ -56,7 +56,7 @@ describe("rule catalogue is the documentation source", () => {
   });
 
   it("names a real option where it claims one is tunable", () => {
-    const known = new Set(["circulationShare", "minDimension", "doorMinWidth", "minClearance"]);
+    const known = new Set(["circulationShare", "minDimension", "doorMinWidth", "minClearance", "stairPitch", "minHeadroom"]);
     for (const r of RULES) if (r.option) assert.ok(known.has(r.option), `${r.id}: unknown option ${r.option}`);
   });
 });

@@ -29,7 +29,16 @@ export const RULES: readonly RuleDoc[] = [
   { id: "window.not_exterior", severity: "error", catches: "a window sits on an interior wall" },
   { id: "entrance.missing", severity: "error", catches: "no door leads to the street: to `\"exterior\"`, or to an outdoor space the street reaches. A door onto an enclosed courtyard is allowed and does not count" },
   { id: "space.no_access", severity: "error", catches: "a room has no door or cased opening" },
-  { id: "reach.unreachable", severity: "error", catches: "a room cannot be reached from the street, walking through rooms and through the outdoor spaces the street reaches" },
+  { id: "reach.unreachable", severity: "error", catches: "a room cannot be reached from the street, walking through rooms, through the outdoor spaces the street reaches, and up every stair, lift and ramp" },
+
+  // levels and vertical circulation, produced by checkRules()
+  { id: "level.unreachable", severity: "error", catches: "a level no stair, lift or ramp arrives on; the defining multi-level failure" },
+  { id: "stair.no_arrival", severity: "error", catches: "a vertical element's footprint is not inside the space its `in` names on that level, or it stands on one level only and joins nothing" },
+  { id: "stair.misaligned", severity: "warning", catches: "a vertical element's footprints on consecutive levels barely overlap, or do not overlap at all — it is not one shaft" },
+  { id: "structure.over_open_sky", severity: "warning", catches: "a room stands over no room on the level below: a cantilever, or a room that has lost its support" },
+  { id: "stair.pitch", severity: "info", catches: "with `risers` and the level's `height`: the flight's pitch or going is outside the comfortable range", option: "stairPitch" },
+  { id: "stair.headroom", severity: "info", catches: "with `risers`, `height` and `up`: the floor above stays closed too far up the flight to keep headroom", option: "minHeadroom" },
+  { id: "entrance.not_ground", severity: "info", catches: "a door opens to the outside on a level the street does not meet; mark that level `\"ground\": true` if the site slopes" },
   { id: "habitable.no_window", severity: "warning", catches: "a living space has no daylight" },
   { id: "wet.no_window", severity: "warning", catches: "a bathroom or WC has no window; plan extraction" },
   { id: "wet.opens_to_kitchen", severity: "warning", catches: "a WC door opens straight into a kitchen" },

@@ -1,6 +1,23 @@
 import { cellsToPolygons, normalizePoly, snap } from "./geometry.ts";
-import type { Fixture, FixtureType, Jamb, Opening, OpeningType, Outdoor, Plan, Pt, Room, RoomKind, Side } from "./types.ts";
-import { CIRCULATION_KINDS, HABITABLE_KINDS, WET_KINDS } from "./types.ts";
+import type {
+  Fixture,
+  FixtureType,
+  Jamb,
+  Level,
+  Opening,
+  OpeningType,
+  Outdoor,
+  Plan,
+  Pt,
+  Room,
+  RoomKind,
+  Side,
+  Vertical,
+  VerticalAt,
+  VerticalType,
+  Void,
+} from "./types.ts";
+import { CIRCULATION_KINDS, GROUND_LEVEL, HABITABLE_KINDS, WET_KINDS } from "./types.ts";
 
 export interface PlanIssue {
   path: string;
@@ -43,7 +60,11 @@ export const FIXTURE_TYPES: ReadonlySet<string> = new Set<FixtureType>([
   "stairs",
   "other",
 ]);
+export const VERTICAL_TYPES: ReadonlySet<string> = new Set<VerticalType>(["stairs", "lift", "ramp"]);
 const ID_RE = /^[a-z][a-z0-9_]*$/;
+
+/** the keys a level block may hold — also the keys a single-level document holds inline */
+const LEVEL_CONTENT_KEYS = ["rooms", "outdoor", "voids", "layout", "openings", "fixtures"] as const;
 
 type J = Record<string, unknown>;
 const isObj = (v: unknown): v is J => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -104,9 +125,6 @@ function checkKeys(path: string, obj: J, known: readonly string[], bad: (path: s
 export function parse(input: unknown): Plan {
   const issues: PlanIssue[] = [];
   const bad = (path: string, message: string) => issues.push({ path, message });
-  // ids whose poly was supplied but rejected; readPoly already reported why
-  const badPoly = new Set<string>();
-
   const doc: J = isObj(input) ? input : {};
   if (!isObj(input)) bad("", "plan must be a JSON object");
   if (typeof input === "string") {
@@ -118,7 +136,15 @@ export function parse(input: unknown): Plan {
     }
   }
 
-  checkKeys("", doc, ["title", "units", "walls", "north", "rooms", "outdoor", "layout", "openings", "fixtures"], bad);
+  const hasLevels = doc["levels"] !== undefined;
+  checkKeys(
+    "",
+    doc,
+    hasLevels
+      ? ["title", "units", "walls", "north", "stack", "levels", "vertical", "grid"]
+      : ["title", "units", "walls", "north", "stack", "levels", "vertical", "grid", ...LEVEL_CONTENT_KEYS],
+    bad,
+  );
 
   const title = typeof doc["title"] === "string" ? doc["title"] : undefined;
   if (doc["units"] !== undefined && doc["units"] !== "m") bad("units", 'only "m" is supported');
@@ -131,125 +157,355 @@ export function parse(input: unknown): Plan {
   const north = doc["north"] ?? 0;
   if (!isNum(north)) bad("north", "must be degrees clockwise from up");
 
-  // ---- rooms & outdoor (declarations) ----
-  const roomsIn = isObj(doc["rooms"]) ? doc["rooms"] : {};
-  if (!isObj(doc["rooms"])) bad("rooms", "must be an object keyed by room id");
-  const outdoorIn = isObj(doc["outdoor"]) ? doc["outdoor"] : {};
-  if (doc["outdoor"] !== undefined && !isObj(doc["outdoor"])) bad("outdoor", "must be an object keyed by id");
+  // ---- the shared track grid: the one thing levels hold in common (§2.2.2) ----
+  // It exists to make an upper floor's walls land on the lower floor's, which is what a
+  // two-storey house needs and what no per-level grid can guarantee.
+  let grid: { cols: number[]; rows: number[] } | undefined;
+  if (doc["grid"] !== undefined) {
+    const g = doc["grid"];
+    if (!isObj(g)) bad("grid", "must be an object { cols, rows }");
+    else {
+      checkKeys("grid", g, ["cols", "rows"], bad);
+      const cols = readTracks("grid.cols", g["cols"], bad);
+      const rows = readTracks("grid.rows", g["rows"], bad);
+      if (cols && rows) grid = { cols, rows };
+    }
+  }
+
+  // ---- levels ----
+  const levels: Level[] = [];
+  if (!hasLevels) {
+    // A document with no `levels` block is one level, normalised onto GROUND_LEVEL. It
+    // keeps every document path it had — `rooms.sala.poly[2][0]`, never
+    // `levels.ground.rooms…` — which is what makes every plan written before levels
+    // existed lint, render, format and edit byte-identically.
+    levels.push(parseLevelContent("", doc, GROUND_LEVEL, "Ground", undefined, true, grid, bad));
+  } else {
+    const levelsIn = doc["levels"];
+    if (!isObj(levelsIn)) {
+      bad("levels", "must be an object keyed by level id");
+    } else {
+      const ids = Object.keys(levelsIn);
+      if (ids.length === 0) bad("levels", "a plan needs at least one level");
+      for (const lid of ids) if (!ID_RE.test(lid)) bad(`levels.${lid}`, "id must match ^[a-z][a-z0-9_]*$");
+
+      // `stack` is ground-up order and the only source of it. It is optional because the
+      // document's own key order already says the same thing; when it is given it must
+      // name every level exactly once, so a typo cannot silently reorder the building.
+      let order = ids;
+      if (doc["stack"] !== undefined) {
+        const st = doc["stack"];
+        if (!Array.isArray(st) || !st.every((v) => typeof v === "string")) {
+          bad("stack", "must be an array of level ids, ground first");
+        } else {
+          const seen = new Set<string>();
+          (st as string[]).forEach((v, i) => {
+            if (!ids.includes(v)) bad(`stack[${i}]`, `unknown level ${JSON.stringify(v)}; expected one of ${ids.join(", ")}`);
+            else if (seen.has(v)) bad(`stack[${i}]`, `level ${JSON.stringify(v)} is listed twice`);
+            seen.add(v);
+          });
+          for (const lid of ids) if (!seen.has(lid)) bad("stack", `level ${JSON.stringify(lid)} is not in the stack`);
+          if (seen.size === ids.length && (st as string[]).length === ids.length) order = st as string[];
+        }
+      }
+
+      // the street meets stack[0] unless a level says otherwise; a sloping site may
+      // legitimately mark more than one
+      const marked = order.filter((lid) => isObj(levelsIn[lid]) && (levelsIn[lid] as J)["ground"] === true);
+      for (const lid of order) {
+        const v = levelsIn[lid];
+        if (!isObj(v)) {
+          bad(`levels.${lid}`, "must be an object");
+          continue;
+        }
+        const path = `levels.${lid}`;
+        checkKeys(path, v, ["name", "height", "ground", ...LEVEL_CONTENT_KEYS], bad);
+        const levelName = typeof v["name"] === "string" ? v["name"] : lid;
+        let height: number | undefined;
+        if (v["height"] !== undefined) {
+          if (!isNum(v["height"]) || v["height"] <= 0) bad(`${path}.height`, "must be a positive number (metres, floor to floor)");
+          else height = snap(v["height"] as number);
+        }
+        if (v["ground"] !== undefined && typeof v["ground"] !== "boolean") bad(`${path}.ground`, "must be boolean");
+        const ground = marked.length > 0 ? v["ground"] === true : lid === order[0];
+        levels.push(parseLevelContent(path, v, lid, levelName, height, ground, grid, bad));
+      }
+    }
+  }
+
+  // ---- vertical circulation: the only entity that spans levels (§2.2.3) ----
+  const levelIds = levels.map((l) => l.id);
+  const spacesOn = new Map(levels.map((l) => [l.id, new Set([...l.rooms.map((r) => r.id), ...l.outdoor.map((o) => o.id)])]));
+  const vertical: Vertical[] = [];
+  const verticalIn = doc["vertical"] ?? [];
+  if (!Array.isArray(verticalIn) && doc["vertical"] !== undefined) bad("vertical", "must be an array");
+  const verticalIds = new Set<string>();
+  (Array.isArray(verticalIn) ? verticalIn : []).forEach((v: unknown, i: number) => {
+    const path = `vertical[${i}]`;
+    if (!isObj(v)) {
+      bad(path, "must be an object");
+      return;
+    }
+    checkKeys(path, v, ["id", "type", "name", "at", "up", "risers"], bad);
+    const vid = v["id"];
+    if (typeof vid !== "string" || !ID_RE.test(vid)) {
+      bad(`${path}.id`, "a vertical element needs an id matching ^[a-z][a-z0-9_]*$; levels are joined by that id, never by footprint overlap");
+      return;
+    }
+    if (verticalIds.has(vid)) bad(`${path}.id`, `id ${JSON.stringify(vid)} is already used by another vertical element`);
+    verticalIds.add(vid);
+    const type = v["type"];
+    if (!VERTICAL_TYPES.has(type as string)) bad(`${path}.type`, `must be one of ${[...VERTICAL_TYPES].join(", ")}`);
+    const vName = typeof v["name"] === "string" ? v["name"] : String(type ?? vid).replace(/^./, (c) => c.toUpperCase());
+
+    let up: number | undefined;
+    if (v["up"] !== undefined) {
+      if (!isNum(v["up"])) bad(`${path}.up`, "must be a bearing in degrees clockwise from north");
+      else up = (((v["up"] as number) % 360) + 360) % 360;
+    }
+    let risers: number | undefined;
+    if (v["risers"] !== undefined) {
+      if (!isNum(v["risers"]) || !Number.isInteger(v["risers"]) || (v["risers"] as number) < 2)
+        bad(`${path}.risers`, "must be a whole number of risers, at least 2");
+      else risers = v["risers"] as number;
+    }
+
+    const atIn = v["at"];
+    if (!Array.isArray(atIn) || atIn.length === 0) {
+      bad(`${path}.at`, "must be a non-empty array of { level, in, rect | poly }, one per level it serves");
+      return;
+    }
+    const at: VerticalAt[] = [];
+    const seenLevels = new Set<string>();
+    atIn.forEach((a: unknown, j: number) => {
+      const ap = `${path}.at[${j}]`;
+      if (!isObj(a)) {
+        bad(ap, "must be an object { level, in, rect | poly }");
+        return;
+      }
+      checkKeys(ap, a, ["level", "in", "poly", "rect"], bad);
+      const lv = a["level"];
+      if (typeof lv !== "string" || !levelIds.includes(lv)) {
+        bad(`${ap}.level`, `must name a level; expected one of ${levelIds.join(", ")}`);
+        return;
+      }
+      if (seenLevels.has(lv)) bad(`${ap}.level`, `level ${JSON.stringify(lv)} is already served by this element`);
+      seenLevels.add(lv);
+      const host = a["in"];
+      if (typeof host !== "string" || !spacesOn.get(lv)!.has(host)) {
+        bad(`${ap}.in`, `must name a room or outdoor space on ${lv}; got ${JSON.stringify(host)}`);
+        return;
+      }
+      const hasPoly = a["poly"] !== undefined;
+      const hasRect = a["rect"] !== undefined;
+      if (hasPoly && hasRect) {
+        bad(ap, "has both a poly and a rect; use one");
+        return;
+      }
+      if (!hasPoly && !hasRect) {
+        bad(ap, "has no footprint: give a poly or a rect");
+        return;
+      }
+      const poly = hasPoly ? readPolyAt(`${ap}.poly`, a["poly"], bad) : readRectAt(`${ap}.rect`, a["rect"], bad);
+      if (!poly) return;
+      at.push({ level: lv, in: host, poly });
+    });
+    if (!VERTICAL_TYPES.has(type as string)) return;
+    // stack order, whatever order they were written in, so "consecutive" means what the
+    // building means by it and `stair.misaligned` is well defined
+    at.sort((p, q) => levelIds.indexOf(p.level) - levelIds.indexOf(q.level));
+    vertical.push({ index: i, id: vid, type: type as VerticalType, name: vName, at, up, risers });
+  });
+
+  if (levels.length > 0 && levels.every((l) => l.rooms.length === 0) && issues.length === 0)
+    bad(hasLevels ? "levels" : "rooms", "a plan needs at least one room");
+  if (issues.length) throw new PlanError(issues);
+
+  const groundIndex = Math.max(0, levels.findIndex((l) => l.ground));
+  const ground = levels[groundIndex]!;
+  return {
+    title,
+    units: "m",
+    walls: { exterior: snap(exterior as number), partition: snap(partition as number) },
+    north: north as number,
+    levelled: hasLevels,
+    levels,
+    vertical,
+    grid,
+    rooms: ground.rooms,
+    outdoor: ground.outdoor,
+    openings: ground.openings,
+    fixtures: ground.fixtures,
+  };
+}
+
+/** `cols` / `rows`: a non-empty list of positive track sizes. */
+function readTracks(path: string, v: unknown, bad: (p: string, m: string) => void): number[] | undefined {
+  if (!Array.isArray(v) || v.length === 0 || !v.every((n) => isNum(n) && n > 0)) {
+    bad(path, "must be a non-empty array of positive track sizes (metres)");
+    return undefined;
+  }
+  return v as number[];
+}
+
+function readPolyAt(path: string, v: unknown, bad: (p: string, m: string) => void): Pt[] | undefined {
+  if (!Array.isArray(v) || !v.every((p) => Array.isArray(p) && p.length === 2 && isNum(p[0]) && isNum(p[1]))) {
+    bad(path, "must be an array of [x, y] number pairs");
+    return undefined;
+  }
+  const res = normalizePoly(v as Pt[]);
+  if ("problem" in res) {
+    const p = res.problem;
+    bad(
+      path,
+      p.kind === "too_few_points"
+        ? `needs at least 4 distinct corners, has ${p.count}`
+        : p.kind === "not_rectilinear"
+          ? `edge ${JSON.stringify(p.edge[0])}→${JSON.stringify(p.edge[1])} is not axis-aligned`
+          : p.kind === "zero_area"
+            ? "has zero area"
+            : `edges ${p.edges[0]} and ${p.edges[1]} cross or overlap`,
+    );
+    return undefined;
+  }
+  return res.poly;
+}
+
+/** `rect: [x, y, w, h]` — the same convenience a fixture spells `at` + `size`. */
+function readRectAt(path: string, v: unknown, bad: (p: string, m: string) => void): Pt[] | undefined {
+  if (!Array.isArray(v) || v.length !== 4 || !v.every(isNum)) {
+    bad(path, "must be [x, y, width, height] numbers");
+    return undefined;
+  }
+  const [x, y, w, h] = v as [number, number, number, number];
+  if (!(w > 0) || !(h > 0)) {
+    bad(path, "width and height must both be > 0");
+    return undefined;
+  }
+  return [
+    [snap(x), snap(y)],
+    [snap(x + w), snap(y)],
+    [snap(x + w), snap(y + h)],
+    [snap(x), snap(y + h)],
+  ];
+}
+
+/**
+ * Everything that lives on one storey: rooms, outdoor spaces, voids, the optional track
+ * grid, openings and fixtures. `base` is the document path this content sits at — `""`
+ * for a single-level document and `levels.<id>` for a level — so an error message always
+ * names the place in the document the author actually wrote.
+ */
+function parseLevelContent(
+  base: string,
+  src: J,
+  id: string,
+  name: string,
+  height: number | undefined,
+  ground: boolean,
+  sharedGrid: { cols: number[]; rows: number[] } | undefined,
+  bad: (path: string, message: string) => void,
+): Level {
+  const P = (s: string) => (base === "" ? s : `${base}.${s}`);
+  // ids whose poly was supplied but rejected; readPoly already reported why
+  const badPoly = new Set<string>();
+
+  // ---- rooms, outdoor spaces & voids (declarations) ----
+  const roomsIn = isObj(src["rooms"]) ? src["rooms"] : {};
+  if (!isObj(src["rooms"])) bad(P("rooms"), "must be an object keyed by room id");
+  const outdoorIn = isObj(src["outdoor"]) ? src["outdoor"] : {};
+  if (src["outdoor"] !== undefined && !isObj(src["outdoor"])) bad(P("outdoor"), "must be an object keyed by id");
+  const voidsIn = isObj(src["voids"]) ? src["voids"] : {};
+  if (src["voids"] !== undefined && !isObj(src["voids"])) bad(P("voids"), "must be an object keyed by id");
 
   const polys = new Map<string, Pt[]>();
   /** which form a space's geometry was authored in, so later messages name what was written */
   const geometry = new Map<string, "poly" | "rect">();
-  const readPoly = (path: string, v: unknown): Pt[] | undefined => {
-    if (!Array.isArray(v) || !v.every((p) => Array.isArray(p) && p.length === 2 && isNum(p[0]) && isNum(p[1]))) {
-      bad(path, "must be an array of [x, y] number pairs");
-      return undefined;
-    }
-    const res = normalizePoly(v as Pt[]);
-    if ("problem" in res) {
-      const p = res.problem;
-      const msg =
-        p.kind === "too_few_points"
-          ? `needs at least 4 distinct corners, has ${p.count}`
-          : p.kind === "not_rectilinear"
-            ? `edge ${JSON.stringify(p.edge[0])}→${JSON.stringify(p.edge[1])} is not axis-aligned`
-            : p.kind === "zero_area"
-              ? "has zero area"
-              : `edges ${p.edges[0]} and ${p.edges[1]} cross or overlap`;
-      bad(path, msg);
-      return undefined;
-    }
-    return res.poly;
-  };
-
-  /** `rect: [x, y, w, h]` — the same convenience a fixture spells `at` + `size`. */
-  const readRect = (path: string, v: unknown): Pt[] | undefined => {
-    if (!Array.isArray(v) || v.length !== 4 || !v.every(isNum)) {
-      bad(path, "must be [x, y, width, height] numbers");
-      return undefined;
-    }
-    const [x, y, w, h] = v as [number, number, number, number];
-    if (!(w > 0) || !(h > 0)) {
-      bad(path, "width and height must both be > 0");
-      return undefined;
-    }
-    return [
-      [snap(x), snap(y)],
-      [snap(x + w), snap(y)],
-      [snap(x + w), snap(y + h)],
-      [snap(x), snap(y + h)],
-    ];
-  };
+  const readPoly = (path: string, v: unknown): Pt[] | undefined => readPolyAt(path, v, bad);
 
   /**
    * A space's geometry: an explicit `poly`, or a `rect` as a convenience rectangle —
    * one or the other, never both, exactly as a fixture takes `poly` or `at` + `size`.
    */
-  const readGeometry = (path: string, id: string, v: J): void => {
+  const readGeometry = (path: string, key: string, v: J): void => {
     const hasPoly = v["poly"] !== undefined;
     const hasRect = v["rect"] !== undefined;
     if (hasPoly && hasRect) {
       bad(path, "has both a poly and a rect; use one");
-      badPoly.add(id);
+      badPoly.add(key);
       return;
     }
     if (!hasPoly && !hasRect) return;
-    const p = hasPoly ? readPoly(`${path}.poly`, v["poly"]) : readRect(`${path}.rect`, v["rect"]);
+    const p = hasPoly ? readPolyAt(`${path}.poly`, v["poly"], bad) : readRectAt(`${path}.rect`, v["rect"], bad);
     if (!p) {
-      badPoly.add(id);
+      badPoly.add(key);
       return;
     }
-    polys.set(id, p);
-    geometry.set(id, hasPoly ? "poly" : "rect");
+    polys.set(key, p);
+    geometry.set(key, hasPoly ? "poly" : "rect");
   };
 
-  for (const [id, v] of Object.entries(roomsIn)) {
-    if (!ID_RE.test(id)) bad(`rooms.${id}`, "id must match ^[a-z][a-z0-9_]*$");
+  for (const [rid, v] of Object.entries(roomsIn)) {
+    if (!ID_RE.test(rid)) bad(P(`rooms.${rid}`), "id must match ^[a-z][a-z0-9_]*$");
     if (!isObj(v)) {
-      bad(`rooms.${id}`, "must be an object");
+      bad(P(`rooms.${rid}`), "must be an object");
       continue;
     }
-    checkKeys(`rooms.${id}`, v, ["poly", "rect", "kind", "name", "zone", "habitable", "wet", "circulation"], bad);
-    readGeometry(`rooms.${id}`, id, v);
+    checkKeys(P(`rooms.${rid}`), v, ["poly", "rect", "kind", "name", "zone", "habitable", "wet", "circulation"], bad);
+    readGeometry(P(`rooms.${rid}`), rid, v);
   }
-  for (const [id, v] of Object.entries(outdoorIn)) {
-    if (!ID_RE.test(id)) bad(`outdoor.${id}`, "id must match ^[a-z][a-z0-9_]*$");
-    if (id in roomsIn) bad(`outdoor.${id}`, "id also used as a room");
+  for (const [oid, v] of Object.entries(outdoorIn)) {
+    if (!ID_RE.test(oid)) bad(P(`outdoor.${oid}`), "id must match ^[a-z][a-z0-9_]*$");
+    if (oid in roomsIn) bad(P(`outdoor.${oid}`), "id also used as a room");
     if (!isObj(v)) {
-      bad(`outdoor.${id}`, "must be an object");
+      bad(P(`outdoor.${oid}`), "must be an object");
       continue;
     }
-    checkKeys(`outdoor.${id}`, v, ["poly", "rect", "name", "covered"], bad);
-    readGeometry(`outdoor.${id}`, id, v);
+    checkKeys(P(`outdoor.${oid}`), v, ["poly", "rect", "name", "covered"], bad);
+    readGeometry(P(`outdoor.${oid}`), oid, v);
+  }
+  for (const [vid, v] of Object.entries(voidsIn)) {
+    if (!ID_RE.test(vid)) bad(P(`voids.${vid}`), "id must match ^[a-z][a-z0-9_]*$");
+    if (vid in roomsIn) bad(P(`voids.${vid}`), "id also used as a room");
+    if (vid in outdoorIn) bad(P(`voids.${vid}`), "id also used as an outdoor space");
+    if (!isObj(v)) {
+      bad(P(`voids.${vid}`), "must be an object");
+      continue;
+    }
+    checkKeys(P(`voids.${vid}`), v, ["poly", "rect", "name"], bad);
+    readGeometry(P(`voids.${vid}`), vid, v);
   }
 
   // ---- optional track-grid layout, compiled to polygons ----
-  if (doc["layout"] !== undefined) {
-    compileLayout(doc["layout"], roomsIn, outdoorIn, polys, geometry, bad);
+  // A level may author its own `layout` with its own tracks, or give only `areas` and sit
+  // on the shared `grid` — which is what makes an upper floor's walls land on the lower
+  // floor's. A level with neither simply has no grid.
+  if (src["layout"] !== undefined) {
+    compileLayout(base, src["layout"], sharedGrid, roomsIn, outdoorIn, voidsIn, polys, geometry, bad);
   }
 
   const rooms: Room[] = [];
-  for (const [id, v] of Object.entries(roomsIn)) {
+  for (const [rid, v] of Object.entries(roomsIn)) {
     if (!isObj(v)) continue;
-    const poly = polys.get(id);
+    const poly = polys.get(rid);
     if (!poly) {
-      if (!badPoly.has(id)) bad(`rooms.${id}`, "has no geometry: give a poly or a rect, or place it in layout.areas");
+      if (!badPoly.has(rid)) bad(P(`rooms.${rid}`), "has no geometry: give a poly or a rect, or place it in layout.areas");
       continue;
     }
     const kindRaw = v["kind"] ?? "other";
     const kind = (ROOM_KINDS.has(kindRaw as string) ? kindRaw : "other") as RoomKind;
-    if (!ROOM_KINDS.has(kindRaw as string)) bad(`rooms.${id}.kind`, `unknown kind ${JSON.stringify(kindRaw)}; one of ${[...ROOM_KINDS].join(", ")}`);
-    const name = typeof v["name"] === "string" ? v["name"] : id;
+    if (!ROOM_KINDS.has(kindRaw as string)) bad(P(`rooms.${rid}.kind`), `unknown kind ${JSON.stringify(kindRaw)}; one of ${[...ROOM_KINDS].join(", ")}`);
+    const roomName = typeof v["name"] === "string" ? v["name"] : rid;
     const zone = typeof v["zone"] === "string" ? v["zone"] : undefined;
     const flag = (k: string, dflt: boolean) => {
       const f = v[k];
       if (f === undefined) return dflt;
-      if (typeof f !== "boolean") bad(`rooms.${id}.${k}`, "must be boolean");
+      if (typeof f !== "boolean") bad(P(`rooms.${rid}.${k}`), "must be boolean");
       return f === true;
     };
     rooms.push({
-      id,
-      name,
+      id: rid,
+      name: roomName,
       kind,
       zone,
       poly,
@@ -260,20 +516,31 @@ export function parse(input: unknown): Plan {
   }
 
   const outdoor: Outdoor[] = [];
-  for (const [id, v] of Object.entries(outdoorIn)) {
+  for (const [oid, v] of Object.entries(outdoorIn)) {
     if (!isObj(v)) continue;
-    const poly = polys.get(id);
+    const poly = polys.get(oid);
     if (!poly) {
-      if (!badPoly.has(id)) bad(`outdoor.${id}`, "has no geometry: give a poly or a rect, or place it in layout.areas");
+      if (!badPoly.has(oid)) bad(P(`outdoor.${oid}`), "has no geometry: give a poly or a rect, or place it in layout.areas");
       continue;
     }
-    outdoor.push({ id, name: typeof v["name"] === "string" ? v["name"] : id, poly, covered: v["covered"] === true });
+    outdoor.push({ id: oid, name: typeof v["name"] === "string" ? v["name"] : oid, poly, covered: v["covered"] === true });
+  }
+
+  const voids: Void[] = [];
+  for (const [vid, v] of Object.entries(voidsIn)) {
+    if (!isObj(v)) continue;
+    const poly = polys.get(vid);
+    if (!poly) {
+      if (!badPoly.has(vid)) bad(P(`voids.${vid}`), "has no geometry: give a poly or a rect, or place it in layout.areas");
+      continue;
+    }
+    voids.push({ id: vid, name: typeof v["name"] === "string" ? v["name"] : vid, poly });
   }
 
   // ---- openings ----
   const openings: Opening[] = [];
-  const openingsIn = doc["openings"] ?? [];
-  if (!Array.isArray(openingsIn)) bad("openings", "must be an array");
+  const openingsIn = src["openings"] ?? [];
+  if (!Array.isArray(openingsIn)) bad(P("openings"), "must be an array");
   const roomIds = new Set(Object.keys(roomsIn));
   const spaceIds = new Set([...Object.keys(roomsIn), ...Object.keys(outdoorIn)]);
   // An opening may name a room, an outdoor space, or the street. "exterior" is the street
@@ -283,6 +550,10 @@ export function parse(input: unknown): Plan {
       bad(path, 'must be a room id, an outdoor space id, or "exterior"');
       return undefined;
     }
+    if (v in voidsIn) {
+      bad(path, `${JSON.stringify(v)} is a void: there is no floor on its side of that wall, so nothing opens into it`);
+      return undefined;
+    }
     if (v !== "exterior" && !spaceIds.has(v)) {
       bad(path, `unknown space ${JSON.stringify(v)}; expected a room id, an outdoor space id, or "exterior"`);
       return undefined;
@@ -290,7 +561,7 @@ export function parse(input: unknown): Plan {
     return v;
   };
   (Array.isArray(openingsIn) ? openingsIn : []).forEach((o: unknown, i: number) => {
-    const p = `openings[${i}]`;
+    const p = P(`openings[${i}]`);
     if (!isObj(o)) {
       bad(p, "must be an object");
       return;
@@ -387,10 +658,10 @@ export function parse(input: unknown): Plan {
 
   // ---- fixtures: things standing inside a room ----
   const fixtures: Fixture[] = [];
-  const fixturesIn = doc["fixtures"] ?? [];
-  if (!Array.isArray(fixturesIn) && doc["fixtures"] !== undefined) bad("fixtures", "must be an array");
+  const fixturesIn = src["fixtures"] ?? [];
+  if (!Array.isArray(fixturesIn) && src["fixtures"] !== undefined) bad(P("fixtures"), "must be an array");
   (Array.isArray(fixturesIn) ? fixturesIn : []).forEach((v: unknown, i: number) => {
-    const path = `fixtures[${i}]`;
+    const path = P(`fixtures[${i}]`);
     if (!isObj(v)) {
       bad(path, "must be an object");
       return;
@@ -436,47 +707,48 @@ export function parse(input: unknown): Plan {
     }
 
     if (!poly || typeof host !== "string" || !spaceIds.has(host) || !FIXTURE_TYPES.has(type as string)) return;
-    const name = typeof v["name"] === "string" ? v["name"] : (type as string).replace(/^./, (c) => c.toUpperCase());
-    fixtures.push({ index: i, type: type as FixtureType, name, in: host, poly, depth });
+    const fName = typeof v["name"] === "string" ? v["name"] : (type as string).replace(/^./, (c) => c.toUpperCase());
+    fixtures.push({ index: i, type: type as FixtureType, name: fName, in: host, poly, depth, vertical: undefined });
   });
 
-  if (rooms.length === 0 && issues.length === 0) bad("rooms", "a plan needs at least one room");
-  if (issues.length) throw new PlanError(issues);
-
-  return {
-    title,
-    units: "m",
-    walls: { exterior: snap(exterior as number), partition: snap(partition as number) },
-    north: north as number,
-    rooms,
-    outdoor,
-    openings,
-    fixtures,
-  };
+  return { id, name, height, ground, rooms, outdoor, voids, openings, fixtures };
 }
 
 /**
  * layout: { cols: [w...], rows: [h...], areas: ["a b c", ...] | "a b c\n..." }
- * Each token is a room/outdoor id or "." for void. Same id in several cells
- * forms one rectilinear room; it must be a single connected piece without holes.
+ * Each token is a room, outdoor or void id, or "." for a cell nothing claims. The same id
+ * in several cells forms one rectilinear space; it must be a single connected piece
+ * without holes.
+ *
+ * `cols` and `rows` may be omitted when the document declares a shared `grid`, and then
+ * the level supplies only `areas` — which is the mechanism that makes an upper floor's
+ * walls land on the lower floor's (§2.2.2).
  */
 function compileLayout(
+  base: string,
   layout: unknown,
+  sharedGrid: { cols: number[]; rows: number[] } | undefined,
   roomsIn: J,
   outdoorIn: J,
+  voidsIn: J,
   polys: Map<string, Pt[]>,
   geometry: Map<string, "poly" | "rect">,
   bad: (path: string, message: string) => void,
 ): void {
+  const P = (s: string) => (base === "" ? s : `${base}.${s}`);
   if (!isObj(layout)) {
-    bad("layout", "must be an object { cols, rows, areas }");
+    bad(P("layout"), "must be an object { cols, rows, areas }");
     return;
   }
-  checkKeys("layout", layout, ["cols", "rows", "areas"], bad);
-  const tracks = (k: string): number[] | undefined => {
+  checkKeys(P("layout"), layout, ["cols", "rows", "areas"], bad);
+  const tracks = (k: "cols" | "rows"): number[] | undefined => {
+    if (layout[k] === undefined && sharedGrid) return sharedGrid[k];
     const v = layout[k];
     if (!Array.isArray(v) || v.length === 0 || !v.every((n) => isNum(n) && n > 0)) {
-      bad(`layout.${k}`, "must be a non-empty array of positive track sizes (metres)");
+      bad(
+        P(`layout.${k}`),
+        "must be a non-empty array of positive track sizes (metres), or be left out so the level sits on the shared grid",
+      );
       return undefined;
     }
     return v as number[];
@@ -486,19 +758,19 @@ function compileLayout(
   let areasRaw = layout["areas"];
   if (typeof areasRaw === "string") areasRaw = areasRaw.split("\n").filter((l) => l.trim() !== "");
   if (!Array.isArray(areasRaw) || !areasRaw.every((r) => typeof r === "string")) {
-    bad("layout.areas", "must be an array of strings (one per row) or one multi-line string");
+    bad(P("layout.areas"), "must be an array of strings (one per row) or one multi-line string");
     return;
   }
   if (!cols || !rows) return;
   const grid = (areasRaw as string[]).map((r) => r.trim().split(/\s+/));
   if (grid.length !== rows.length) {
-    bad("layout.areas", `has ${grid.length} rows but layout.rows has ${rows.length}`);
+    bad(P("layout.areas"), `has ${grid.length} rows but ${layout["rows"] === undefined ? "grid.rows" : "layout.rows"} has ${rows.length}`);
     return;
   }
   let ok = true;
   grid.forEach((r, j) => {
     if (r.length !== cols.length) {
-      bad(`layout.areas[${j}]`, `has ${r.length} cells but layout.cols has ${cols.length}`);
+      bad(P(`layout.areas[${j}]`), `has ${r.length} cells but ${layout["cols"] === undefined ? "grid.cols" : "layout.cols"} has ${cols.length}`);
       ok = false;
     }
   });
@@ -513,8 +785,8 @@ function compileLayout(
   grid.forEach((r, j) =>
     r.forEach((tok, i) => {
       if (tok === ".") return;
-      if (!(tok in roomsIn) && !(tok in outdoorIn)) {
-        bad(`layout.areas[${j}]`, `cell ${i} names ${JSON.stringify(tok)}, which is not declared in rooms or outdoor`);
+      if (!(tok in roomsIn) && !(tok in outdoorIn) && !(tok in voidsIn)) {
+        bad(P(`layout.areas[${j}]`), `cell ${i} names ${JSON.stringify(tok)}, which is not declared in rooms, outdoor or voids`);
         return;
       }
       const list = cellsById.get(tok) ?? [];
@@ -523,7 +795,7 @@ function compileLayout(
     }),
   );
   for (const [id, cells] of cellsById) {
-    const path = `${id in roomsIn ? "rooms" : "outdoor"}.${id}`;
+    const path = P(`${id in roomsIn ? "rooms" : id in outdoorIn ? "outdoor" : "voids"}.${id}`);
     if (polys.has(id)) {
       bad(path, `has both a ${geometry.get(id) ?? "poly"} and cells in layout.areas; use one`);
       continue;

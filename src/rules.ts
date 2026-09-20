@@ -1,7 +1,8 @@
+import { occupantRef } from "./derive.ts";
 import { doorSwing } from "./doors.ts";
-import { boxGap, snap } from "./geometry.ts";
-import type { Finding, Model, Owner, ResolvedOpening, RoomKind } from "./types.ts";
-import { EXTERIOR, isOpenSky, isStreet, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
+import { bbox, boxGap, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
+import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, RoomKind } from "./types.ts";
+import { isOpenSky, isStreet, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
 
 export interface RuleOptions {
   /** share of interior area above which circulation is flagged (default 0.10) */
@@ -12,6 +13,13 @@ export interface RuleOptions {
   doorMinWidth?: { interior?: number; entrance?: number };
   /** walkable gap required between two fixtures in the same room (default 0.6 m) */
   minClearance?: number;
+  /**
+   * Comfortable stair geometry: pitch in degrees and the shortest going (default 30–42°,
+   * 0.25 m). These are conventions and not a code, which is exactly why they are options.
+   */
+  stairPitch?: { min?: number; max?: number; going?: number };
+  /** clear height under the slab a stair passes through, metres (default 2.0) */
+  minHeadroom?: number;
 }
 
 const DEFAULT_MIN_DIM: Partial<Record<RoomKind, number>> = {
@@ -28,57 +36,173 @@ const DEFAULT_MIN_DIM: Partial<Record<RoomKind, number>> = {
   garage: 2.5,
 };
 
+/** Comfortable stair pitch, the going a foot needs, and the height a head needs. */
+const STAIR_DEFAULTS = { min: 30, max: 42, going: 0.25, headroom: 2.0 };
+
 /**
  * Semantic rules over the derived model. Geometry/topology errors are already
  * produced by derive(); these are the "is this a good house" checks.
+ *
+ * Three scopes, and each rule belongs to exactly one: **per level** (tiling, walls,
+ * openings, light, privacy, sizes — a storey is its own plan), **building-wide**
+ * (`entrance.*` and `reach.*`, because you enter a building once and then walk through
+ * all of it), and **cross-level** (the stair rules, which are about the seam itself).
  */
 export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
   const f: Finding[] = [];
-  const rooms = model.rooms;
-  const byId = new Map(rooms.map((m) => [m.room.id, m]));
-  const kindOf = (id: string): RoomKind | undefined => byId.get(id)?.room.kind;
-  const outdoorName = new Map(model.plan.outdoor.map((o) => [o.id, o.name]));
-  const nameOf = (id: string) => byId.get(id)?.room.name ?? outdoorName.get(id) ?? id;
+  const plan = model.plan;
+  // A single-level document never carries `level` on a finding, so its output stays
+  // byte-identical to what it was before levels existed.
+  const tag = (levelId: string, x: Finding): Finding => (plan.levelled ? { ...x, level: levelId } : x);
+
+  const named = new Map(plan.levels.map((l) => [l.id, l.name]));
+  /** how a room reads in a building-wide message, which may span levels */
+  const where = (levelId: string, name: string) => (plan.levelled ? `${name} on ${named.get(levelId) ?? levelId}` : name);
+
+  buildingRules(model, f, where);
+  for (const lm of model.levels) levelRules(model, lm, opts, f, tag);
+  verticalRules(model, opts, f);
+  return f;
+}
+
+/** Per-level naming helpers: a message says the name the author wrote, never an id. */
+function namesOf(lm: LevelModel) {
+  const byId = new Map(lm.rooms.map((m) => [m.room.id, m]));
+  const outdoorName = new Map(lm.level.outdoor.map((o) => [o.id, o.name]));
+  const voidName = new Map(lm.level.voids.map((v) => [v.id, v.name]));
+  const nameOf = (id: string) => byId.get(id)?.room.name ?? outdoorName.get(id) ?? voidName.get(id) ?? id;
   /** how one side of a wall reads in a message */
   const sideName = (o: Owner): string => {
     const id = ownerId(o);
     return id !== undefined ? nameOf(id) : o.kind === "overlap" ? o.ids.join(" + ") : o.kind;
   };
-  const doors = model.openings.filter((o) => o.spec.type === "door");
+  return { byId, nameOf, sideName };
+}
 
-  // ---- entrance ----
-  // An entrance is a door to the street: to the exterior, or to an outdoor space the
-  // street reaches. A door onto an enclosed courtyard is a perfectly good door — it just
-  // does not let anyone in from the road, so it never counts here.
-  const street = (o: Owner) => isStreet(o, model.streetOutdoor);
-  const streetDoors = doors.filter((o) => street(o.wall.neg) || street(o.wall.pos));
+/**
+ * You enter a building once and then walk through all of it, so the way in and the walk
+ * from it are the only rules that see every level at once.
+ */
+function buildingRules(model: Model, f: Finding[], where: (levelId: string, name: string) => string): void {
+  const plan = model.plan;
+  const ground = new Set(plan.levels.filter((l) => l.ground).map((l) => l.id));
+
+  interface StreetDoor {
+    lm: LevelModel;
+    o: ResolvedOpening;
+  }
+  const streetDoors: StreetDoor[] = [];
+  const doorsOff: StreetDoor[] = [];
+  for (const lm of model.levels) {
+    const street = (o: Owner) => isStreet(o, lm.streetOutdoor);
+    for (const o of lm.openings) {
+      if (o.spec.type !== "door" || !(street(o.wall.neg) || street(o.wall.pos))) continue;
+      (ground.has(lm.level.id) ? streetDoors : doorsOff).push({ lm, o });
+    }
+  }
+
+  const describe = ({ lm, o }: StreetDoor) => {
+    const { sideName } = namesOf(lm);
+    const street = (x: Owner) => isStreet(x, lm.streetOutdoor);
+    return where(lm.level.id, sideName(street(o.wall.neg) ? o.wall.pos : o.wall.neg));
+  };
+
   const hasEntrance = streetDoors.length > 0;
   if (!hasEntrance) {
     f.push({ rule: "entrance.missing", severity: "error", message: "no door leads outside; the house cannot be entered" });
   } else if (streetDoors.length > 1) {
     // say something true about what the plan already declares: telling an author to mark
     // the main entrance when they have marked it is advice they have to stop and check
-    const marked = streetDoors.filter((o) => o.spec.entrance);
-    const where = (o: ResolvedOpening) => sideName(street(o.wall.neg) ? o.wall.pos : o.wall.neg);
-    const all = streetDoors.map(where).join(", ");
+    const marked = streetDoors.filter((d) => d.o.spec.entrance);
+    const all = streetDoors.map(describe).join(", ");
     const tail =
       marked.length === 0
         ? 'none is marked the main one with "entrance": true'
         : marked.length === 1
-          ? `the main one is ${where(marked[0]!)}`
-          : `${marked.length} of them are marked "entrance": true (${marked.map(where).join(", ")}); only one can be the main door`;
+          ? `the main one is ${describe(marked[0]!)}`
+          : `${marked.length} of them are marked "entrance": true (${marked.map(describe).join(", ")}); only one can be the main door`;
     f.push({
       rule: "entrance.multiple",
       severity: "info",
       message: `${streetDoors.length} doors lead outside (${all}); ${tail}`,
     });
   }
+
+  // A door to open air on a floor the street does not meet is a hole in the wall, not a
+  // way in. It is legitimate — a balcony has one — so this is information, not an error;
+  // a sloping site answers it by marking that level `"ground": true`.
+  for (const d of doorsOff) {
+    f.push({
+      level: d.lm.level.id,
+      rule: "entrance.not_ground",
+      severity: "info",
+      message: `door #${d.o.spec.index} opens to the outside on ${d.lm.level.name}, which the street does not meet; it is a balcony door, not a way in`,
+      at: d.o.center,
+      opening: d.o.spec.index,
+    });
+  }
+
+  // ---- the walk from the street, across every level ----
+  const noAccess = new Set<string>();
+  for (const lm of model.levels)
+    for (const m of lm.rooms)
+      if ((lm.access.get(ownerKey(roomOwner(m.room.id)))?.size ?? 0) === 0) noAccess.add(`${lm.level.id}/${m.room.id}`);
+
+  if (!hasEntrance) return;
+  // the walk starts wherever someone standing on the road already is: the street itself
+  // and every outdoor space it reaches on a level the street meets
+  const start = ["exterior"];
+  for (const lm of model.levels)
+    if (ground.has(lm.level.id))
+      for (const id of lm.streetOutdoor) start.push(`${lm.level.id}/${ownerKey(outdoorOwner(id))}`);
+  const seen = new Set<string>(start);
+  const queue = [...start];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const n of model.building.access.get(cur) ?? []) if (!seen.has(n)) (seen.add(n), queue.push(n));
+  }
+  for (const lm of model.levels) {
+    const served = model.plan.vertical.some((v) => v.at.some((a) => a.level === lm.level.id));
+    for (const m of lm.rooms) {
+      const key = `${lm.level.id}/${ownerKey(roomOwner(m.room.id))}`;
+      if (seen.has(key) || noAccess.has(`${lm.level.id}/${m.room.id}`)) continue;
+      // saying *why* costs nothing and is the difference between a finding an agent can
+      // act on and one it has to go and investigate
+      const why = ground.has(lm.level.id) || served ? "" : `; no stair, lift or ramp arrives on ${lm.level.name}`;
+      f.push({
+        ...(model.plan.levelled ? { level: lm.level.id } : {}),
+        rule: "reach.unreachable",
+        severity: "error",
+        message: `${m.room.name} cannot be reached from the entrance${why}`,
+        rooms: [m.room.id],
+        at: m.labelAt,
+      });
+    }
+  }
+}
+
+/** Everything a storey can be judged on by itself. */
+function levelRules(
+  model: Model,
+  lm: LevelModel,
+  opts: RuleOptions,
+  f: Finding[],
+  tag: (levelId: string, x: Finding) => Finding,
+): void {
+  const id = lm.level.id;
+  const push = (x: Finding) => f.push(tag(id, x));
+  const rooms = lm.rooms;
+  const { byId, nameOf, sideName } = namesOf(lm);
+  const kindOf = (rid: string): RoomKind | undefined => byId.get(rid)?.room.kind;
+  const doors = lm.openings.filter((o) => o.spec.type === "door");
+  const street = (o: Owner) => isStreet(o, lm.streetOutdoor);
+
   // Marking a courtyard door the main entrance is allowed by the schema — the door is
   // legitimate — but it is not the way in, and saying so is more useful than silence.
   for (const o of doors) {
     if (!o.spec.entrance || street(o.wall.neg) || street(o.wall.pos)) continue;
     const sky = isOpenSky(o.wall.neg) ? o.wall.neg : isOpenSky(o.wall.pos) ? o.wall.pos : undefined;
-    f.push({
+    push({
       rule: "entrance.not_street",
       severity: "warning",
       message: sky
@@ -89,12 +213,10 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     });
   }
 
-  // ---- access & reachability ----
-  const noAccess = new Set<string>();
+  // ---- access ----
   for (const m of rooms) {
-    if ((model.access.get(ownerKey(roomOwner(m.room.id)))?.size ?? 0) === 0) {
-      noAccess.add(m.room.id);
-      f.push({
+    if ((lm.access.get(ownerKey(roomOwner(m.room.id)))?.size ?? 0) === 0) {
+      push({
         rule: "space.no_access",
         severity: "error",
         message: `${m.room.name} has no door or cased opening`,
@@ -103,34 +225,12 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
       });
     }
   }
-  if (hasEntrance) {
-    // the walk starts wherever someone standing on the road already is: the street itself
-    // and every outdoor space it reaches. An enclosed courtyard is not a starting point.
-    const start = [ownerKey(EXTERIOR), ...[...model.streetOutdoor].map((id) => ownerKey(outdoorOwner(id)))];
-    const seen = new Set<string>(start);
-    const queue = [...start];
-    while (queue.length) {
-      const cur = queue.shift()!;
-      for (const n of model.access.get(cur) ?? []) if (!seen.has(n)) (seen.add(n), queue.push(n));
-    }
-    for (const m of rooms) {
-      if (!seen.has(ownerKey(roomOwner(m.room.id))) && !noAccess.has(m.room.id)) {
-        f.push({
-          rule: "reach.unreachable",
-          severity: "error",
-          message: `${m.room.name} cannot be reached from the entrance`,
-          rooms: [m.room.id],
-          at: m.labelAt,
-        });
-      }
-    }
-  }
 
   // ---- light ----
   for (const m of rooms) {
     if (m.exteriorWindow) continue;
     if (m.room.habitable) {
-      f.push({
+      push({
         rule: "habitable.no_window",
         severity: "warning",
         message: `${m.room.name} is habitable but has no exterior window${m.exteriorFaces.length ? ` (it has an exterior wall on the ${m.exteriorFaces.join("/")})` : " and no exterior wall to put one on"}`,
@@ -138,7 +238,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
         at: m.labelAt,
       });
     } else if (m.room.wet) {
-      f.push({
+      push({
         rule: "wet.no_window",
         severity: "warning",
         message: `${m.room.name} has no exterior window; plan mechanical extraction`,
@@ -158,7 +258,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     const kb = kindOf(b);
     const wetToKitchen = (byId.get(a)?.room.wet && kb === "kitchen") || (byId.get(b)?.room.wet && ka === "kitchen");
     if (wetToKitchen) {
-      f.push({
+      push({
         rule: "wet.opens_to_kitchen",
         severity: "warning",
         message: `${nameOf(a)} opens directly into ${nameOf(b)}; most codes want a lobby between a WC and a kitchen`,
@@ -168,7 +268,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
       });
     }
     if (ka === "bedroom" && kb === "bedroom") {
-      f.push({
+      push({
         rule: "privacy.bedroom_through_route",
         severity: "warning",
         message: `${nameOf(a)} and ${nameOf(b)} connect directly; one bedroom is a route to the other`,
@@ -179,7 +279,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     }
     const living = new Set<RoomKind>(["living", "kitchen"]);
     if ((ka === "bedroom" && kb && living.has(kb)) || (kb === "bedroom" && ka && living.has(ka))) {
-      f.push({
+      push({
         rule: "privacy.bedroom_off_living",
         severity: "info",
         message: `${ka === "bedroom" ? nameOf(a) : nameOf(b)} opens directly off ${ka === "bedroom" ? nameOf(b) : nameOf(a)}`,
@@ -196,7 +296,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     const min = minDim[m.room.kind];
     if (min === undefined || m.minDimension >= min) continue;
     const r = m.clearRect;
-    f.push({
+    push({
       rule: "room.min_dimension",
       severity: "warning",
       message: `${m.room.name} (${m.room.kind}): ${m.minDimension} m at its narrowest; comfort minimum is ${min} m (clear floor ${r.w} × ${r.h} m)`,
@@ -209,7 +309,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     const ext = o.wall.kind === "exterior";
     const min = ext ? dmw.entrance : dmw.interior;
     if (o.spec.width < min) {
-      f.push({
+      push({
         rule: "door.min_width",
         severity: "warning",
         message: `door #${o.spec.index} (${o.spec.width} m) between ${sideName(o.wall.neg)} and ${sideName(o.wall.pos)} is narrower than ${min} m`,
@@ -220,12 +320,14 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
   }
 
   // ---- circulation ----
+  // per level, because a stair landing is circulation on its own floor and the threshold
+  // means a different thing at the two scales
   const circ = rooms.filter((m) => m.room.circulation);
   const circArea = circ.reduce((s, m) => s + m.area, 0);
-  const share = model.interiorArea > 0 ? circArea / model.interiorArea : 0;
+  const share = lm.interiorArea > 0 ? circArea / lm.interiorArea : 0;
   const maxShare = opts.circulationShare ?? 0.1;
   if (share > maxShare) {
-    f.push({
+    push({
       rule: "circulation.share",
       severity: "info",
       message: `${circ.map((m) => m.room.name).join(" + ")} take ${Math.round(share * 100)} % of the interior (${snap(circArea)} m²); above ${Math.round(maxShare * 100)} % is worth questioning`,
@@ -243,7 +345,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
       const A = a.s!.box;
       const B = b.s!.box;
       if (A.x0 < B.x1 && B.x0 < A.x1 && A.y0 < B.y1 && B.y0 < A.y1) {
-        f.push({
+        push({
           rule: "door.swing_collision",
           severity: "info",
           message: `doors #${a.o.spec.index} and #${b.o.spec.index} swing into the same corner of ${nameOf(a.o.swingRoom!)}`,
@@ -256,21 +358,21 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
 
   // ---- fixtures ----
   const minClearance = opts.minClearance ?? 0.6;
-  for (let i = 0; i < model.fixtures.length; i++) {
-    for (let j = i + 1; j < model.fixtures.length; j++) {
-      const a = model.fixtures[i]!;
-      const b = model.fixtures[j]!;
+  for (let i = 0; i < lm.fixtures.length; i++) {
+    for (let j = i + 1; j < lm.fixtures.length; j++) {
+      const a = lm.fixtures[i]!;
+      const b = lm.fixtures[j]!;
       if (a.fixture.in !== b.fixture.in) continue;
       const gap = snap(boxGap(a.bbox, b.bbox));
       // touching units are one run; only a gap too narrow to walk through is a problem
       if (gap <= 0 || gap >= minClearance) continue;
-      f.push({
+      push({
         rule: "fixture.clearance",
         severity: "warning",
         message: `only ${gap} m between ${a.fixture.name} and ${b.fixture.name} in ${nameOf(a.fixture.in)}; leave ≥ ${minClearance} m to walk through`,
         at: [snap((a.bbox.x1 + b.bbox.x0) / 2), snap((a.bbox.y0 + b.bbox.y1) / 2)],
         rooms: [a.fixture.in],
-        fixture: a.fixture.index,
+        ...occupantRef(a.fixture),
       });
     }
   }
@@ -279,7 +381,7 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
     const swing = doorSwing(o);
     if (!swing || o.swingRoom === undefined) continue;
     const radius = o.to - o.from;
-    for (const fm of model.fixtures) {
+    for (const fm of lm.fixtures) {
       if (fm.fixture.in !== o.swingRoom) continue;
       // the swept quarter disc is exactly {within radius of the hinge} ∩ swing.box,
       // so the nearest point of the overlap rectangle decides it
@@ -291,19 +393,227 @@ export function checkRules(model: Model, opts: RuleOptions = {}): Finding[] {
       const nx = Math.min(Math.max(swing.hinge[0], x0), x1);
       const ny = Math.min(Math.max(swing.hinge[1], y0), y1);
       if (Math.hypot(nx - swing.hinge[0], ny - swing.hinge[1]) >= radius) continue;
-      f.push({
+      push({
         rule: "door.swing_hits_fixture",
         severity: "warning",
         message: `door #${o.spec.index} swings into ${fm.fixture.name} in ${nameOf(fm.fixture.in)}; rehang it or move the fixture`,
         at: swing.hinge,
         rooms: [fm.fixture.in],
         opening: o.spec.index,
-        fixture: fm.fixture.index,
+        ...occupantRef(fm.fixture),
       });
     }
   }
+  void model;
+}
 
-  return f;
+/**
+ * The seam between levels: which levels anything arrives on, whether a flight lands where
+ * it says it does, whether consecutive flights are the same shaft, and what stands over
+ * open sky. All of these exist only because a vertical element is matched by its own id
+ * (§2.2.3) — matching by footprint overlap would make "misaligned" unexpressible.
+ */
+function verticalRules(model: Model, opts: RuleOptions, f: Finding[]): void {
+  const stair = { ...STAIR_DEFAULTS, ...opts.stairPitch, ...(opts.minHeadroom === undefined ? {} : { headroom: opts.minHeadroom }) };
+  const plan = model.plan;
+  if (plan.levels.length < 2 && plan.vertical.length === 0) return;
+  const byLevel = new Map(model.levels.map((m) => [m.level.id, m]));
+  const index = new Map(plan.levels.map((l, i) => [l.id, i]));
+
+  for (const level of plan.levels) {
+    if (level.ground) continue;
+    if (plan.vertical.some((v) => v.at.some((a) => a.level === level.id))) continue;
+    f.push({
+      level: level.id,
+      rule: "level.unreachable",
+      severity: "error",
+      message: `${level.name} has no stair, lift or ramp: nothing arrives on it`,
+    });
+  }
+
+  for (const v of plan.vertical) {
+    if (v.at.length === 1) {
+      const only = v.at[0]!;
+      f.push({
+        level: only.level,
+        rule: "stair.no_arrival",
+        severity: "error",
+        message: `${v.name} stands on ${byLevel.get(only.level)?.level.name ?? only.level} and goes nowhere; a vertical element needs a footprint on each of the levels it joins`,
+        at: centre(only.poly),
+        vertical: v.id,
+      });
+    }
+    for (const at of v.at) {
+      const lm = byLevel.get(at.level);
+      if (!lm) continue;
+      const host =
+        lm.rooms.find((m) => m.room.id === at.in)?.room.poly ?? lm.level.outdoor.find((o) => o.id === at.in)?.poly;
+      if (host && !polyInside(at.poly, host)) {
+        f.push({
+          level: at.level,
+          rule: "stair.no_arrival",
+          severity: "error",
+          message: `${v.name} is not fully inside ${at.in} on ${lm.level.name}; that is the space you are meant to step off it into`,
+          at: centre(at.poly),
+          rooms: [at.in],
+          vertical: v.id,
+        });
+      }
+    }
+    for (let i = 1; i < v.at.length; i++) {
+      const a = v.at[i - 1]!;
+      const b = v.at[i]!;
+      const over = overlapArea(a.poly, b.poly);
+      const smaller = Math.min(Math.abs(shoelace(a.poly)), Math.abs(shoelace(b.poly)));
+      if (over >= smaller / 2 - 1e-9) continue;
+      f.push({
+        level: b.level,
+        rule: "stair.misaligned",
+        severity: "warning",
+        message:
+          over === 0
+            ? `${v.name} does not sit over itself: its footprints on ${name(byLevel, a.level)} and ${name(byLevel, b.level)} do not overlap at all`
+            : `${v.name} overlaps itself by only ${snap(over)} m² between ${name(byLevel, a.level)} and ${name(byLevel, b.level)}; a shaft that steps sideways needs a landing`,
+        at: centre(b.poly),
+        vertical: v.id,
+      });
+    }
+
+    // Pitch and headroom are opt-in: they cost the author `risers` and the level's
+    // `height`, and each unlocks exactly one check. Both are conventions, not code, so
+    // they report the numbers and let the reader judge.
+    for (let i = 1; i < v.at.length; i++) {
+      const lower = v.at[i - 1]!;
+      const upper = v.at[i]!;
+      const height = plan.levels[index.get(lower.level) ?? 0]?.height;
+      if (v.risers === undefined || height === undefined) continue;
+      const axis = flightAxis(v.up, lower.poly);
+      const b = bbox(lower.poly);
+      const length = axis === 0 ? b.x1 - b.x0 : b.y1 - b.y0;
+      const rise = height / v.risers;
+      const going = length / (v.risers - 1);
+      const pitch = (Math.atan2(rise, going) * 180) / Math.PI;
+      if (pitch < stair.min || pitch > stair.max || going < stair.going) {
+        f.push({
+          level: lower.level,
+          rule: "stair.pitch",
+          severity: "info",
+          message: `${v.name}: ${snap(Math.round(pitch * 10) / 10)}° pitch — ${v.risers} risers of ${snap(Math.round(rise * 1000) / 1000)} m over a ${snap(length)} m flight gives a ${snap(Math.round(going * 1000) / 1000)} m going; ${stair.min}–${stair.max}° and a going of ${stair.going} m upwards is the comfortable range`,
+          at: centre(lower.poly),
+          vertical: v.id,
+        });
+      }
+      // Headroom needs to know which end is the bottom, so it also needs `up`.
+      if (v.up === undefined) continue;
+      const above = byLevel.get(upper.level);
+      if (!above) continue;
+      const dOpen = slabRun(lower.poly, above.level.voids.map((x) => x.poly), axis, v.up);
+      const headroom = height - (rise * dOpen) / going;
+      if (headroom < stair.headroom) {
+        f.push({
+          level: upper.level,
+          rule: "stair.headroom",
+          severity: "info",
+          message: `${v.name} passes under the ${upper.level === lower.level ? "slab" : name(byLevel, upper.level) + " slab"} with ${snap(Math.round(Math.max(0, headroom) * 100) / 100)} m of headroom: the floor above stays closed for ${snap(dOpen)} m of the flight; open it sooner, or declare a void, to keep ${stair.headroom} m`,
+          at: centre(lower.poly),
+          vertical: v.id,
+        });
+      }
+    }
+  }
+
+  // ---- what stands over open sky ----
+  // A cantilever is a real building, so this is a warning and not an error: it says the
+  // engineering exists, not that the plan is wrong.
+  for (let k = 1; k < model.levels.length; k++) {
+    const upper = model.levels[k]!;
+    const lower = model.levels[k - 1]!;
+    for (const m of upper.rooms) {
+      const un = uncoveredArea(m.room.poly, lower.rooms.map((r) => r.room.poly));
+      if (un.area <= 1e-6) continue;
+      f.push({
+        level: upper.level.id,
+        rule: "structure.over_open_sky",
+        severity: "warning",
+        message: `${m.room.name} has ${snap(un.area)} m² standing over no room on ${lower.level.name}; a cantilever is real, but so is a room that has lost its support`,
+        at: un.at,
+        rooms: [m.room.id],
+      });
+    }
+  }
+}
+
+const name = (byLevel: Map<string, LevelModel>, id: string) => byLevel.get(id)?.level.name ?? id;
+
+const centre = (poly: Pt[]): Pt => {
+  const b = bbox(poly);
+  return [snap((b.x0 + b.x1) / 2), snap((b.y0 + b.y1) / 2)];
+};
+
+/** Which axis a flight runs along: 0 for x, 1 for y. `up` is a bearing, north-up. */
+function flightAxis(up: number | undefined, poly: Pt[]): 0 | 1 {
+  if (up !== undefined) return up < 45 || up >= 315 || (up >= 135 && up < 225) ? 1 : 0;
+  const b = bbox(poly);
+  return b.x1 - b.x0 >= b.y1 - b.y0 ? 0 : 1;
+}
+
+/**
+ * How far along the flight, from its foot, the floor above is still closed.
+ *
+ * Walking up, your head is a headroom above the tread, so the slab has to be open by
+ * the time the tread has risen to `height − HEADROOM_MIN`. This measures the run that is
+ * still under slab: zero when a void covers the foot of the flight, the whole flight when
+ * nothing above is opened at all — which is exactly the case that needs saying.
+ */
+function slabRun(footprint: Pt[], voids: Pt[][], axis: 0 | 1, up: number): number {
+  const b = bbox(footprint);
+  const lo = axis === 0 ? b.x0 : b.y0;
+  const hi = axis === 0 ? b.x1 : b.y1;
+  // y grows south, so travelling north (bearing 0) or west (270) means decreasing coordinate
+  const ascending = axis === 1 ? up >= 135 && up < 225 : up >= 45 && up < 135;
+  const foot = ascending ? lo : hi;
+  let open = hi - lo;
+  for (const v of voids) {
+    if (!polysOverlap(v, footprint)) continue;
+    const vb = bbox(v);
+    const near = ascending ? Math.max(lo, axis === 0 ? vb.x0 : vb.y0) : Math.min(hi, axis === 0 ? vb.x1 : vb.y1);
+    open = Math.min(open, Math.abs(near - foot));
+  }
+  return snap(open);
+}
+
+/** Area of the overlap of two rectilinear polygons, by cell decomposition. */
+function overlapArea(a: Pt[], b: Pt[]): number {
+  return cellSum([...a, ...b], (c) => pointInPoly(c, a) && pointInPoly(c, b)).area;
+}
+
+/** The part of `poly` that no polygon in `under` covers: how much, and where. */
+function uncoveredArea(poly: Pt[], under: Pt[][]): { area: number; at: Pt } {
+  const pa = bbox(poly);
+  const pts = [...poly];
+  for (const u of under) for (const p of u) if (p[0] > pa.x0 && p[0] < pa.x1) pts.push([p[0], pa.y0]);
+  for (const u of under) for (const p of u) if (p[1] > pa.y0 && p[1] < pa.y1) pts.push([pa.x0, p[1]]);
+  return cellSum(pts, (c) => pointInPoly(c, poly) && !under.some((u) => pointInPoly(c, u)));
+}
+
+/** Area and area-weighted centre of every cell of the coordinate grid matching `keep`. */
+function cellSum(pts: Pt[], keep: (c: Pt) => boolean): { area: number; at: Pt } {
+  const xs = [...new Set(pts.map((p) => p[0]))].sort((m, n) => m - n);
+  const ys = [...new Set(pts.map((p) => p[1]))].sort((m, n) => m - n);
+  let area = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i + 1 < xs.length; i++) {
+    for (let j = 0; j + 1 < ys.length; j++) {
+      const c: Pt = [(xs[i]! + xs[i + 1]!) / 2, (ys[j]! + ys[j + 1]!) / 2];
+      if (!keep(c)) continue;
+      const a = (xs[i + 1]! - xs[i]!) * (ys[j + 1]! - ys[j]!);
+      area += a;
+      cx += a * c[0];
+      cy += a * c[1];
+    }
+  }
+  return { area: snap(area), at: area > 0 ? [snap(cx / area), snap(cy / area)] : [0, 0] };
 }
 
 const SEVERITY_RANK = { error: 0, warning: 1, info: 2 } as const;

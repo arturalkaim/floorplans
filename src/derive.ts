@@ -1,9 +1,12 @@
-import { bbox, eq, largestRect, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
+import { bbox, cellsToPolygons, eq, largestRect, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
 import type {
   Analysis,
   Axis,
   Finding,
+  Fixture,
   FixtureModel,
+  Level,
+  LevelModel,
   Model,
   Opening,
   Owner,
@@ -12,9 +15,10 @@ import type {
   ResolvedOpening,
   RoomModel,
   Side,
+  Vertical,
   WallSegment,
 } from "./types.ts";
-import { EXTERIOR, GAP, isOpenSky, isVoid, outdoorOwner, ownerId, ownerKey, roomOwner, sameOwner } from "./types.ts";
+import { EXTERIOR, GAP, isOpenSky, isVoid, outdoorOwner, ownerId, ownerKey, roomOwner, sameOwner, voidOwner } from "./types.ts";
 
 const MM = 0.001;
 const CORNER_SLIVER = 0.1;
@@ -30,19 +34,110 @@ interface Piece {
 
 /**
  * Turn authored rooms into walls, resolve openings onto walls, compute room
- * metrics and the access graph. Geometry/topology problems are returned as
- * findings, never thrown, so a broken plan still yields a drawable model.
+ * metrics and the access graph, one level at a time; then join the levels.
+ * Geometry/topology problems are returned as findings, never thrown, so a
+ * broken plan still yields a drawable model.
  */
 export function derive(plan: Plan): Analysis {
   const findings: Finding[] = [];
-  const rooms = plan.rooms;
+  const models: LevelModel[] = [];
+  for (const level of plan.levels) {
+    // A vertical element is an obstacle on every level it serves, exactly as a `stairs`
+    // fixture is, so it reuses that machinery rather than a second kind of occupant.
+    const fixtures = [...level.fixtures, ...syntheticFixtures(plan.vertical, level)];
+    const r = deriveLevel(plan, level, fixtures);
+    models.push(r.model);
+    for (const f of r.findings) findings.push(plan.levelled ? { ...f, level: level.id } : f);
+  }
+
+  const ground = models[Math.max(0, models.findIndex((m) => m.level.ground))]!;
+  const model: Model = {
+    ...ground,
+    plan,
+    levels: models,
+    building: buildingOf(plan, models),
+  };
+  return { model, findings };
+}
+
+/**
+ * One synthetic fixture per level a vertical element serves. `index` deliberately
+ * addresses nothing in the document — `vertical` names the element instead — so an edit
+ * or a finding can never point a reader at the wrong `fixtures[i]`.
+ */
+function syntheticFixtures(vertical: Vertical[], level: Level): Fixture[] {
+  const out: Fixture[] = [];
+  for (const v of vertical) {
+    for (const at of v.at) {
+      if (at.level !== level.id) continue;
+      out.push({
+        index: -1,
+        type: v.type === "stairs" ? "stairs" : "other",
+        name: v.name,
+        in: at.in,
+        poly: at.poly,
+        depth: undefined,
+        vertical: v.id,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * What only exists across levels: the combined access graph, and the totals. Each
+ * vertical element joins the nodes of consecutive levels it serves; the street is one
+ * node however many levels reach it, so a walk from the road crosses the whole building.
+ */
+function buildingOf(plan: Plan, models: LevelModel[]): Model["building"] {
+  const access = new Map<string, Set<string>>();
+  const groundIds = new Set(plan.levels.filter((l) => l.ground).map((l) => l.id));
+  /**
+   * INVARIANT: the street is one node, and only a ground level touches it. A door to open
+   * air on an upper floor gets its own `piso1/exterior` node instead, which no walk ever
+   * starts from — so a first-floor balcony door cannot make the first floor reachable and
+   * hide a missing stair.
+   */
+  const node = (levelId: string, key: string) =>
+    key === "exterior" && groundIds.has(levelId) ? "exterior" : `${levelId}/${key}`;
+  const link = (a: string, b: string) => {
+    (access.get(a) ?? access.set(a, new Set()).get(a)!).add(b);
+    (access.get(b) ?? access.set(b, new Set()).get(b)!).add(a);
+  };
+  access.set("exterior", new Set());
+  const roomsOn = new Map(models.map((m) => [m.level.id, new Set(m.rooms.map((r) => r.room.id))]));
+  for (const m of models) {
+    for (const [k, ns] of m.access) {
+      const from = node(m.level.id, k);
+      if (!access.has(from)) access.set(from, new Set());
+      for (const n of ns) link(from, node(m.level.id, n));
+    }
+  }
+  const arrival = (at: { level: string; in: string }) =>
+    node(at.level, `${roomsOn.get(at.level)?.has(at.in) ? "room" : "outdoor"}:${at.in}`);
+  for (const v of plan.vertical) {
+    for (let i = 1; i < v.at.length; i++) link(arrival(v.at[i - 1]!), arrival(v.at[i]!));
+  }
+  return {
+    access,
+    grossArea: snap(models.reduce((s, m) => s + m.envelope.area, 0)),
+    footprint: snap(Math.max(0, ...models.map((m) => m.envelope.area))),
+    storeys: models.length,
+  };
+}
+
+/** Everything derived from one storey alone. */
+function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model: LevelModel; findings: Finding[] } {
+  const findings: Finding[] = [];
+  const rooms = level.rooms;
 
   // ---- arrangement grid from every distinct x / y ----
   const xset = new Set<number>();
   const yset = new Set<number>();
   for (const r of rooms) for (const [x, y] of r.poly) (xset.add(x), yset.add(y));
-  for (const o of plan.outdoor) for (const [x, y] of o.poly) (xset.add(x), yset.add(y));
-  for (const fx of plan.fixtures) for (const [x, y] of fx.poly) (xset.add(x), yset.add(y));
+  for (const o of level.outdoor) for (const [x, y] of o.poly) (xset.add(x), yset.add(y));
+  for (const v of level.voids) for (const [x, y] of v.poly) (xset.add(x), yset.add(y));
+  for (const fx of planFixtures) for (const [x, y] of fx.poly) (xset.add(x), yset.add(y));
   const xs = [...xset].sort((a, b) => a - b);
   const ys = [...yset].sort((a, b) => a - b);
   const cols = xs.length - 1;
@@ -58,16 +153,20 @@ export function derive(plan: Plan): Analysis {
       ownersOf[i]!.push(rooms.filter((r) => pointInPoly([cx, cy], r.poly)).map((r) => r.id));
     }
   }
-  // A cell no room covers belongs to a declared outdoor space, to the street, or to
-  // nothing at all. Outdoor spaces are claimed first, so a deck on the boundary keeps its
-  // own id instead of being swallowed by the street.
-  const voidOwner: Owner[][] = ownersOf.map((col) => col.map(() => GAP));
+  // A cell no room covers belongs to a declared outdoor space, to a declared void, to the
+  // street, or to nothing at all. Declared spaces are claimed first, so a deck on the
+  // boundary keeps its own id instead of being swallowed by the street.
+  const unowned: Owner[][] = ownersOf.map((col) => col.map(() => GAP));
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rowsN; j++) {
       if (ownersOf[i]![j]!.length > 0) continue;
       const c: Pt = [(xs[i]! + xs[i + 1]!) / 2, (ys[j]! + ys[j + 1]!) / 2];
-      const o = plan.outdoor.find((o) => pointInPoly(c, o.poly));
-      if (o) voidOwner[i]![j] = outdoorOwner(o.id);
+      const o = level.outdoor.find((o) => pointInPoly(c, o.poly));
+      if (o) unowned[i]![j] = outdoorOwner(o.id);
+      else {
+        const v = level.voids.find((v) => pointInPoly(c, v.poly));
+        if (v) unowned[i]![j] = voidOwner(v.id);
+      }
     }
   }
   // The street is what the border flood fill reaches over cells no room covers. It walks
@@ -75,25 +174,28 @@ export function derive(plan: Plan): Analysis {
   // voids, so a deck touching the boundary is continuous with the street — and every
   // outdoor space it reaches is street-connected. One it cannot reach is a courtyard:
   // open sky you can only get to from inside the house.
+  // A declared void stops the fill exactly as a room does: it is a hole in the slab, not
+  // a hole in the building, so the street never flows through it.
   const streetOutdoor = new Set<string>();
   const reached: boolean[][] = ownersOf.map((col) => col.map(() => false));
+  const open = (i: number, j: number) => ownersOf[i]![j]!.length === 0 && unowned[i]![j]!.kind !== "void";
   const stack: Array<[number, number]> = [];
-  for (let i = 0; i < cols; i++) for (const j of [0, rowsN - 1]) if (ownersOf[i]![j]!.length === 0) stack.push([i, j]);
-  for (let j = 0; j < rowsN; j++) for (const i of [0, cols - 1]) if (ownersOf[i]![j]!.length === 0) stack.push([i, j]);
+  for (let i = 0; i < cols; i++) for (const j of [0, rowsN - 1]) if (open(i, j)) stack.push([i, j]);
+  for (let j = 0; j < rowsN; j++) for (const i of [0, cols - 1]) if (open(i, j)) stack.push([i, j]);
   while (stack.length) {
     const [i, j] = stack.pop()!;
-    if (i < 0 || j < 0 || i >= cols || j >= rowsN || reached[i]![j] || ownersOf[i]![j]!.length > 0) continue;
+    if (i < 0 || j < 0 || i >= cols || j >= rowsN || reached[i]![j] || !open(i, j)) continue;
     reached[i]![j] = true;
-    const v = voidOwner[i]![j]!;
+    const v = unowned[i]![j]!;
     if (v.kind === "outdoor") streetOutdoor.add(v.id);
-    else voidOwner[i]![j] = EXTERIOR;
+    else unowned[i]![j] = EXTERIOR;
     stack.push([i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]);
   }
   const owner = (i: number, j: number): Owner => {
     if (i < 0 || j < 0 || i >= cols || j >= rowsN) return EXTERIOR;
     const o = ownersOf[i]![j]!;
     if (o.length >= 1) return roomOwner(o[0]!);
-    return voidOwner[i]![j]!;
+    return unowned[i]![j]!;
   };
   /** is this owner the room with that id? */
   const isRoom = (o: Owner, id: string) => o.kind === "room" && o.id === id;
@@ -112,7 +214,7 @@ export function derive(plan: Plan): Analysis {
       rooms,
     });
   }
-  for (const cells of tilingComponents((i, j) => ownersOf[i]![j]!.length === 0 && voidOwner[i]![j]!.kind === "gap", cols, rowsN)) {
+  for (const cells of tilingComponents((i, j) => ownersOf[i]![j]!.length === 0 && unowned[i]![j]!.kind === "gap", cols, rowsN)) {
     const region = cellRegion(cells, xs, ys);
     findings.push({
       rule: "tiling.gap",
@@ -170,7 +272,7 @@ export function derive(plan: Plan): Analysis {
   }
 
   // ---- outdoor space is open sky, so no room may stand on it ----
-  for (const o of plan.outdoor) {
+  for (const o of level.outdoor) {
     for (const r of rooms) {
       if (!polysOverlap(o.poly, r.poly)) continue;
       const b = bbox(o.poly);
@@ -188,14 +290,17 @@ export function derive(plan: Plan): Analysis {
   // a fixture stands in a room or in an outdoor space — a pool is a pool either way
   const hostPoly = new Map<string, Pt[]>([
     ...rooms.map((r) => [r.id, r.poly] as const),
-    ...plan.outdoor.map((o) => [o.id, o.poly] as const),
+    ...level.outdoor.map((o) => [o.id, o.poly] as const),
   ]);
-  const fixtureModels: FixtureModel[] = plan.fixtures.map((fixture) => ({
+  const fixtureModels: FixtureModel[] = planFixtures.map((fixture) => ({
     fixture,
     bbox: bbox(fixture.poly),
     area: snap(Math.abs(shoelace(fixture.poly))),
   }));
   for (const fm of fixtureModels) {
+    // a vertical element's footprint is checked by `stair.no_arrival`, which says the same
+    // thing about the same geometry but names the element the author can actually edit
+    if (fm.fixture.vertical !== undefined) continue;
     const host = hostPoly.get(fm.fixture.in);
     if (host && !polyInside(fm.fixture.poly, host)) {
       findings.push({
@@ -220,7 +325,7 @@ export function derive(plan: Plan): Analysis {
         message: `${a.fixture.name} and ${b.fixture.name} overlap in ${a.fixture.in}`,
         at: [snap((a.bbox.x0 + a.bbox.x1) / 2), snap((a.bbox.y0 + a.bbox.y1) / 2)],
         rooms: [a.fixture.in],
-        fixture: a.fixture.index,
+        ...occupantRef(a.fixture),
       });
     }
   }
@@ -303,7 +408,7 @@ export function derive(plan: Plan): Analysis {
 
   // ---- openings ----
   const openings: ResolvedOpening[] = [];
-  for (const spec of plan.openings) {
+  for (const spec of level.openings) {
     const res = resolveOpening(spec, walls, findings);
     if (res) openings.push(res);
   }
@@ -356,7 +461,7 @@ export function derive(plan: Plan): Analysis {
     (access.get(kb) ?? access.set(kb, new Set()).get(kb)!).add(ka);
   };
   for (const r of rooms) access.set(ownerKey(roomOwner(r.id)), new Set());
-  for (const o of plan.outdoor) access.set(ownerKey(outdoorOwner(o.id)), new Set());
+  for (const o of level.outdoor) access.set(ownerKey(outdoorOwner(o.id)), new Set());
   access.set(ownerKey(EXTERIOR), new Set());
   for (const o of openings) {
     if (o.spec.type === "window") continue;
@@ -365,20 +470,27 @@ export function derive(plan: Plan): Analysis {
   }
 
   // ---- envelope ----
+  // The floor plate is every cell that is not open sky — rooms and the voids cut through
+  // them, since a stairwell is inside the building. `outline` is its real boundary rather
+  // than a bounding box, which is what the ghost of the level below needs to be legible.
   const env = bbox(rooms.flatMap((r) => r.poly));
   let footprint = 0;
+  const plate: Array<[number, number]> = [];
   for (let i = 0; i < cols; i++)
     for (let j = 0; j < rowsN; j++)
-      if (!isOpenSky(owner(i, j))) footprint += (xs[i + 1]! - xs[i]!) * (ys[j + 1]! - ys[j]!);
+      if (!isOpenSky(owner(i, j))) {
+        footprint += (xs[i + 1]! - xs[i]!) * (ys[j + 1]! - ys[j]!);
+        plate.push([i, j]);
+      }
 
   return {
     model: {
-      plan,
+      level,
       rooms: roomModels,
       walls,
       openings,
       fixtures: fixtureModels,
-      envelope: { ...env, area: snap(footprint) },
+      envelope: { ...env, area: snap(footprint), outline: cellsToPolygons(plate, xs, ys) },
       access,
       streetOutdoor,
       interiorArea: snap(roomModels.reduce((s, m) => s + m.area, 0)),
@@ -389,6 +501,14 @@ export function derive(plan: Plan): Analysis {
 
 export const label = (o: Owner): string =>
   o.kind === "exterior" ? "the exterior" : o.kind === "gap" ? "a gap" : o.kind === "overlap" ? o.ids.join(" + ") : o.id;
+
+/**
+ * How a finding points at a thing standing on the floor. An authored fixture is an index
+ * into the document's `fixtures`; a vertical element's synthetic footprint has no such
+ * index, so it names the element instead.
+ */
+export const occupantRef = (f: Fixture): { fixture: number } | { vertical: string } =>
+  f.vertical === undefined ? { fixture: f.index } : { vertical: f.vertical };
 
 /**
  * Does the id an opening's `between` names refer to this owner? The literal "exterior" is
