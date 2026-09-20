@@ -1115,7 +1115,20 @@ export function parseDsl(text: string): DslDocument {
             fail(spaces.start, `${verb.text} needs two spaces separated by ">"; got ${JSON.stringify(spaces.text)}`);
             return;
           }
-          record(`${base}.between`, spaces.start, spaces.end, (v) => (Array.isArray(v) ? `${String(v[0])}>${String(v[1])}` : String(v)));
+          record(`${base}.between`, spaces.start, spaces.end, (v) => {
+            if (!Array.isArray(v) || v.length !== 2) return String(v);
+            const [a, b] = v as [unknown, unknown];
+            // Setting the whole `between` pair must not silently drop the wall side this
+            // token also carries (docs/agent-review.md B11): this span covers the entire
+            // short-form selector, side included, so printing the plain long form here
+            // unconditionally used to erase the side with no trace — `window suite.north`
+            // spliced to `["exterior","wc"]` became `window exterior>wc`, silently
+            // widening "the north wall" to "any of wc's four walls" (`wall.ambiguous`).
+            // When the new pair keeps the short form expressible, re-print the selector
+            // with the side kept, against the new room; otherwise fall back to the long
+            // form, which has no side of its own to lose.
+            return a === "exterior" && b !== "exterior" ? `${String(b)}${side !== undefined ? `.${side}` : ""}` : `${String(a)}>${String(b)}`;
+          });
           record(`${base}.between[1]`, spaces.start, spaces.start + room.length, (v) => String(v));
           o["between"] = ["exterior", room];
           if (side !== undefined) {
