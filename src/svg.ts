@@ -1,9 +1,20 @@
 import { doorSwing } from "./doors.ts";
 import { snap } from "./geometry.ts";
-import type { Finding, Model, Owner, Pt, ResolvedOpening, WallSegment } from "./types.ts";
+import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, WallSegment } from "./types.ts";
 import { isStreet } from "./types.ts";
 
 export interface RenderOptions {
+  /**
+   * Which level to draw (default: the ground level). One SVG per level is the convention
+   * architects read and the token-cheap answer for an agent, which asks for the level it
+   * is working on.
+   */
+  level?: string;
+  /**
+   * Draw the level below in outline under this one (default true). It is what makes it
+   * possible to see at a glance whether the walls upstairs land on the walls downstairs.
+   */
+  ghost?: boolean;
   /** pixels per metre (default 40) */
   scale?: number;
   theme?: "auto" | "light" | "dark";
@@ -46,9 +57,27 @@ export interface Projection {
   toModel(x: number, y: number): Pt;
 }
 
+/**
+ * The level a drawing is about: the one `opts.level` names, or the ground level. An
+ * unknown id falls back to the ground level rather than throwing — a render is never the
+ * right place to fail a plan that parsed.
+ */
+export function levelOf(model: Model, level: string | undefined): LevelModel {
+  // always a member of `model.levels`, never the Model itself, so callers can ask what
+  // sits under it by position in the stack
+  const want = level ?? model.level.id;
+  return model.levels.find((m) => m.level.id === want) ?? model.levels[0]!;
+}
+
 export function projection(model: Model, opts: RenderOptions = {}): Projection {
   const scale = opts.scale ?? 40;
-  const allPts = [...model.rooms.flatMap((r) => r.room.poly), ...model.plan.outdoor.flatMap((o) => o.poly)];
+  // Every level is measured against the same extent, because they share the plan origin
+  // and axes: two levels of one house must line up sheet to sheet, and the ghost of the
+  // level below may reach past the level being drawn.
+  const allPts = [
+    ...model.levels.flatMap((m) => m.rooms.flatMap((r) => r.room.poly)),
+    ...model.levels.flatMap((m) => m.level.outdoor.flatMap((o) => o.poly)),
+  ];
   const minX = Math.min(...allPts.map((p) => p[0]));
   const minY = Math.min(...allPts.map((p) => p[1]));
   const maxX = Math.max(...allPts.map((p) => p[0]));
@@ -75,9 +104,12 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   const proj = projection(model, opts);
   const S = proj.scale;
   const plan = model.plan;
-  const env = model.envelope;
+  const lm = levelOf(model, opts.level);
+  const below = model.levels[model.levels.indexOf(lm) - 1];
+  const env = lm.envelope;
   const { minX, minY, maxX, maxY } = proj;
-  const title = opts.title ?? plan.title;
+  const planTitle = plan.title === undefined ? undefined : plan.levelled ? `${plan.title} — ${lm.level.name}` : plan.title;
+  const title = opts.title ?? planTitle;
   const dims = opts.dimensions ?? true;
   const fmt = new Intl.NumberFormat(opts.locale ?? "en", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const fmt2 = new Intl.NumberFormat(opts.locale ?? "en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -90,7 +122,7 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
 
   // zone colours by first appearance
   const zoneColour = new Map<string, string>();
-  for (const r of model.rooms) {
+  for (const r of lm.rooms) {
     const z = r.room.zone ?? r.room.kind;
     if (!zoneColour.has(z)) zoneColour.set(z, PALETTE[zoneColour.size % PALETTE.length]!);
   }
@@ -98,13 +130,37 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   // labels: decide full vs index per room
   const mode = opts.labels ?? "auto";
   const key: Array<{ n: number; name: string; area: string }> = [];
-  const areaOf = (r: (typeof model.rooms)[number]) =>
+  const areaOf = (r: (typeof lm.rooms)[number]) =>
     opts.areas === "none" ? "" : `${fmt.format(opts.areas === "centreline" ? r.area : r.clearArea)} m²`;
 
   let body = "";
 
+  // ---- the level below, ghosted ----
+  // Outline and walls only, no labels and no fills: enough to see whether this floor
+  // lands on the one under it, quiet enough never to be mistaken for this floor.
+  if (below && (opts.ghost ?? true)) {
+    body += `<g class="ghost" aria-hidden="true" fill="none" stroke="var(--muted)" stroke-opacity=".28">`;
+    for (const ring of below.envelope.outline)
+      body += `<polygon points="${pts(ring)}" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+    for (const w of below.walls) {
+      if (w.kind === "exterior") continue;
+      const p0 = at(w, w.from);
+      const p1 = at(w, w.to);
+      body += `<line x1="${px(X(p0[0]))}" y1="${px(Y(p0[1]))}" x2="${px(X(p1[0]))}" y2="${px(Y(p1[1]))}" stroke-width="1" stroke-dasharray="4 4"/>`;
+    }
+    body += `</g>`;
+  }
+
+  // ---- voids: floor that is deliberately not there ----
+  for (const v of lm.level.voids) {
+    const c = centroid(v.poly);
+    body += `<g class="void" data-void="${esc(v.id)}"><title>${esc(v.name)} — no floor</title>`;
+    body += `<polygon points="${pts(v.poly)}" fill="var(--ink)" fill-opacity=".05" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>`;
+    body += `</g>${text(X(c[0]), Y(c[1]) + 4, v.name, "ra")}`;
+  }
+
   // ---- outdoor spaces ----
-  for (const o of plan.outdoor) {
+  for (const o of lm.level.outdoor) {
     body += `<polygon points="${pts(o.poly)}" fill="var(--accent)" fill-opacity=".08" stroke="var(--accent)" stroke-width="1" stroke-dasharray="5 4"/>`;
     // an outdoor space has no walls, so each edge gets its own handle to grab; drawn
     // transparent over the outline, wide enough to hit without hunting for it
@@ -121,33 +177,38 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   }
 
   // ---- room fills ----
-  for (const r of model.rooms) {
+  for (const r of lm.rooms) {
     const col = zoneColour.get(r.room.zone ?? r.room.kind)!;
     body += `<g class="room" data-id="${esc(r.room.id)}"><title>${esc(r.room.name)} — ${esc(areaOf(r))}</title>`;
     body += `<polygon points="${pts(r.room.poly)}" fill="${col}" fill-opacity="var(--fill-alpha)"/></g>`;
   }
 
   // ---- fixtures standing in rooms ----
-  for (const fm of model.fixtures) {
+  for (const fm of lm.fixtures) {
     const f = fm.fixture;
     const water = f.type === "pool";
     const fill = water ? "var(--water)" : "var(--muted)";
     const alpha = water ? ".30" : ".16";
     const b = fm.bbox;
     const label = `${f.name}${f.depth ? ` · ${fmt.format(f.depth)} m deep` : ""} — ${fmt2.format(fm.area)} m²`;
-    body += `<g class="fixture" data-fixture="${f.index}" data-type="${esc(f.type)}"><title>${esc(label)}</title>`;
-    body += `<polygon data-fixture="${f.index}" data-body="1" points="${pts(f.poly)}" fill="${fill}" fill-opacity="${alpha}" stroke="${fill}" stroke-width="1"${water ? "" : ' stroke-dasharray="3 2"'} pointer-events="fill"/>`;
+    // A vertical element stands on the floor like a fixture but is not one in the
+    // document, so it is tagged by its own id: nothing may offer it as `fixtures[-1]`.
+    const ref = f.vertical === undefined ? `data-fixture="${f.index}"` : `data-vertical="${esc(f.vertical)}"`;
+    body += `<g class="fixture" ${ref} data-type="${esc(f.type)}"><title>${esc(label)}</title>`;
+    body += `<polygon ${ref} data-body="1" points="${pts(f.poly)}" fill="${fill}" fill-opacity="${alpha}" stroke="${fill}" stroke-width="1"${water ? "" : ' stroke-dasharray="3 2"'} pointer-events="fill"/>`;
     // name it only where the shape can hold the text, and sit the label at the top of the
     // footprint: a fixture that fills most of its room would otherwise land on the room name
     if ((b.x1 - b.x0) * S > 54 && (b.y1 - b.y0) * S > 18)
       body += text(X((b.x0 + b.x1) / 2), Y(b.y0) + 13, f.name, "fx");
     // a handle per side to resize, over a body that can be picked up and moved
-    for (const [side, x1v, y1v, x2v, y2v] of [
-      ["west", b.x0, b.y0, b.x0, b.y1],
-      ["east", b.x1, b.y0, b.x1, b.y1],
-      ["north", b.x0, b.y0, b.x1, b.y0],
-      ["south", b.x0, b.y1, b.x1, b.y1],
-    ] as const)
+    for (const [side, x1v, y1v, x2v, y2v] of f.vertical !== undefined
+      ? []
+      : ([
+          ["west", b.x0, b.y0, b.x0, b.y1],
+          ["east", b.x1, b.y0, b.x1, b.y1],
+          ["north", b.x0, b.y0, b.x1, b.y0],
+          ["south", b.x0, b.y1, b.x1, b.y1],
+        ] as const))
       body +=
         `<line data-fixture="${f.index}" data-side="${side}" data-axis="${side === "west" || side === "east" ? "v" : "h"}"` +
         ` x1="${px(X(x1v))}" y1="${px(Y(y1v))}" x2="${px(X(x2v))}" y2="${px(Y(y2v))}"` +
@@ -157,8 +218,8 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
 
   // ---- walls, split at openings; partitions first so exterior walls cover their ends ----
   const openingsByWall = new Map<string, ResolvedOpening[]>();
-  for (const o of model.openings) (openingsByWall.get(o.wall.id) ?? openingsByWall.set(o.wall.id, []).get(o.wall.id)!).push(o);
-  const wallOrder = [...model.walls].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "partition" ? -1 : 1));
+  for (const o of lm.openings) (openingsByWall.get(o.wall.id) ?? openingsByWall.set(o.wall.id, []).get(o.wall.id)!).push(o);
+  const wallOrder = [...lm.walls].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "partition" ? -1 : 1));
   for (const w of wallOrder) {
     const t = L(w.thickness);
     const ext = t / 2;
@@ -186,11 +247,11 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   }
 
   // ---- openings ----
-  const street = (o: Owner) => isStreet(o, model.streetOutdoor);
-  const streetDoors = model.openings.filter(
+  const street = (o: Owner) => isStreet(o, lm.streetOutdoor);
+  const streetDoors = lm.openings.filter(
     (d) => d.spec.type === "door" && (street(d.wall.neg) || street(d.wall.pos)),
   ).length;
-  for (const o of model.openings) {
+  for (const o of lm.openings) {
     const w = o.wall;
     const t = L(w.thickness);
     const p0 = at(w, o.from);
@@ -224,7 +285,7 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   }
 
   // ---- labels ----
-  model.rooms.forEach((r, i) => {
+  lm.rooms.forEach((r, i) => {
     const [lx, ly] = [X(r.labelAt[0]), Y(r.labelAt[1])];
     const rectW = L(r.largestRect.x1 - r.largestRect.x0) - L(r.room.circulation ? 0 : plan.walls.partition);
     const rectH = L(r.largestRect.y1 - r.largestRect.y0);
@@ -294,7 +355,7 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
     if (!f.at) return;
     const col = f.severity === "error" ? "#d64545" : f.severity === "warning" ? "#e07b1a" : "#2f6fdb";
     // a finding anchored on a room label sits just after the room name instead of on top of it
-    const room = model.rooms.find((r) => r.labelAt[0] === f.at![0] && r.labelAt[1] === f.at![1]);
+    const room = lm.rooms.find((r) => r.labelAt[0] === f.at![0] && r.labelAt[1] === f.at![1]);
     const mx = room ? X(f.at[0]) + (room.room.name.length * 12 * 0.56) / 2 + 14 : X(f.at[0]);
     const my = room ? Y(f.at[1]) - 6 : Y(f.at[1]);
     body += `<g class="finding"><title>${esc(`${f.severity} ${f.rule}: ${f.message}`)}</title><circle cx="${px(mx)}" cy="${px(my)}" r="9" fill="${col}" fill-opacity=".9"/>${text(mx, my + 3.5, String(i + 1), "mk")}</g>`;
@@ -309,7 +370,7 @@ export function renderSvg(model: Model, opts: RenderOptions = {}): string {
   const vars = Object.entries(opts.colors ?? {})
     .map(([k, v]) => `--${k}:${v};`)
     .join("");
-  const aria = `Floor plan${title ? ` ${title}` : ""}, ${fmt2.format(env.x1 - env.x0)} by ${fmt2.format(env.y1 - env.y0)} metres, ${model.rooms.length} rooms`;
+  const aria = `Floor plan${title ? ` ${title}` : ""}, ${fmt2.format(env.x1 - env.x0)} by ${fmt2.format(env.y1 - env.y0)} metres, ${lm.rooms.length} rooms`;
 
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${px(vw)} ${px(vh)}" width="${px(vw)}" height="${px(vh)}" class="floorplan theme-${theme}" role="img" aria-label="${esc(aria)}"${vars ? ` style="${vars}"` : ""}>` +
