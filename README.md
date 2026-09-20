@@ -32,6 +32,15 @@ Routes: a gallery of the example plans, `/plan/$id` for the editor, and `/refere
 the DSL documentation, which renders the parser's own vocabularies and the library's rule
 catalogue rather than a copy of them.
 
+A plan with more than one level gets a tab per storey, ground-up, above the drawing (the
+ground one is marked). Selecting a level draws it with the level below ghosted, scopes the
+findings panel to that level's findings plus the building-wide ones (the ones with no
+`level`), scopes every drag to it, and shows its own room-schedule section alongside the
+building's totals. The selected level survives text edits as long as it still exists, and
+falls back to the ground level the moment it does not. A single-level plan shows no tabs
+and nothing else changes. The gallery marks a multi-level plan with an "n levels" badge on
+its ground-level thumbnail; opening it goes to the same editor as any other plan.
+
 ### Dragging walls
 
 Walls in the drawing can be dragged, and a drag **edits the source**. The text stays the

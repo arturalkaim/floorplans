@@ -2,6 +2,7 @@
 // copied, so the playground and the library's tests always show the same documents.
 import apartmentT2 from "../../../fixtures/apartment-t2.json?raw";
 import broken from "../../../fixtures/broken.json?raw";
+import brokenLevels from "../../../fixtures/broken-levels.json?raw";
 import cabin from "../../../fixtures/cabin.json?raw";
 import casaPatio from "../../../fixtures/casa-patio.json?raw";
 import casaPiscina from "../../../fixtures/casa-piscina.json?raw";
@@ -26,6 +27,7 @@ export const EXAMPLES: Example[] = [
   { id: "apartment-t2", name: "Apartamento T2", shows: "authored as a track grid instead of polygons", source: apartmentT2 },
   { id: "cabin", name: "Cabana", shows: "small enough that labels fall back to a numbered key", source: cabin },
   { id: "broken", name: "Broken on purpose", shows: "one of every error the linter can report", source: broken },
+  { id: "broken-levels", name: "Broken on purpose: levels", shows: "one of every cross-level error the linter can report", source: brokenLevels },
 ];
 
 export const byId = (id: string): Example | undefined => EXAMPLES.find((e) => e.id === id);
