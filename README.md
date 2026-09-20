@@ -633,6 +633,12 @@ renderer never see it — but it is worth having: it is 18 tokens cheaper per ro
 the one way to write a rectangle you cannot get wrong. Eleven of casa-t3's thirteen rooms
 are rectangles, and writing them as `rect` costs 186 tokens less.
 
+`"exterior"` and `"gap"` are reserved and cannot be used as a room, outdoor space, void or
+level id (`schema.reference`): `between`, `on` and `in` resolve those exact words to the
+street and to an undeclared gap in the floor plan, as plain strings, before they ever check
+whether a declared space answers to them — so a space authored with either id could be
+declared but never referenced again.
+
 ### Curved walls
 
 Any entry of a `poly` may be an **arc** instead of a corner:

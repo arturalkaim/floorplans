@@ -99,6 +99,30 @@ export const SWEEPS: ReadonlySet<string> = new Set<ArcSpec["sweep"]>(["cw", "ccw
 export const ID_RE = /^[a-z][a-z0-9_]*$/;
 
 /**
+ * Ids a room, outdoor space, void or level may never take (docs/agent-review.md B7).
+ * `spaceRef` below resolves the bare string `"exterior"` to the street *before* it ever
+ * checks `spaceIds` — that is what a door onto the street means, and it has to happen for
+ * a string an author typed, not for an `Owner` value that does not exist yet — so a space
+ * declared with that id could be written but never named in `between`/`on`/`in` again.
+ * `"gap"` is reserved alongside it: it is the other owner kind a document can never
+ * declare (an unclaimed sliver `derive()` finds on its own), kept off-limits for the same
+ * reason before anything gives it textual meaning too.
+ *
+ * INVARIANT: this is a property of the *text*, not of `Owner` (see the comment on `Owner`
+ * in types.ts). Making `Owner` a tagged union removed the risk that an internal room
+ * value could be mistaken for the street once the two are already told apart — but
+ * `between`, `on` and `in` are still plain strings, resolved by literal comparison before
+ * any `Owner` is constructed, and no tagged union can rescue an ambiguous string. The
+ * reservation belongs at that boundary, which is here.
+ */
+export const RESERVED_SPACE_IDS: ReadonlySet<string> = new Set(["exterior", "gap"]);
+
+const reservedIdMessage = (id: string): string =>
+  id === "exterior"
+    ? `id "exterior" is reserved: "between", "on" and "in" resolve that word to the street before checking any declared space, so a space with this id could be declared but never referenced`
+    : `id "gap" is reserved: it names the other owner kind a document can never declare (an unclaimed sliver derive() finds on its own), kept free so it can never collide with a declared space`;
+
+/**
  * The document's own schema, machine-readable. `checkKeys` below reads its known-key
  * lists from here (see FIELDS_OF and the per-object constants that follow), so a field
  * this table does not mention is a field the parser rejects, by construction — SCHEMA and
@@ -477,7 +501,10 @@ export function parse(input: unknown): Plan {
     } else {
       const ids = Object.keys(levelsIn);
       if (ids.length === 0) bad("levels", "a plan needs at least one level", "missing");
-      for (const lid of ids) if (!ID_RE.test(lid)) bad(`levels.${lid}`, "id must match ^[a-z][a-z0-9_]*$");
+      for (const lid of ids) {
+        if (!ID_RE.test(lid)) bad(`levels.${lid}`, "id must match ^[a-z][a-z0-9_]*$");
+        else if (RESERVED_SPACE_IDS.has(lid)) bad(`levels.${lid}`, reservedIdMessage(lid), "reference");
+      }
 
       // `stack` is ground-up order and the only source of it. It is optional because the
       // document's own key order already says the same thing; when it is given it must
@@ -827,6 +854,7 @@ function parseLevelContent(
 
   for (const [rid, v] of Object.entries(roomsIn)) {
     if (!ID_RE.test(rid)) bad(P(`rooms.${rid}`), "id must match ^[a-z][a-z0-9_]*$");
+    else if (RESERVED_SPACE_IDS.has(rid)) bad(P(`rooms.${rid}`), reservedIdMessage(rid), "reference");
     if (!isObj(v)) {
       bad(P(`rooms.${rid}`), "must be an object");
       continue;
@@ -836,6 +864,7 @@ function parseLevelContent(
   }
   for (const [oid, v] of Object.entries(outdoorIn)) {
     if (!ID_RE.test(oid)) bad(P(`outdoor.${oid}`), "id must match ^[a-z][a-z0-9_]*$");
+    else if (RESERVED_SPACE_IDS.has(oid)) bad(P(`outdoor.${oid}`), reservedIdMessage(oid), "reference");
     if (oid in roomsIn) bad(P(`outdoor.${oid}`), "id also used as a room", "conflict");
     if (!isObj(v)) {
       bad(P(`outdoor.${oid}`), "must be an object");
@@ -846,6 +875,7 @@ function parseLevelContent(
   }
   for (const [vid, v] of Object.entries(voidsIn)) {
     if (!ID_RE.test(vid)) bad(P(`voids.${vid}`), "id must match ^[a-z][a-z0-9_]*$");
+    else if (RESERVED_SPACE_IDS.has(vid)) bad(P(`voids.${vid}`), reservedIdMessage(vid), "reference");
     if (vid in roomsIn) bad(P(`voids.${vid}`), "id also used as a room", "conflict");
     if (vid in outdoorIn) bad(P(`voids.${vid}`), "id also used as an outdoor space", "conflict");
     if (!isObj(v)) {

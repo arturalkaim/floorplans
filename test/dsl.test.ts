@@ -279,6 +279,14 @@ describe("errors carry the line, and every bad line is reported", () => {
     assert.deepEqual(swing.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "openings[0].swingInto", 3]]);
     assert.equal(swing.findings[0]!.message, 'a sliding door has no swing; drop "swingInto" or "sliding"');
   });
+
+  // docs/agent-review.md B7: reserved-id schema errors are also parse.ts's business (same
+  // path as the reference test above), so a DSL author sees them with the right line too.
+  it("reports \"exterior\" as a reserved room id from the DSL path, with its line", () => {
+    const r = lint("room exterior rect 0,0 3x3");
+    assert.deepEqual(r.findings.map((f) => [f.rule, f.path, f.line]), [["schema.reference", "rooms.exterior", 1]]);
+    assert.match(r.findings[0]!.message, /reserved/);
+  });
 });
 
 /**
