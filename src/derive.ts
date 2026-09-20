@@ -187,6 +187,30 @@ export function shapeBox(s: Shape): { x0: number; y0: number; x1: number; y1: nu
  */
 export const overlapArea = (a: Shape, b: Shape): number => areaBoth(arrange([ringOf(a), ringOf(b)]), 0, 1) / 1e6;
 
+/** Is `a` entirely on `b`'s floor? The area that is, against the area there is. */
+export const shapeWithin = (a: Shape, b: Shape): boolean => Math.abs(overlapArea(a, b) - shapeArea(a)) <= 1e-6;
+
+/**
+ * The part of `a` that none of `others` covers: how much, in m², and a point in it. One
+ * arrangement of every ring involved, read with a "covered by a and by nothing else"
+ * predicate — the difference of §1.3.2's table.
+ */
+export function uncovered(a: Shape, others: Shape[]): { area: number; at: Pt } {
+  const arr = arrange([ringOf(a), ...others.map(ringOf)]);
+  const rest = new Set(others.map((_, i) => i + 1));
+  let area = 0;
+  let cx = 0;
+  let cy = 0;
+  arr.faces.forEach((f, i) => {
+    if (i === arr.outer || !f.tags.includes(0) || f.tags.some((t) => rest.has(t))) return;
+    area += f.area;
+    cx += f.area * f.probe[0];
+    cy += f.area * f.probe[1];
+  });
+  if (area <= 0) return { area: 0, at: [0, 0] };
+  return { area: snap(area / 1e6), at: [snap(toM(cx / area)), snap(toM(cy / area))] };
+}
+
 /**
  * Is this point on the shape's boundary, to the millimetre? Used to decide whether
  * moving a wall's end would drag a corner off a third space's edge — the T-junction that

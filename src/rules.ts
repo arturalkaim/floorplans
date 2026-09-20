@@ -1,7 +1,7 @@
-import { occupantRef, outwardBearing, sectorMeetsShape, shapeGap } from "./derive.ts";
+import { occupantRef, outwardBearing, overlapArea, sectorMeetsShape, shapeArea, shapeGap, shapeWithin, uncovered } from "./derive.ts";
 import { doorSwing } from "./doors.ts";
-import { bbox, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
-import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, RoomKind } from "./types.ts";
+import { bbox, snap } from "./geometry.ts";
+import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, RoomKind, Shape } from "./types.ts";
 import { isOpenSky, isRectilinear, isStreet, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
 
 export interface RuleOptions {
@@ -483,9 +483,9 @@ function verticalRules(
     for (const at of v.at) {
       const lm = byLevel.get(at.level);
       if (!lm) continue;
-      const host =
-        lm.rooms.find((m) => m.room.id === at.in)?.room.poly ?? lm.level.outdoor.find((o) => o.id === at.in)?.poly;
-      if (host && !polyInside(at.poly, host)) {
+      const host: Shape | undefined =
+        lm.rooms.find((m) => m.room.id === at.in)?.room ?? lm.level.outdoor.find((o) => o.id === at.in);
+      if (host && !shapeWithin(at, host)) {
         f.push({
           ...on(at.level),
           rule: "stair.no_arrival",
@@ -500,8 +500,8 @@ function verticalRules(
     for (let i = 1; i < v.at.length; i++) {
       const a = v.at[i - 1]!;
       const b = v.at[i]!;
-      const over = overlapArea(a.poly, b.poly);
-      const smaller = Math.min(Math.abs(shoelace(a.poly)), Math.abs(shoelace(b.poly)));
+      const over = overlapArea(a, b);
+      const smaller = Math.min(shapeArea(a), shapeArea(b));
       if (over >= smaller / 2 - 1e-9) continue;
       f.push({
         ...on(b.level),
@@ -544,7 +544,7 @@ function verticalRules(
       if (v.up === undefined) continue;
       const above = byLevel.get(upper.level);
       if (!above) continue;
-      const dOpen = slabRun(lower.poly, above.level.voids.map((x) => x.poly), axis, v.up);
+      const dOpen = slabRun(lower, above.level.voids, axis, v.up);
       const headroom = height - (rise * dOpen) / going;
       if (headroom < stair.headroom) {
         f.push({
@@ -566,7 +566,7 @@ function verticalRules(
     const upper = model.levels[k]!;
     const lower = model.levels[k - 1]!;
     for (const m of upper.rooms) {
-      const un = uncoveredArea(m.room.poly, lower.rooms.map((r) => r.room.poly));
+      const un = uncovered(m.room, lower.rooms.map((r) => r.room));
       if (un.area <= 1e-6) continue;
       f.push({
         ...on(upper.level.id),
@@ -602,8 +602,8 @@ function flightAxis(up: number | undefined, poly: Pt[]): 0 | 1 {
  * still under slab: zero when a void covers the foot of the flight, the whole flight when
  * nothing above is opened at all — which is exactly the case that needs saying.
  */
-function slabRun(footprint: Pt[], voids: Pt[][], axis: 0 | 1, up: number): number {
-  const b = bbox(footprint);
+function slabRun(footprint: Shape, voids: Shape[], axis: 0 | 1, up: number): number {
+  const b = bbox(footprint.poly);
   const lo = axis === 0 ? b.x0 : b.y0;
   const hi = axis === 0 ? b.x1 : b.y1;
   // y grows south, so travelling north (bearing 0) or west (270) means decreasing coordinate
@@ -611,46 +611,12 @@ function slabRun(footprint: Pt[], voids: Pt[][], axis: 0 | 1, up: number): numbe
   const foot = ascending ? lo : hi;
   let open = hi - lo;
   for (const v of voids) {
-    if (!polysOverlap(v, footprint)) continue;
-    const vb = bbox(v);
+    if (overlapArea(v, footprint) <= 0) continue;
+    const vb = bbox(v.poly);
     const near = ascending ? Math.max(lo, axis === 0 ? vb.x0 : vb.y0) : Math.min(hi, axis === 0 ? vb.x1 : vb.y1);
     open = Math.min(open, Math.abs(near - foot));
   }
   return snap(open);
-}
-
-/** Area of the overlap of two rectilinear polygons, by cell decomposition. */
-function overlapArea(a: Pt[], b: Pt[]): number {
-  return cellSum([...a, ...b], (c) => pointInPoly(c, a) && pointInPoly(c, b)).area;
-}
-
-/** The part of `poly` that no polygon in `under` covers: how much, and where. */
-function uncoveredArea(poly: Pt[], under: Pt[][]): { area: number; at: Pt } {
-  const pa = bbox(poly);
-  const pts = [...poly];
-  for (const u of under) for (const p of u) if (p[0] > pa.x0 && p[0] < pa.x1) pts.push([p[0], pa.y0]);
-  for (const u of under) for (const p of u) if (p[1] > pa.y0 && p[1] < pa.y1) pts.push([pa.x0, p[1]]);
-  return cellSum(pts, (c) => pointInPoly(c, poly) && !under.some((u) => pointInPoly(c, u)));
-}
-
-/** Area and area-weighted centre of every cell of the coordinate grid matching `keep`. */
-function cellSum(pts: Pt[], keep: (c: Pt) => boolean): { area: number; at: Pt } {
-  const xs = [...new Set(pts.map((p) => p[0]))].sort((m, n) => m - n);
-  const ys = [...new Set(pts.map((p) => p[1]))].sort((m, n) => m - n);
-  let area = 0;
-  let cx = 0;
-  let cy = 0;
-  for (let i = 0; i + 1 < xs.length; i++) {
-    for (let j = 0; j + 1 < ys.length; j++) {
-      const c: Pt = [(xs[i]! + xs[i + 1]!) / 2, (ys[j]! + ys[j + 1]!) / 2];
-      if (!keep(c)) continue;
-      const a = (xs[i + 1]! - xs[i]!) * (ys[j + 1]! - ys[j]!);
-      area += a;
-      cx += a * c[0];
-      cy += a * c[1];
-    }
-  }
-  return { area: snap(area), at: area > 0 ? [snap(cx / area), snap(cy / area)] : [0, 0] };
 }
 
 const SEVERITY_RANK = { error: 0, warning: 1, info: 2 } as const;

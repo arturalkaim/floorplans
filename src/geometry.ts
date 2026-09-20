@@ -58,31 +58,6 @@ export type PolyProblem =
   | { kind: "arc_radius"; edge: number; needed: number; got: number };
 
 /**
- * Cell-decomposition predicates for rectilinear polygons. Both build the grid of
- * every distinct x and y across the inputs and test cell centres, which is exact
- * for rectilinear shapes.
- */
-function cellCentres(polys: Pt[][]): Pt[] {
-  const all = polys.flat();
-  const xs = [...new Set(all.map((p) => p[0]))].sort((a, b) => a - b);
-  const ys = [...new Set(all.map((p) => p[1]))].sort((a, b) => a - b);
-  const out: Pt[] = [];
-  for (let i = 0; i < xs.length - 1; i++)
-    for (let j = 0; j < ys.length - 1; j++) out.push([(xs[i]! + xs[i + 1]!) / 2, (ys[j]! + ys[j + 1]!) / 2]);
-  return out;
-}
-
-/** true if two rectilinear polygons share interior area; touching edges do not count */
-export function polysOverlap(a: Pt[], b: Pt[]): boolean {
-  return cellCentres([a, b]).some((c) => pointInPoly(c, a) && pointInPoly(c, b));
-}
-
-/** true if every part of `inner` lies within `outer` */
-export function polyInside(inner: Pt[], outer: Pt[]): boolean {
-  return cellCentres([inner, outer]).every((c) => !pointInPoly(c, inner) || pointInPoly(c, outer));
-}
-
-/**
  * Snap, drop repeated and collinear corners, and check the ring is a simple closed loop.
  *
  * Any simple polygon is accepted — the rectilinear test that used to sit here is gone
