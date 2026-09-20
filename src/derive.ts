@@ -181,6 +181,27 @@ export function shapeBox(s: Shape): { x0: number; y0: number; x1: number; y1: nu
   return { x0: toM(b.x0), y0: toM(b.y0), x1: toM(b.x1), y1: toM(b.y1) };
 }
 
+/**
+ * Is this point on the shape's boundary, to the millimetre? Used to decide whether
+ * moving a wall's end would drag a corner off a third space's edge — the T-junction that
+ * a "is it one of its corners" test misses.
+ */
+export function pointOnShapeBoundary(p: Pt, s: Shape, tol = 0.001): boolean {
+  const q = ptMm(p);
+  const ring = ringPoints(ringOf(s));
+  const t = toMm(tol);
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i]!;
+    const b = ring[(i + 1) % ring.length]!;
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const l2 = dx * dx + dy * dy;
+    const u = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / l2));
+    if (Math.hypot(q[0] - a[0] - dx * u, q[1] - a[1] - dy * u) <= t) return true;
+  }
+  return false;
+}
+
 /** Is this point inside the shape? Arcs are tested on their canonical chords. */
 export const pointInShape = (p: Pt, s: Shape): boolean =>
   s.arcs.some((a) => a !== undefined) ? pointInPolyMm(ptMm(p), ringPoints(ringOf(s))) : pointInPoly(p, s.poly);

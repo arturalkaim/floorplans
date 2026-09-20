@@ -28,13 +28,16 @@ export { RULES, ruleById } from "./catalogue.ts";
 export { EXTERIOR, GAP, GROUND_LEVEL, isOpenSky, isStreet, isVoid, outdoorOwner, ownerId, ownerKey, roomOwner, sameOwner, voidOwner } from "./types.ts";
 export {
   applyDrag,
+  applyHandle,
   applyMove,
+  applyVertexHandle,
   draggableFixtureEdges,
   draggableOutdoorEdges,
   draggableWalls,
   movableFixtures,
+  wallHandles,
 } from "./edit.ts";
-export type { Draggable, Movable } from "./edit.ts";
+export type { Draggable, Handle, Movable, OffsetHandle, RadiusHandle, VertexHandle } from "./edit.ts";
 export { levelOf, projection } from "./svg.ts";
 export type { Projection } from "./svg.ts";
 export type { RuleDoc } from "./catalogue.ts";

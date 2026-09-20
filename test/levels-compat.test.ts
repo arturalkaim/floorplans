@@ -48,6 +48,17 @@ const baseline = (n: string, ext: string) =>
  */
 const CORRECTED_CLEAR_AREA: Record<string, ReadonlyArray<readonly [string, string]>> = {
   quinta: [
+    // and the one drag that was pointing at the wrong thing. `w23` is the east wall of
+    // `arrecadacao`, quinta's detached shack: poly-authored, a metre south of where the
+    // track grid ends, and on the grid's east line purely by coordinate coincidence.
+    // The grid drag it used to be offered as resized the *house* and left the shack
+    // where it was. A grid drag is now offered only where the grid is what put a wall
+    // there, so this one writes the shack's own rect (docs/action-plan.md, the follow-up
+    // W1c logged and left for the drag-layer rebuild).
+    [
+      `      "id": "w23",\n      "writes": "layout.cols[2]",\n      "edits": [\n        {\n          "path": [\n            "layout",\n            "cols",\n            2\n          ],\n          "literal": "3.85"\n        }\n      ]`,
+      `      "id": "w23",\n      "writes": "1 coordinates in arrecadacao",\n      "edits": [\n        {\n          "path": [\n            "rooms",\n            "arrecadacao",\n            "rect",\n            2\n          ],\n          "literal": "3.45"\n        }\n      ]`,
+    ],
     ['"clearArea": 20.115,', '"clearArea": 20.102,'],
     ['"usableArea": 20.115', '"usableArea": 20.102'],
     ['"clearArea": 27.314,', '"clearArea": 27.32,'],

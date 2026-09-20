@@ -1,10 +1,11 @@
 // Editing support: which walls a drawing can offer to drag, and what moving one writes
 // back to the source. The document is the single source of truth, so an edit is always
 // expressed as a splice into its text, never as a mutation of the derived model.
+import { pointOnShapeBoundary } from "./derive.ts";
 import { metres, spliceAll } from "./jsonpos.ts";
 import type { JsonPath } from "./jsonpos.ts";
 import { levelOf } from "./svg.ts";
-import type { Axis, LevelModel, Model, Pt, Wall } from "./types.ts";
+import type { Axis, LevelModel, Model, Pt, Shape, Wall } from "./types.ts";
 import { ownerId } from "./types.ts";
 
 /**
@@ -76,6 +77,8 @@ interface SpaceForm {
   edge: (axis: 0 | 1, from: number, to: number) => Array<{ path: JsonPath; literal: string }>;
   /** move the corners at these indices into `vertices`, along `axis`, onto `to` */
   corners: (indices: number[], axis: 0 | 1, to: number) => Array<{ path: JsonPath; literal: string }>;
+  /** move one corner to a point, writing only the coordinates that actually change */
+  corner: (index: number, to: Pt) => Array<{ path: JsonPath; literal: string }>;
 }
 
 /**
@@ -93,18 +96,36 @@ function spaceForm(doc: Doc, root: JsonPath, kind: SpaceKind, id: string): Space
   if (poly !== undefined) {
     if (!Array.isArray(poly)) return null;
     const pts: Pt[] = [];
-    for (const p of poly) {
-      if (!Array.isArray(p) || p.length !== 2 || p.some((n) => typeof n !== "number")) return null;
-      pts.push([p[0] as number, p[1] as number]);
+    // where each corner's coordinates live: `poly[v]` for a plain point, `poly[v].arc`
+    // for an arc entry, which carries the corner the arc *ends* at
+    const holder: Array<readonly (string | number)[]> = [];
+    for (const [v, p] of (poly as unknown[]).entries()) {
+      if (Array.isArray(p) && p.length === 2 && p.every((n) => typeof n === "number")) {
+        pts.push([p[0] as number, p[1] as number]);
+        holder.push(["poly", v]);
+        continue;
+      }
+      const o = asObj(p);
+      const a = o?.["arc"];
+      if (Array.isArray(a) && a.length === 2 && a.every((n) => typeof n === "number")) {
+        pts.push([a[0] as number, a[1] as number]);
+        holder.push(["poly", v, "arc"]);
+        continue;
+      }
+      return null;
     }
     const write = (v: number, axis: 0 | 1, to: number) => ({
-      path: [...root, kind, id, "poly", v, axis] as JsonPath,
+      path: [...root, kind, id, ...holder[v]!, axis] as JsonPath,
       literal: metres(to),
     });
     return {
       vertices: pts,
       edge: (axis, from, to) => pts.flatMap((p, v) => (near(p[axis], from) ? [write(v, axis, to)] : [])),
       corners: (indices, axis, to) => indices.map((v) => write(v, axis, to)),
+      corner: (index, to) =>
+        ([0, 1] as const).flatMap((axis) =>
+          near(pts[index]![axis], to[axis]) ? [] : [write(index, axis, to[axis])],
+        ),
     };
   }
 
@@ -137,6 +158,11 @@ function spaceForm(doc: Doc, root: JsonPath, kind: SpaceKind, id: string): Space
     vertices,
     edge,
     corners: (indices, axis, to) => (indices.length === 0 ? [] : edge(axis, vertices[indices[0]!]![axis], to)),
+    // a rect has no corner to move on its own: pushing one moves the two sides it is on
+    corner: (index, to) =>
+      ([0, 1] as const).flatMap((axis) =>
+        near(vertices[index]![axis], to[axis]) ? [] : edge(axis, vertices[index]![axis], to[axis]),
+      ),
   };
 }
 
@@ -170,6 +196,25 @@ function fromGrid(doc: Doc, root: JsonPath, levels: string[], wall: AxisWall): D
   const bounds = boundaries(list);
   const axis = wall.axis === "v" ? 0 : 1;
   const along = 1 - axis;
+
+  /**
+   * A grid drag resizes tracks, which moves every space the grid places and nothing
+   * else. A wall both of whose sides author their own geometry has nothing to do with
+   * the grid even when its coordinate happens to equal a track boundary — quinta's
+   * detached shack `arrecadacao` sits on the grid's east line by coincidence, a metre
+   * south of where the grid ends, and dragging its wall used to resize the *house*
+   * (docs/action-plan.md, the follow-up W1c logged). Offer the grid only where the grid
+   * is what put a wall there.
+   */
+  const gridPlaced = (id: string | undefined) => {
+    if (id === undefined) return false;
+    for (const kind of SPACE_KINDS) {
+      const group = asObj(at(doc, root)?.[kind]);
+      if (group && id in group) return spaceForm(doc, root, kind, id) === undefined;
+    }
+    return false;
+  };
+  if (![wall.neg, wall.pos].map(ownerId).some(gridPlaced)) return undefined;
 
   // The grid's own boundaries on the other axis — the coordinates a track edge can
   // actually land on. A polygon edge counts as riding the dragged line only if one of
@@ -534,4 +579,356 @@ export function applyMove(text: string, m: Movable, to: Pt, free = false): strin
   const at: Pt = [Math.round(to[0] / grid) * grid, Math.round(to[1] / grid) * grid];
   if (near(at[0], m.at[0]) && near(at[1], m.at[1])) return text;
   return spliceAll(text, m.edits(at));
+}
+
+
+// ---------- handles: what a wall that is not a grid line can be dragged by ----------
+
+/**
+ * A grip on the drawing, generalised past "a coordinate on an axis" (docs/gaps-design.md
+ * §1.3.8). Three kinds, because three is what the geometry has:
+ *
+ * - **offset** slides a wall along its own normal. The vertices on it move; the edges
+ *   running into them keep their far ends and pivot. On an axis-aligned wall this writes
+ *   exactly what `draggableWalls` writes, which is the property `handlesMatchDrags` pins.
+ * - **radius** changes a curved wall's bulge by splicing the `r` of the arc that made it.
+ *   That this is one number in one place is why §1.2 chose an inline arc object over an
+ *   SVG path string, which no `spliceAt` could address.
+ * - **vertex** moves one corner in two dimensions.
+ *
+ * `draggableWalls` is not replaced: a grid wall resizes tracks, which is a different and
+ * better edit than moving vertices, and it is expressed entirely in document terms.
+ */
+export type Handle = OffsetHandle | RadiusHandle | VertexHandle;
+
+export interface OffsetHandle {
+  kind: "offset";
+  id: string;
+  wallId: string;
+  /** unit normal the wall slides along, pointing at its `pos` side */
+  normal: Pt;
+  /** where the wall is now, as a projection onto that normal, metres */
+  at: number;
+  min: number;
+  max: number;
+  writes: string;
+  edits: (next: number) => Array<{ path: JsonPath; literal: string }>;
+}
+
+export interface RadiusHandle {
+  kind: "radius";
+  id: string;
+  wallId: string;
+  /** the arc's radius now, metres */
+  at: number;
+  min: number;
+  max: number;
+  writes: string;
+  edits: (next: number) => Array<{ path: JsonPath; literal: string }>;
+}
+
+export interface VertexHandle {
+  kind: "vertex";
+  id: string;
+  /** which space and which corner of its `poly` */
+  space: string;
+  index: number;
+  at: Pt;
+  writes: string;
+  edits: (to: Pt) => Array<{ path: JsonPath; literal: string }>;
+}
+
+const dot = (a: Pt, b: Pt) => a[0] * b[0] + a[1] * b[1];
+
+/** The unit normal of a straight wall, pointing at its `pos` side. */
+function wallNormal(w: Wall): Pt | undefined {
+  if (w.geometry.kind !== "segment") return undefined;
+  const dx = w.geometry.b[0] - w.geometry.a[0];
+  const dy = w.geometry.b[1] - w.geometry.a[1];
+  const l = Math.hypot(dx, dy);
+  if (l === 0) return undefined;
+  return [-dy / l, dx / l];
+}
+
+/**
+ * Every handle one level offers. Offsets for straight walls, a radius for each curved
+ * one, and a vertex for every corner of every space authored as a `poly`.
+ */
+export function wallHandles(text: string, model: Model, level?: string): Map<string, Handle> {
+  const doc = asObj(safeParse(text));
+  const out = new Map<string, Handle>();
+  if (!doc) return out;
+  const { root, lm } = rootOf(doc, model, level);
+
+  for (const wall of lm.walls) {
+    const h = offsetHandle(doc, root, lm, wall) ?? radiusHandle(doc, root, lm, wall);
+    if (h) out.set(h.id, h);
+  }
+  for (const kind of SPACE_KINDS) {
+    const group = asObj(at(doc, root)?.[kind]);
+    if (!group) continue;
+    for (const id of Object.keys(group)) {
+      const entry = asObj(group[id]);
+      // only a `poly` has corners to address; a `rect` is moved by its edges
+      if (!entry || !Array.isArray(entry["poly"])) continue;
+      const form = spaceForm(doc, root, kind, id);
+      if (!form) continue;
+      form.vertices.forEach((v, i) => {
+        const h: VertexHandle = {
+          kind: "vertex",
+          id: `vertex:${id}:${i}`,
+          space: id,
+          index: i,
+          at: v,
+          writes: `corner ${i} of ${id}`,
+          edits: (to) => form.corner(i, to),
+        };
+        out.set(h.id, h);
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Slide a straight wall along its normal. Refused, exactly as the coordinate drag is,
+ * when a space it separates has a corner on the wall's own line but outside its run:
+ * moving that corner would need the edge split, which is a different operation.
+ *
+ * INVARIANT: where the normal is axis-aligned this writes through the very same
+ * `SpaceForm.edge` the coordinate drag uses, so a `rect`-authored room stays a rect and
+ * the splice is byte for byte what it was. Only an angled wall takes the general path,
+ * and an angled wall can never bound a rect.
+ */
+function offsetHandle(doc: Doc, root: JsonPath, lm: LevelModel, wall: Wall): OffsetHandle | undefined {
+  const n = wallNormal(wall);
+  if (!n || wall.geometry.kind !== "segment") return undefined;
+  const a = wall.geometry.a;
+  const b = wall.geometry.b;
+  const t: Pt = [b[0] - a[0], b[1] - a[1]];
+  const len = Math.hypot(t[0], t[1]);
+  if (len === 0) return undefined;
+  const unit: Pt = [t[0] / len, t[1] / len];
+  const here = dot(a, n);
+  /** the coordinate axis the normal runs along, when it runs along one */
+  const flat: 0 | 1 | undefined = wall.axis === "v" ? 0 : wall.axis === "h" ? 1 : undefined;
+
+  const owners = new Set([wall.neg, wall.pos].map(ownerId).filter((id) => id !== undefined));
+  if (owners.size === 0) return undefined;
+
+  const movers: Array<{ id: string; kind: SpaceKind; form: SpaceForm; indices: number[] }> = [];
+  let lower = -Infinity;
+  let upper = Infinity;
+  for (const kind of SPACE_KINDS) {
+    const group = asObj(at(doc, root)?.[kind]);
+    if (!group) continue;
+    for (const id of Object.keys(group)) {
+      if (!owners.has(id)) continue;
+      const form = spaceForm(doc, root, kind, id);
+      if (form === null) return undefined;
+      if (!form) continue;
+      const indices: number[] = [];
+      let onLine = 0;
+      for (const [i, p] of form.vertices.entries()) {
+        const across = dot(p, n) - here;
+        if (Math.abs(across) < 1e-6) {
+          onLine++;
+          const alongP = dot([p[0] - a[0], p[1] - a[1]], unit);
+          if (alongP < -1e-6 || alongP > len + 1e-6) continue;
+          indices.push(i);
+          continue;
+        }
+        // How far it may go. On an axis-aligned wall every other corner is a line the
+        // wall must not cross, which is what the coordinate drag has always used. On a
+        // canted wall that projection means nothing — a corner across the room can be
+        // "nearer" along the normal than the edge the wall actually pivots on — so only
+        // the corners the moving ones hinge against count.
+        if (flat === undefined) continue;
+        if (across < 0) lower = Math.max(lower, dot(p, n));
+        else upper = Math.min(upper, dot(p, n));
+      }
+      if (flat === undefined) {
+        const m = form.vertices.length;
+        for (const i of indices)
+          for (const j of [(i - 1 + m) % m, (i + 1) % m]) {
+            if (indices.includes(j)) continue;
+            const across = dot(form.vertices[j]!, n) - here;
+            if (across < 0) lower = Math.max(lower, dot(form.vertices[j]!, n));
+            else upper = Math.min(upper, dot(form.vertices[j]!, n));
+          }
+      }
+      // a corner on the line but off the run: the edge would have to be split
+      if (onLine !== indices.length) return undefined;
+      if (indices.length) movers.push({ id, kind, form, indices });
+    }
+  }
+  if (movers.length === 0) return undefined;
+
+  /**
+   * What the coordinate drag's "a vertex outside the run" refusal is a special case of,
+   * stated the way the arrangement states it. A wall's end may be incident to a *third*
+   * space — a T-junction on its edge, or its corner. Sliding the wall moves that end,
+   * and the boundary it was sitting on stays put, so the two come apart — unless the
+   * wall's *normal*, which is the direction the end travels in, runs along that
+   * boundary: then the end merely slides down it and the plan is still a plan. casa-t3's
+   * wc/closet wall ends on the suite's east edge and moves along it, so it may move;
+   * casa-angulo's 45° wing ends at a T-junction on the quarto's south edge and travels
+   * at 45° to it, so sliding it opens a 0.12 m² overlap.
+   */
+  for (const shape of thirdParties(lm, owners))
+    for (const end of [a, b]) {
+      if (!pointOnShapeBoundary(end, shape)) continue;
+      if (!boundaryRunsAlong(shape, end, n)) return undefined;
+    }
+
+  const write = (next: number): Array<{ path: JsonPath; literal: string }> => {
+    if (flat !== undefined) return movers.flatMap(({ form }) => form.edge(flat, here, next));
+    const d = next - here;
+    return movers.flatMap(({ form, indices }) =>
+      indices.flatMap((i) => {
+        const p = form.vertices[i]!;
+        const to: Pt = [p[0] + n[0] * d, p[1] + n[1] * d];
+        return form.corner(i, to);
+      }),
+    );
+  };
+  const count = flat === undefined ? movers.reduce((t2, m) => t2 + m.indices.length, 0) : write(here).length;
+  if (count === 0) return undefined;
+  const min = lower === -Infinity ? here - 20 : lower + MIN_TRACK;
+  const max = upper === Infinity ? here + 20 : upper - MIN_TRACK;
+  if (max <= min) return undefined;
+  return {
+    kind: "offset",
+    id: `offset:${wall.id}`,
+    wallId: wall.id,
+    normal: n,
+    at: here,
+    min,
+    max,
+    writes:
+      flat === undefined
+        ? `${count} corner${count === 1 ? "" : "s"} in ${movers.map((m) => m.id).join(", ")}`
+        : `${count} coordinates in ${movers.map((m) => m.id).join(", ")}`,
+    edits: write,
+  };
+}
+
+/** Change a curved wall's bulge by splicing the radius of the arc that produced it. */
+function radiusHandle(doc: Doc, root: JsonPath, lm: LevelModel, wall: Wall): RadiusHandle | undefined {
+  if (wall.geometry.kind !== "arc") return undefined;
+  const g = wall.geometry;
+  const owners = new Set([wall.neg, wall.pos].map(ownerId).filter((id) => id !== undefined));
+  for (const kind of SPACE_KINDS) {
+    const group = asObj(at(doc, root)?.[kind]);
+    if (!group) continue;
+    for (const id of Object.keys(group)) {
+      if (!owners.has(id)) continue;
+      const entry = asObj(group[id]);
+      const poly = entry?.["poly"];
+      if (!Array.isArray(poly)) continue;
+      const shape = shapeOf(lm, id);
+      if (!shape) continue;
+      for (let i = 0; i < poly.length; i++) {
+        const item = asObj(poly[i]);
+        if (!item || item["arc"] === undefined || typeof item["r"] !== "number") continue;
+        // the authored arc that carries this wall: same circle to the millimetre
+        const spec = shape.arcs[centreIndex(shape, poly, i)];
+        if (!spec) continue;
+        const resolved = arcCircle(shape, centreIndex(shape, poly, i));
+        if (!resolved) continue;
+        if (Math.abs(resolved.r - g.r) > 1e-3) continue;
+        if (Math.hypot(resolved.c[0] - g.centre[0], resolved.c[1] - g.centre[1]) > 1e-3) continue;
+        const chord = Math.hypot(...(chordOf(shape, centreIndex(shape, poly, i)) ?? [0, 0]));
+        return {
+          kind: "radius",
+          id: `radius:${wall.id}`,
+          wallId: wall.id,
+          at: item["r"],
+          min: Math.round((chord / 2) * 1000) / 1000,
+          max: 100,
+          writes: `${id}'s arc radius`,
+          edits: (next) => [{ path: [...root, kind, id, "poly", i, "r"] as JsonPath, literal: metres(next) }],
+        };
+      }
+    }
+  }
+  return undefined;
+}
+
+/** Which edge of the parsed shape the document's `poly[i]` arc object describes. */
+const centreIndex = (shape: Shape, poly: unknown[], i: number): number => {
+  // an arc entry at document index i is the parsed edge that *ends* at parsed corner i,
+  // and the parser keeps one corner per entry, so the edge index is i − 1
+  void poly;
+  return (i - 1 + shape.poly.length) % shape.poly.length;
+};
+
+function chordOf(shape: Shape, edge: number): [number, number] | undefined {
+  const a = shape.poly[edge];
+  const b = shape.poly[(edge + 1) % shape.poly.length];
+  return a && b ? [b[0] - a[0], b[1] - a[1]] : undefined;
+}
+
+function arcCircle(shape: Shape, edge: number): { c: Pt; r: number } | undefined {
+  const spec = shape.arcs[edge];
+  const a = shape.poly[edge];
+  const b = shape.poly[(edge + 1) % shape.poly.length];
+  if (!spec || !a || !b) return undefined;
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const chord = Math.hypot(dx, dy);
+  if (chord === 0) return undefined;
+  const r = Math.max(spec.r, chord / 2);
+  const h = Math.sqrt(Math.max(0, r * r - (chord / 2) ** 2));
+  const side = (spec.sweep === "cw") !== spec.large ? 1 : -1;
+  return { c: [(a[0] + b[0]) / 2 + (side * h * -dy) / chord, (a[1] + b[1]) / 2 + (side * h * dx) / chord], r };
+}
+
+/** Does a boundary edge of `shape` through `p` run along `dir`? */
+function boundaryRunsAlong(shape: Shape, p: Pt, dir: Pt): boolean {
+  const n = shape.poly.length;
+  for (let i = 0; i < n; i++) {
+    // an arc through the point runs along no fixed direction, so it never qualifies
+    if (shape.arcs[i] !== undefined) continue;
+    const a = shape.poly[i]!;
+    const b = shape.poly[(i + 1) % n]!;
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const l2 = dx * dx + dy * dy;
+    if (l2 === 0) continue;
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2));
+    if (Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dy * t) > 1e-6) continue;
+    if (Math.abs(dx * dir[1] - dy * dir[0]) / Math.sqrt(l2) < 1e-6) return true;
+  }
+  return false;
+}
+
+/** Every declared space on the level except the ones named. */
+const thirdParties = (lm: LevelModel, owners: ReadonlySet<string>): Shape[] => [
+  ...lm.rooms.filter((m) => !owners.has(m.room.id)).map((m) => m.room as Shape),
+  ...lm.level.outdoor.filter((o) => !owners.has(o.id)).map((o) => o as Shape),
+  ...lm.level.voids.filter((v) => !owners.has(v.id)).map((v) => v as Shape),
+];
+
+const shapeOf = (lm: LevelModel, id: string): Shape | undefined =>
+  lm.rooms.find((m) => m.room.id === id)?.room ??
+  lm.level.outdoor.find((o) => o.id === id) ??
+  lm.level.voids.find((v) => v.id === id);
+
+/** Apply a scalar handle — an offset or a radius — with the same snapping a drag uses. */
+export function applyHandle(text: string, h: OffsetHandle | RadiusHandle, rawNext: number, free = false): string {
+  const clamped = Math.min(Math.max(rawNext, h.min), h.max);
+  const snapped = free ? Math.round(clamped * 1000) / 1000 : Math.round(clamped / SNAP) * SNAP;
+  const next = Math.round(Math.min(Math.max(snapped, h.min), h.max) * 1000) / 1000;
+  if (near(next, h.at)) return text;
+  const edits = h.edits(next);
+  return edits.length === 0 ? text : spliceAll(text, edits);
+}
+
+/** Apply a vertex handle: a corner moves in both directions at once. */
+export function applyVertexHandle(text: string, h: VertexHandle, to: Pt, free = false): string {
+  const grid = free ? 0.001 : SNAP;
+  const at2: Pt = [Math.round(to[0] / grid) * grid, Math.round(to[1] / grid) * grid];
+  const edits = h.edits([snapMm(at2[0]), snapMm(at2[1])]);
+  return edits.length === 0 ? text : spliceAll(text, edits);
 }
