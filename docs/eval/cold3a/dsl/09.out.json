@@ -1,0 +1,15 @@
+{
+  "summary": {"error":6,"warning":4,"info":0},
+  "findings": [
+    {"rule":"opening.off_wall","severity":"error","message":"opening #2: point (4, 3.5) is 0.5 m from the nearest wall (y=3 x 4→5), farther than half its thickness plus tolerance (0.15 m)","path":"openings[2].at","opening":"door:courtyard-kitchen:0","rooms":["kitchen","courtyard"],"nearest":"w4","distance":0.5,"line":11},
+    {"rule":"opening.off_wall","severity":"error","message":"opening #3: point (4.5, 4) is 0.5 m from the nearest wall (x=5 y 4→5), farther than half its thickness plus tolerance (0.15 m)","path":"openings[3].at","opening":"door:bedroom-courtyard:0","rooms":["bedroom","courtyard"],"nearest":"w18","distance":0.5,"line":12},
+    {"rule":"opening.off_wall","severity":"error","message":"opening #4: point (4, 4.5) is 0.5 m from the nearest wall (y=5 x 3→4), farther than half its thickness plus tolerance (0.15 m)","path":"openings[4].at","opening":"door:bath-courtyard:0","rooms":["bath","courtyard"],"nearest":"w7","distance":0.5,"line":13},
+    {"rule":"space.no_access","severity":"error","message":"Kitchen has no door or cased opening","path":"rooms.kitchen","rooms":["kitchen"],"at":[6,1.5],"line":4},
+    {"rule":"space.no_access","severity":"error","message":"Bedroom has no door or cased opening","path":"rooms.bedroom","rooms":["bedroom"],"at":[6,6.5],"line":5},
+    {"rule":"space.no_access","severity":"error","message":"Bathroom has no door or cased opening","path":"rooms.bath","rooms":["bath"],"at":[1.5,6],"line":6},
+    {"rule":"door.min_width","severity":"warning","message":"door #1 (0.8 m) between Living room and Courtyard is narrower than 0.9 m","path":"openings[1].width","at":[3,3.5],"opening":"door:courtyard-living:0","line":10},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"rooms.living","rooms":["living"],"at":[1.5,2],"line":3},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 2.8 m at its narrowest; comfort minimum is 3 m (clear floor 2.8 × 3.85 m)","path":"rooms.living.poly","rooms":["living"],"at":[1.5,2],"measured":2.8,"minimum":3,"rect":[0.1,0.1,2.8,3.85],"line":3},
+    {"rule":"wet.no_window","severity":"warning","message":"Bathroom has no exterior window; plan mechanical extraction","path":"rooms.bath","rooms":["bath"],"at":[1.5,6],"line":6}
+  ]
+}

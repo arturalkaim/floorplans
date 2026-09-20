@@ -1,0 +1,9 @@
+{
+  "summary": {"error":0,"warning":3,"info":1},
+  "findings": [
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 1 (bedroom): 1.85 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.85 × 3.15 m)","path":"rooms.bed1.rect","rooms":["bed1"],"at":[1,2.85],"measured":1.85,"minimum":2.4,"rect":[0.1,1.25,1.85,3.15],"line":4},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 2 (bedroom): 1.9 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.9 × 3.15 m)","path":"rooms.bed2.rect","rooms":["bed2"],"at":[3,2.85],"measured":1.9,"minimum":2.4,"rect":[2.05,1.25,1.9,3.15],"line":5},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 1.85 m at its narrowest; comfort minimum is 3 m (clear floor 1.85 × 4.3 m)","path":"rooms.living.rect","rooms":["living"],"at":[7,2.25],"measured":1.85,"minimum":3,"rect":[6.05,0.1,1.85,4.3],"line":7},
+    {"rule":"circulation.share","severity":"info","message":"Corridor take 20 % of the interior (7.2 m²); above 10 % is worth questioning","path":"rooms","rooms":["corridor"]}
+  ]
+}

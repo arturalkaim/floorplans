@@ -1,0 +1,7 @@
+{
+  "summary": {"error":0,"warning":0,"info":2},
+  "findings": [
+    {"rule":"door.swing_collision","severity":"info","message":"doors #2 and #3 swing into the same corner of Utility","path":"openings[2]","rooms":["utility"],"at":[5.1,2.5],"line":10},
+    {"rule":"entrance.multiple","severity":"info","message":"2 doors lead outside (Living room, Utility); the main one is Living room","path":"openings"}
+  ]
+}

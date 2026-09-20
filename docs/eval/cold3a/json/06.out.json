@@ -1,0 +1,9 @@
+{
+  "summary": {"error":1,"warning":2,"info":1},
+  "findings": [
+    {"rule":"opening.collision","severity":"error","message":"openings #6 and #0 overlap on the wall between the exterior and living","path":"openings[0]","at":[4,0],"opening":"door:exterior-living:0"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 2.85 m at its narrowest; comfort minimum is 3 m (clear floor 7.8 × 2.85 m)","path":"rooms.living.rect","rooms":["living"],"at":[4,1.5],"measured":2.85,"minimum":3,"rect":[0.1,0.1,7.8,2.85]},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 2 (bedroom): 2.35 m at its narrowest; comfort minimum is 2.4 m (clear floor 2.85 × 2.35 m)","path":"rooms.bed2.rect","rooms":["bed2"],"at":[1.5,6.75],"measured":2.35,"minimum":2.4,"rect":[0.1,5.55,2.85,2.35]},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 12 % of the interior (7.5 m²); above 10 % is worth questioning","path":"rooms","rooms":["hall"]}
+  ]
+}

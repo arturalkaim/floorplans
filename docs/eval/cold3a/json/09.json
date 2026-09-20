@@ -1,0 +1,22 @@
+{
+  "title": "Courtyard house",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "living": {"name": "Living room", "kind": "living", "poly": [[0,0],[4,0],[4,3],[3,3],[3,4],[0,4]], "habitable": true},
+    "kitchen": {"name": "Kitchen", "kind": "kitchen", "poly": [[4,0],[8,0],[8,4],[5,4],[5,3],[4,3]], "habitable": true},
+    "bedroom": {"name": "Bedroom", "kind": "bedroom", "poly": [[5,4],[8,4],[8,8],[4,8],[4,5],[5,5]], "habitable": true},
+    "bath": {"name": "Bathroom", "kind": "bath", "poly": [[0,4],[3,4],[3,5],[4,5],[4,8],[0,8]], "wet": true}
+  },
+  "outdoor": {
+    "courtyard": {"name": "Courtyard", "rect": [3,3,2,2]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior","living"], "on": {"room": "living", "side": "north"}, "width": 1.0, "entrance": true},
+    {"type": "door", "between": ["living","courtyard"], "at": [3,3.5], "width": 0.8},
+    {"type": "door", "between": ["kitchen","courtyard"], "at": [4,3.5], "width": 0.8},
+    {"type": "door", "between": ["bedroom","courtyard"], "at": [4.5,4], "width": 0.8},
+    {"type": "door", "between": ["bath","courtyard"], "at": [4,4.5], "width": 0.7},
+    {"type": "window", "between": ["exterior","kitchen"], "on": {"room": "kitchen", "side": "east"}, "width": 1.2},
+    {"type": "window", "between": ["exterior","bedroom"], "on": {"room": "bedroom", "side": "south"}, "width": 1.2}
+  ]
+}

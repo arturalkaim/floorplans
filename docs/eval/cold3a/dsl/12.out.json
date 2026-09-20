@@ -1,0 +1,8 @@
+{
+  "summary": {"error":0,"warning":1,"info":2},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"Living room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"rooms.living","rooms":["living"],"at":[3,3],"line":3},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom 1 opens directly off Living room","path":"openings[1]","rooms":["living","bed1"],"at":[6,1.5],"opening":"door:bed1-living:0","line":13},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom 2 opens directly off Living room","path":"openings[2]","rooms":["living","bed2"],"at":[6,4.5],"opening":"door:bed2-living:0","line":14}
+  ]
+}

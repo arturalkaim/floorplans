@@ -1,0 +1,10 @@
+{
+  "summary": {"error":1,"warning":4,"info":0},
+  "findings": [
+    {"rule":"opening.collision","severity":"error","message":"openings #0 and #2 overlap on the wall between main and the exterior","path":"openings[2].position","at":[2.5,4],"opening":"window:exterior-main:0","line":8},
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #1 swings into Wc in Shower room; rehang it or move the fixture","path":"openings[1].hinge","at":[4,1.6],"rooms":["shower"],"opening":"door:main-shower:0","fixture":"wc:shower:0","line":7},
+    {"rule":"fixture.clearance","severity":"warning","message":"only 0.2 m between Counter and Sink in Studio room; leave ≥ 0.6 m to walk through","path":"fixtures[0].at","at":[2.4,0.6],"rooms":["main"],"fixture":"kitchenette_counter","line":11},
+    {"rule":"fixture.clearance","severity":"warning","message":"only 0.3 m between Shower and Wc in Shower room; leave ≥ 0.6 m to walk through","path":"fixtures[2].at","at":[4.75,1.2],"rooms":["shower"],"fixture":"shower:shower:0","line":13},
+    {"rule":"room.min_dimension","severity":"warning","message":"Shower room (bath): 1.35 m at its narrowest; comfort minimum is 1.5 m (clear floor 1.35 × 1.8 m)","path":"rooms.shower.rect","rooms":["shower"],"at":[4.75,3.05],"measured":1.35,"minimum":1.5,"rect":[4.05,2.1,1.35,1.8],"line":4}
+  ]
+}

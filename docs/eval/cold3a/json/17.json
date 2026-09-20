@@ -1,0 +1,16 @@
+{
+  "title": "Loft conversion",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "main": {"name": "Main room", "kind": "other", "rect": [0,0,5,4], "habitable": true},
+    "shower": {"name": "Shower room", "kind": "bath", "rect": [5,0,1.5,4], "wet": true}
+  },
+  "openings": [
+    {"type": "door", "between": ["main","shower"], "at": [5,2], "width": 0.7},
+    {"type": "window", "between": ["exterior","main"], "on": {"room": "main", "side": "north"}, "width": 1.5},
+    {"type": "window", "between": ["exterior","shower"], "on": {"room": "shower", "side": "east"}, "width": 0.5}
+  ],
+  "fixtures": [
+    {"type": "stairs", "in": "main", "at": [4.3,3.3], "size": [0.7,0.7], "name": "Stair arrival"}
+  ]
+}

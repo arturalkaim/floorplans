@@ -1,0 +1,28 @@
+{
+  "title": "Flat on a grid",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "living": {"name": "Living room", "kind": "living", "habitable": true},
+    "bed1": {"name": "Bedroom 1", "kind": "bedroom", "habitable": true},
+    "bed2": {"name": "Bedroom 2", "kind": "bedroom", "habitable": true},
+    "bath": {"name": "Bathroom", "kind": "bath", "wet": true}
+  },
+  "layout": {
+    "cols": [3,3,2.5,2.5],
+    "rows": [3,3],
+    "areas": [
+      "living living bed1  bed1",
+      "living living bed2  bath"
+    ]
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior","living"], "on": {"room": "living", "side": "south"}, "width": 1.0, "entrance": true},
+    {"type": "door", "between": ["living","bed1"], "at": [6,1.5], "width": 0.8},
+    {"type": "door", "between": ["living","bed2"], "at": [6,4.5], "width": 0.8},
+    {"type": "door", "between": ["bed1","bath"], "at": [9.75,3], "width": 0.7},
+    {"type": "door", "between": ["bed2","bath"], "at": [8.5,4.5], "width": 0.7},
+    {"type": "window", "between": ["exterior","bed1"], "on": {"room": "bed1", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior","bed2"], "on": {"room": "bed2", "side": "south"}, "width": 1.2},
+    {"type": "window", "between": ["exterior","bath"], "on": {"room": "bath", "side": "south"}, "width": 0.6}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "title": "Studio",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "main": {"name": "Studio room", "kind": "living", "rect": [0,0,4,4], "habitable": true},
+    "shower": {"name": "Shower room", "kind": "bath", "rect": [4,0,1.5,4], "wet": true}
+  },
+  "openings": [
+    {"id": "front_door", "type": "door", "between": ["exterior","main"], "at": [1.5,4], "width": 0.9, "hinge": "start", "swingInto": "main", "entrance": true},
+    {"type": "door", "between": ["main","shower"], "on": {"room": "main", "side": "east"}, "width": 0.8, "hinge": "start", "swingInto": "shower"},
+    {"type": "window", "between": ["exterior","main"], "on": {"room": "main", "side": "south"}, "position": 2.5, "width": 1.5},
+    {"type": "window", "between": ["exterior","shower"], "on": {"room": "shower", "side": "east"}, "width": 0.6}
+  ],
+  "fixtures": [
+    {"id": "kitchenette_counter", "type": "counter", "in": "main", "at": [0.3,0.3], "size": [2,0.6], "depth": 0.6},
+    {"type": "sink", "in": "main", "at": [2.5,0.3], "size": [0.6,0.6]},
+    {"type": "shower", "in": "shower", "at": [4.3,0.3], "size": [0.9,0.9]},
+    {"type": "wc", "in": "shower", "at": [4.3,1.5], "size": [0.4,0.6]}
+  ]
+}

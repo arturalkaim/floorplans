@@ -1,0 +1,10 @@
+{
+  "summary": {"error":0,"warning":3,"info":2},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"Living room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"rooms.living","rooms":["living"],"at":[1,1.75],"line":3},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 1.85 m at its narrowest; comfort minimum is 3 m (clear floor 1.85 × 3.3 m)","path":"rooms.living.rect","rooms":["living"],"at":[1,1.75],"measured":1.85,"minimum":3,"rect":[0.1,0.1,1.85,3.3],"line":3},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom (bedroom): 1.9 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.9 × 3.3 m)","path":"rooms.bedroom.rect","rooms":["bedroom"],"at":[3,1.75],"measured":1.9,"minimum":2.4,"rect":[2.05,0.1,1.9,3.3],"line":4},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom opens directly off Living room","path":"openings[1]","rooms":["living","bedroom"],"at":[2,1.75],"opening":"door:bedroom-living:0","line":9},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom opens directly off Kitchen","path":"openings[2]","rooms":["bedroom","kitchen"],"at":[4,1.75],"opening":"door:bedroom-kitchen:0","line":10}
+  ]
+}

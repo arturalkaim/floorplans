@@ -1,0 +1,9 @@
+{
+  "summary": {"error":1,"warning":2,"info":1},
+  "findings": [
+    {"rule":"space.no_access","severity":"error","message":"Sleeping loft has no door or cased opening","path":"levels.loft.rooms.loft_room","rooms":["loft_room"],"at":[1.75,1],"level":"loft"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Sleeping loft (bedroom): 1.8 m at its narrowest; comfort minimum is 2.4 m (clear floor 3.4 × 1.8 m)","path":"levels.loft.rooms.loft_room.rect","rooms":["loft_room"],"at":[1.75,1],"measured":1.8,"minimum":2.4,"rect":[0.1,0.1,3.4,1.8],"level":"loft"},
+    {"level":"loft","rule":"stair.misaligned","severity":"warning","message":"Ladder stair does not sit over itself: its footprints on Ground floor and Sleeping loft do not overlap at all","path":"vertical[0].at[1]","at":[3.7,0.2],"vertical":"ladder1"},
+    {"level":"ground","rule":"stair.pitch","severity":"info","message":"Ladder stair: 80.5° pitch — 12 risers of 0.217 m over a 0.4 m flight gives a 0.036 m going; 30–42° and a going of 0.25 m upwards is the comfortable range","path":"vertical[0].risers","at":[3.7,3.7],"vertical":"ladder1"}
+  ]
+}

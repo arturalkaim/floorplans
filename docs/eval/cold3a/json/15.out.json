@@ -1,0 +1,10 @@
+{
+  "summary": {"error":0,"warning":4,"info":1},
+  "findings": [
+    {"rule":"privacy.bedroom_through_route","severity":"warning","message":"Bedroom 1 and Bedroom 2 connect directly; one bedroom is a route to the other","path":"openings[3]","rooms":["r3","r4"],"at":[7.2,1.5],"opening":"door:r3-r4:0"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living room (living): 2.25 m at its narrowest; comfort minimum is 3 m (clear floor 2.25 × 2.8 m)","path":"rooms.r1.rect","rooms":["r1"],"at":[1.2,1.5],"measured":2.25,"minimum":3,"rect":[0.1,0.1,2.25,2.8]},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 1 (bedroom): 2.3 m at its narrowest; comfort minimum is 2.4 m (clear floor 2.3 × 2.8 m)","path":"rooms.r3.rect","rooms":["r3"],"at":[6,1.5],"measured":2.3,"minimum":2.4,"rect":[4.85,0.1,2.3,2.8]},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 2 (bedroom): 2.3 m at its narrowest; comfort minimum is 2.4 m (clear floor 2.3 × 2.8 m)","path":"rooms.r4.rect","rooms":["r4"],"at":[8.4,1.5],"measured":2.3,"minimum":2.4,"rect":[7.25,0.1,2.3,2.8]},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Bedroom 1 opens directly off Kitchen","path":"openings[2]","rooms":["r2","r3"],"at":[4.8,1.5],"opening":"door:r2-r3:0"}
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "title": "Guest house",
+  "walls": {"exterior": 0.2, "partition": 0.1},
+  "rooms": {
+    "bed1": {"name": "Bedroom 1", "kind": "bedroom", "rect": [0,0,3.5,2.4], "habitable": true},
+    "shower1": {"name": "Shower room 1", "kind": "bath", "rect": [3.5,0,1.5,2.4], "wet": true},
+    "bed2": {"name": "Bedroom 2", "kind": "bedroom", "rect": [5,0,3.5,2.4], "habitable": true},
+    "shower2": {"name": "Shower room 2", "kind": "bath", "rect": [8.5,0,1.5,2.4], "wet": true},
+    "corridor": {"name": "Corridor", "kind": "corridor", "rect": [0,2.4,10,1.2], "circulation": true},
+    "bed3": {"name": "Bedroom 3", "kind": "bedroom", "rect": [0,3.6,3.5,2.4], "habitable": true},
+    "shower3": {"name": "Shower room 3", "kind": "bath", "rect": [3.5,3.6,1.5,2.4], "wet": true},
+    "bed4": {"name": "Bedroom 4", "kind": "bedroom", "rect": [5,3.6,3.5,2.4], "habitable": true},
+    "shower4": {"name": "Shower room 4", "kind": "bath", "rect": [8.5,3.6,1.5,2.4], "wet": true}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior","corridor"], "on": {"room": "corridor", "side": "west"}, "width": 0.9, "entrance": true},
+    {"type": "door", "between": ["corridor","bed1"], "at": [1.75,2.4], "width": 0.8},
+    {"type": "door", "between": ["corridor","bed2"], "at": [6.75,2.4], "width": 0.8},
+    {"type": "door", "between": ["corridor","bed3"], "at": [1.75,3.6], "width": 0.8},
+    {"type": "door", "between": ["corridor","bed4"], "at": [6.75,3.6], "width": 0.8},
+    {"type": "door", "between": ["bed1","shower1"], "at": [3.5,1.2], "width": 0.7},
+    {"type": "door", "between": ["bed2","shower2"], "at": [8.5,1.2], "width": 0.7},
+    {"type": "door", "between": ["bed3","shower3"], "at": [3.5,4.8], "width": 0.7},
+    {"type": "door", "between": ["bed4","shower4"], "at": [8.5,4.8], "width": 0.7},
+    {"type": "window", "between": ["exterior","bed1"], "on": {"room": "bed1", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior","bed2"], "on": {"room": "bed2", "side": "north"}, "width": 1.2},
+    {"type": "window", "between": ["exterior","bed3"], "on": {"room": "bed3", "side": "south"}, "width": 1.2},
+    {"type": "window", "between": ["exterior","bed4"], "on": {"room": "bed4", "side": "south"}, "width": 1.2}
+  ]
+}

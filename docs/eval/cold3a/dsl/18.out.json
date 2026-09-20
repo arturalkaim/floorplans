@@ -1,0 +1,6 @@
+{
+  "summary": {"error":1,"warning":0,"info":0},
+  "findings": [
+    {"rule":"opening.collision","severity":"error","message":"openings #0 and #3 overlap on the wall between the exterior and shopfloor","path":"openings[3].position","at":[3.5,0],"opening":"window:exterior-shopfloor:0","line":10}
+  ]
+}

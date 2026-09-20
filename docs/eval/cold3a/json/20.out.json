@@ -1,0 +1,13 @@
+{
+  "summary": {"error":1,"warning":4,"info":3},
+  "findings": [
+    {"rule":"wall.unresolved","severity":"error","message":"opening #2: bed1 has no wall to the exterior on its east side","path":"levels.upper.openings[2].on","opening":"window:bed1-exterior:0","rooms":["bed1"],"level":"upper"},
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #0 swings into Main stair in Hall; rehang it or move the fixture","path":"levels.ground.openings[0]","at":[0,4.85],"rooms":["hall"],"opening":"door:exterior-hall:0","vertical":"stair1","level":"ground"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 1 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north)","path":"levels.upper.rooms.bed1","rooms":["bed1"],"at":[4.75,2],"level":"upper"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 1 (bedroom): 1.4 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.4 × 3.85 m)","path":"levels.upper.rooms.bed1.rect","rooms":["bed1"],"at":[4.75,2],"measured":1.4,"minimum":2.4,"rect":[4.05,0.1,1.4,3.85],"level":"upper"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bathroom (bath): 1.35 m at its narrowest; comfort minimum is 1.5 m (clear floor 1.35 × 3.85 m)","path":"levels.upper.rooms.bath.rect","rooms":["bath"],"at":[6.25,2],"measured":1.35,"minimum":1.5,"rect":[5.55,0.1,1.35,3.85],"level":"upper"},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 39 % of the interior (18.2 m²); above 10 % is worth questioning","path":"levels.ground.rooms","rooms":["hall"],"level":"ground"},
+    {"rule":"circulation.share","severity":"info","message":"Landing take 60 % of the interior (18.2 m²); above 10 % is worth questioning","path":"levels.upper.rooms","rooms":["landing"],"level":"upper"},
+    {"level":"ground","rule":"stair.pitch","severity":"info","message":"Main stair: 63.7° pitch — 14 risers of 0.343 m over a 2.2 m flight gives a 0.169 m going; 30–42° and a going of 0.25 m upwards is the comfortable range","path":"vertical[0].risers","at":[0.75,5.3],"vertical":"stair1"}
+  ]
+}

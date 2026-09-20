@@ -1,0 +1,7 @@
+{
+  "summary": {"error":1,"warning":1,"info":0},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"openings"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Shower room (bath): 1.35 m at its narrowest; comfort minimum is 1.5 m (clear floor 1.35 × 3.8 m)","path":"rooms.shower.rect","rooms":["shower"],"at":[5.75,2],"measured":1.35,"minimum":1.5,"rect":[5.05,0.1,1.35,3.8]}
+  ]
+}

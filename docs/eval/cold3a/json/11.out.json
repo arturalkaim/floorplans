@@ -1,0 +1,6 @@
+{
+  "summary": {"error":0,"warning":1,"info":0},
+  "findings": [
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #0 swings into Island in Kitchen; rehang it or move the fixture","path":"openings[0]","at":[1.6,4],"rooms":["kitchen"],"opening":"door:kitchen-terrace:0","fixture":"island:kitchen:0"}
+  ]
+}
