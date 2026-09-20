@@ -1,0 +1,30 @@
+{
+  "title": "Casa com Ângulo",
+  "units": "m",
+  "walls": {"exterior":0.3,"partition":0.12},
+  "north": 0,
+  "rooms": {
+    "sala": {"name":"Sala","kind":"living","zone":"day","poly":[[0,0],[2,0],[2.6,-1],[4.4,-1],[5,0],[6,0],[6,4],[0,4]]},
+    "cozinha": {"name":"Cozinha","kind":"kitchen","zone":"day","rect":[6,0,4,4]},
+    "hall": {"name":"Hall","kind":"hall","zone":"day","rect":[0,4,2.2,4]},
+    "quarto": {"name":"Quarto","kind":"bedroom","zone":"night","rect":[2.2,4,4.8,4]},
+    "wc": {"name":"Casa de banho","kind":"bath","zone":"night","rect":[7,4,3,2]},
+    "arrumos": {"name":"Arrumos","kind":"storage","zone":"night","rect":[7,6,3,2]},
+    "estudio": {"name":"Estúdio","kind":"office","zone":"work","poly":[[4,8],[10,8],[13,11],[7,11]]}
+  },
+  "openings": [
+    {"type":"door","between":["exterior","hall"],"on":{"room":"hall","side":"west"},"width":1,"hinge":"start","swingInto":"hall","entrance":true},
+    {"type":"cased","between":["hall","sala"],"width":1.4},
+    {"type":"door","between":["hall","quarto"],"position":{"from":"start","distance":1.2},"width":0.9,"hinge":"end","swingInto":"quarto"},
+    {"type":"door","between":["quarto","wc"],"position":{"from":"start","distance":1},"width":0.8,"hinge":"start","swingInto":"wc"},
+    {"type":"door","between":["quarto","arrumos"],"position":{"from":"start","distance":1},"width":0.8,"hinge":"start","swingInto":"arrumos"},
+    {"type":"door","between":["quarto","estudio"],"at":[5.5,8],"width":0.9,"hinge":"start","swingInto":"estudio"},
+    {"type":"cased","between":["sala","cozinha"],"position":{"from":"start","distance":2},"width":1.6},
+    {"type":"window","between":["exterior","sala"],"at":[3.5,-1],"width":1.2},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"west"},"width":1.4},
+    {"type":"window","between":["exterior","cozinha"],"on":{"room":"cozinha","side":"east"},"width":1.8},
+    {"type":"window","between":["exterior","quarto"],"at":[3.1,8],"width":1.2},
+    {"type":"window","between":["exterior","wc"],"on":{"room":"wc","side":"east"},"width":0.8},
+    {"type":"window","between":["exterior","estudio"],"at":[11.5,9.5],"width":1.6}
+  ]
+}

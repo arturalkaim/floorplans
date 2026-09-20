@@ -1,8 +1,8 @@
-import { occupantRef } from "./derive.ts";
+import { occupantRef, outwardBearing } from "./derive.ts";
 import { doorSwing } from "./doors.ts";
 import { bbox, boxGap, pointInPoly, polyInside, polysOverlap, shoelace, snap } from "./geometry.ts";
 import type { Finding, LevelModel, Model, Owner, Pt, ResolvedOpening, RoomKind } from "./types.ts";
-import { isOpenSky, isStreet, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
+import { isOpenSky, isRectilinear, isStreet, outdoorOwner, ownerId, ownerKey, roomOwner } from "./types.ts";
 
 export interface RuleOptions {
   /** share of interior area above which circulation is flagged (default 0.10) */
@@ -239,13 +239,30 @@ function levelRules(
   }
 
   // ---- light ----
+  /**
+   * Where a room's daylight could come from. A rectilinear room's exterior walls face
+   * one of four ways and the message names them, exactly as it always has. A room with
+   * an angled or curved wall has no compass side to name, so it gets the run and the
+   * bearing instead — which is the same information and is true.
+   */
+  const daylightFrom = (m: (typeof rooms)[number]): string => {
+    if (isRectilinear(m.room))
+      return m.exteriorFaces.length
+        ? ` (it has an exterior wall on the ${m.exteriorFaces.join("/")})`
+        : " and no exterior wall to put one on";
+    const mine = lm.walls.filter((w) => w.kind === "exterior" && outwardBearing(w, m.room.id) !== undefined);
+    if (mine.length === 0) return " and no exterior wall to put one on";
+    const run = snap(mine.reduce((t, w) => t + w.length, 0));
+    const bearings = [...new Set(mine.map((w) => outwardBearing(w, m.room.id)!))].sort((a, b) => a - b);
+    return ` (it has ${run} m of exterior wall, facing ${bearings.map((b) => `${b}°`).join(", ")})`;
+  };
   for (const m of rooms) {
     if (m.exteriorWindow) continue;
     if (m.room.habitable) {
       push({
         rule: "habitable.no_window",
         severity: "warning",
-        message: `${m.room.name} is habitable but has no exterior window or glazed exterior door${m.exteriorFaces.length ? ` (it has an exterior wall on the ${m.exteriorFaces.join("/")})` : " and no exterior wall to put one on"}`,
+        message: `${m.room.name} is habitable but has no exterior window or glazed exterior door${daylightFrom(m)}`,
         rooms: [m.room.id],
         at: m.labelAt,
       });
@@ -308,10 +325,16 @@ function levelRules(
     const min = minDim[m.room.kind];
     if (min === undefined || m.minDimension >= min) continue;
     const r = m.clearRect;
+    // "at its narrowest" describes the short side of the largest clear rectangle, which
+    // is the measure a rectilinear room gets. A room with an angled or curved wall is
+    // measured by the largest circle that fits instead, because an axis-aligned
+    // rectangle understates a round room by √2 — so the message says which it means.
     push({
       rule: "room.min_dimension",
       severity: "warning",
-      message: `${m.room.name} (${m.room.kind}): ${m.minDimension} m at its narrowest; comfort minimum is ${min} m (clear floor ${r.w} × ${r.h} m)`,
+      message: isRectilinear(m.room)
+        ? `${m.room.name} (${m.room.kind}): ${m.minDimension} m at its narrowest; comfort minimum is ${min} m (clear floor ${r.w} × ${r.h} m)`
+        : `${m.room.name} (${m.room.kind}): the largest circle that fits is ${m.minDimension} m across; comfort minimum is ${min} m (largest clear rectangle ${r.w} × ${r.h} m${m.bearing === 0 ? "" : ` at ${m.bearing}°`})`,
       rooms: [m.room.id],
       at: m.labelAt,
     });

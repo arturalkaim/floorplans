@@ -16,7 +16,10 @@ import { analyze, parse } from "../src/index.ts";
 import type { LevelModel } from "../src/types.ts";
 
 const FIXTURES = new URL("../fixtures/", import.meta.url);
+/** the model as the cell grid derived it, recorded before the rewrite began */
 const PINS = new URL("./__snapshots__/geometry-pins.json", import.meta.url);
+/** the same record for the fixtures the rewrite itself added, which have no "before" */
+const SINCE = new URL("./__snapshots__/geometry-pins-arcs.json", import.meta.url);
 
 const names = readdirSync(FIXTURES)
   .filter((f) => f.endsWith(".json"))
@@ -68,16 +71,22 @@ function pinLevel(lm: LevelModel) {
   };
 }
 
-const actual = `${JSON.stringify(
-  Object.fromEntries(
-    names.map((name) => {
-      const { model } = analyze(parse(JSON.parse(readFileSync(new URL(`${name}.json`, FIXTURES), "utf8"))));
-      return [name, model.levels.map(pinLevel)];
-    }),
-  ),
-  null,
-  1,
-)}\n`;
+const pinsFor = (only: ReadonlySet<string>) =>
+  `${JSON.stringify(
+    Object.fromEntries(
+      names
+        .filter((n) => only.has(n))
+        .map((name) => {
+          const { model } = analyze(parse(JSON.parse(readFileSync(new URL(`${name}.json`, FIXTURES), "utf8"))));
+          return [name, model.levels.map(pinLevel)];
+        }),
+    ),
+    null,
+    1,
+  )}\n`;
+
+const before = new Set(Object.keys(JSON.parse(readFileSync(PINS, "utf8")) as Record<string, unknown>));
+const since = names.filter((n) => !before.has(n));
 
 /**
  * The seven rooms whose clear area the arrangement corrected, and nothing else.
@@ -115,8 +124,6 @@ const CORRECTIONS: ReadonlyArray<readonly [string, string]> = [
 ];
 
 describe("geometry pins: the derived model the arrangement rewrite must reproduce", () => {
-  if (process.env["UPDATE_SNAPSHOTS"] && !existsSync(PINS)) writeFileSync(PINS, actual);
-
   it("reproduces every pinned room metric, wall, opening and envelope", () => {
     let want = readFileSync(PINS, "utf8");
     for (const [was, now] of CORRECTIONS) {
@@ -125,13 +132,26 @@ describe("geometry pins: the derived model the arrangement rewrite must reproduc
       want = want.replace(was, now);
     }
     assert.equal(
-      actual,
+      pinsFor(before),
       want,
       "the derived model moved; if that is intended, say exactly which numbers moved and why before adding a correction",
     );
   });
 
+  it("pins the fixtures the rewrite added too", () => {
+    const actual = pinsFor(new Set(since));
+    if (process.env["UPDATE_SNAPSHOTS"] || !existsSync(SINCE)) {
+      writeFileSync(SINCE, actual);
+      return;
+    }
+    assert.equal(actual, readFileSync(SINCE, "utf8"), `the derived model of ${since.join(", ")} moved`);
+  });
+
   it("covers every fixture", () => {
-    assert.ok(names.length >= 9, `expected every fixture pinned, saw ${names.join(", ")}`);
+    assert.ok(names.length >= 12, `expected every fixture pinned, saw ${names.join(", ")}`);
+    assert.deepEqual(
+      names.filter((n) => !before.has(n) && !since.includes(n)),
+      [],
+    );
   });
 });

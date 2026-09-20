@@ -3,6 +3,7 @@ import type { Arrangement, Face } from "./arrangement.ts";
 import { bbox, eq, largestRect, pointInPoly, snap } from "./geometry.ts";
 import { offsetRing } from "./offset.ts";
 import {
+  arcChords,
   arcLength,
   arcPoint,
   arcTangent,
@@ -13,7 +14,9 @@ import {
   ptMm,
   ringArea,
   ringBox,
+  ringEdges,
   ringPoints,
+  sagitta,
   toM,
   toMm,
 } from "./ring.ts";
@@ -57,6 +60,17 @@ import {
 
 const MM = 0.001;
 const CORNER_SLIVER = 0.1;
+/**
+ * A face this small is a slip of the pen, not a room: 100 mm² is the area a 1 mm
+ * authoring error leaves over a 20 cm run (docs/gaps-design.md §1.3.3). It is reported
+ * rather than screamed about, and named, because silently swallowing it is how a 3 mm
+ * slip becomes an invisible wrong area.
+ */
+const SLIVER_M2 = 1e-4;
+/** Below this interior angle the mitred wall faces meet so far from the corner that the corner is not floor. */
+const ACUTE_DEG = 25;
+/** An arc flatter than this is a straight wall written expensively. */
+const SHALLOW_SAGITTA_MM = 5;
 
 /**
  * Turn authored rooms into walls, resolve openings onto walls, compute room
@@ -266,6 +280,20 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
   arr.faces.forEach((f, i) => {
     if (faceOwner[i]!.kind !== "gap") return;
     const region = faceRegion(arr, f);
+    if (f.area / 1e6 < SLIVER_M2) {
+      // what the design doc calls dissolving: the face is left where it is and reported,
+      // because merging it away would move a wall by a millimetre to hide a mistake
+      const around = [
+        ...new Set(f.cycles.flat().map((h) => label(wallOwner(arr.half[arr.half[h]!.twin]!.face)))),
+      ].sort();
+      findings.push({
+        rule: "geometry.sliver",
+        severity: "info",
+        message: `a sliver of floor ${Math.round(f.area)} mm² across is covered by nothing, between ${around.join(" and ")}; two edges that were meant to meet are ${region.area === 0 ? "a fraction of a millimetre" : "just"} apart`,
+        at: region.at,
+      });
+      return;
+    }
     findings.push({
       rule: "tiling.gap",
       severity: "error",
@@ -273,6 +301,22 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
       at: region.at,
     });
   });
+
+  // ---- an arc so shallow it is a straight wall written expensively ----
+  for (const space of spaces) {
+    const ring = ringOf(space);
+    ringEdges(ring).forEach((e) => {
+      if (!e.arc) return;
+      const s = sagitta(e.arc);
+      if (s >= SHALLOW_SAGITTA_MM) return;
+      findings.push({
+        rule: "arc.too_shallow",
+        severity: "warning",
+        message: `an arc of radius ${snap(e.arc.r / 1000)} m bulges ${snap(s)} mm past its chord; that is a straight edge, written as ${arcChords(e.arc)} chords' worth of curve`,
+        at: [snap(toM(e.a[0])), snap(toM(e.a[1]))],
+      });
+    });
+  }
 
   // ---- walls: half-edges whose owner differs from their twin's ----
   const thicknessOf = (a: Owner, b: Owner) =>
@@ -438,6 +482,25 @@ function deriveLevel(plan: Plan, level: Level, planFixtures: Fixture[]): { model
     const clear = offsetRing(split.ring, (i) => split.dist[i]! / 2);
     const clearArea = Math.abs(ringArea(clear)) / 1e6;
     const inscribed = poleOfInaccessibility(clear.pts.length ? [ringPoints(clear)] : [[[0, 0]]], 0.5);
+
+    if (clear.pts.length === 0 && area > 0) {
+      findings.push({
+        rule: "room.no_clear_floor",
+        severity: "error",
+        message: `${room.name} has no floor left once its walls are built: every part of it is within half a wall thickness of another wall`,
+        rooms: [room.id],
+        at: [snap(shapeBox(room).x0), snap(shapeBox(room).y0)],
+      });
+    }
+    for (const c of acuteCorners(split.ring, split.dist)) {
+      findings.push({
+        rule: "room.acute_corner",
+        severity: "info",
+        message: `${room.name} has a ${c.deg}° corner at (${snap(toM(c.at[0]))}, ${snap(toM(c.at[1]))}); the wall faces meet ${snap(c.lost / 1000)} m along each arm, so that much of both walls is not floor you can reach`,
+        rooms: [room.id],
+        at: [snap(toM(c.at[0])), snap(toM(c.at[1]))],
+      });
+    }
 
     const faces = new Set<Side>();
     for (const wall of walls) {
@@ -832,6 +895,38 @@ function byWallOrder(a: Wall, b: Wall): number {
 
 // ---------- room geometry helpers ----------
 
+/**
+ * Corners too sharp to stand in: where two straight edges meet below ACUTE_DEG, the
+ * mitred wall faces meet `d / tan(θ/2)` along each arm, and everything short of that is
+ * wall rather than floor. Measured for t = 0.3 m: 0.26 m at 60°, 0.56 m at 30°, 1.72 m
+ * at 10° (docs/gaps-design.md §1.6).
+ */
+function acuteCorners(ring: MmRing, dist: number[]): Array<{ at: P; deg: number; lost: number }> {
+  const out: Array<{ at: P; deg: number; lost: number }> = [];
+  const n = ring.pts.length;
+  if (n < 3) return out;
+  const orient = Math.sign(ringArea(ring));
+  for (let i = 0; i < n; i++) {
+    const back = (i - 1 + n) % n;
+    if (ring.arcs[back] !== undefined || ring.arcs[i] !== undefined) continue;
+    const prev = ring.pts[back]!;
+    const v = ring.pts[i]!;
+    const next = ring.pts[(i + 1) % n]!;
+    const a: [number, number] = [prev[0] - v[0], prev[1] - v[1]];
+    const b: [number, number] = [next[0] - v[0], next[1] - v[1]];
+    const la = Math.hypot(a[0], a[1]);
+    const lb = Math.hypot(b[0], b[1]);
+    if (la === 0 || lb === 0) continue;
+    const cross = (v[0] - prev[0]) * (next[1] - v[1]) - (v[1] - prev[1]) * (next[0] - v[0]);
+    if (Math.sign(cross) !== orient) continue; // reflex: the floor opens out, not in
+    const theta = Math.acos(Math.max(-1, Math.min(1, (a[0] * b[0] + a[1] * b[1]) / (la * lb))));
+    if (theta >= (ACUTE_DEG * Math.PI) / 180) continue;
+    const d = Math.max(dist[back] ?? 0, dist[i] ?? 0) / 2;
+    out.push({ at: v, deg: Math.round((theta * 180) / Math.PI), lost: d / Math.tan(theta / 2) });
+  }
+  return out;
+}
+
 /** A rotation about the origin by `deg` clockwise on the page. */
 function rotator(deg: number): (p: Pt) => Pt {
   if (deg === 0) return (p) => p;
@@ -910,6 +1005,22 @@ function exteriorFaceOf(wall: Wall, id: string): Side | undefined {
   return Math.abs(out[0]) >= Math.abs(out[1]) ? (out[0] > 0 ? "east" : "west") : out[1] > 0 ? "south" : "north";
 }
 
+/**
+ * Which way an exterior wall faces, seen from the room behind it: degrees clockwise from
+ * north. `exteriorFaceOf` rounds this to a compass point, which is exact for an
+ * axis-aligned wall and an approximation for any other; a message about an angled room
+ * should quote the bearing instead.
+ */
+export function outwardBearing(wall: Wall, id: string): number | undefined {
+  const onNeg = wall.neg.kind === "room" && wall.neg.id === id;
+  const onPos = wall.pos.kind === "room" && wall.pos.id === id;
+  if (!onNeg && !onPos) return undefined;
+  const mid = (wall.from + wall.to) / 2;
+  const n = normalOn(wall, mid);
+  const out: Pt = onNeg ? [-n[0], -n[1]] : n;
+  return Math.round((((Math.atan2(out[0], -out[1]) * 180) / Math.PI) % 360 + 360) % 360);
+}
+
 /** `flattenArc`-free conversion of an offset ring's arc back to the authored form. */
 const arcSpecOf = (a: Arc | undefined): ArcSpec | undefined =>
   a === undefined ? undefined : { r: snap(a.r / 1000), sweep: a.span >= 0 ? "cw" : "ccw", large: Math.abs(a.span) > Math.PI };
@@ -959,11 +1070,14 @@ function splitByThickness(
       run = undefined;
     };
     for (const piece of ordered) {
-      const t = thicknessOfMine(piece.h);
+      // millimetres on both sides of the comparison: a run only continues while the wall
+      // along it keeps the same thickness, and a mismatch of units would split a curved
+      // wall into one sub-arc per flattening chord
+      const t = toMm(thicknessOfMine(piece.h));
       if (run && run.t === t && vkey(run.end) === vkey(piece.a)) run.end = piece.b;
       else {
         flush();
-        run = { start: piece.a, end: piece.b, t: toMm(t) };
+        run = { start: piece.a, end: piece.b, t };
       }
     }
     flush();
@@ -995,10 +1109,14 @@ function orderAlong(
       const l2 = dx * dx + dy * dy;
       return l2 === 0 ? 0 : ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2;
     }
-    const ang = Math.atan2(p[1] - arc.c[1], p[0] - arc.c[0]);
+    // INVARIANT: the wrap has to follow the arc's own direction. Taking the angle
+    // difference into [0, 2π) and then subtracting 2π for a counter-clockwise arc sends
+    // the arc's own start to 1 instead of 0, which puts the first piece of a split arc
+    // last and tears the ring apart.
+    const raw = Math.atan2(p[1] - arc.c[1], p[0] - arc.c[0]) - arc.t0;
     const twoPi = 2 * Math.PI;
-    const d = (((ang - arc.t0) % twoPi) + twoPi) % twoPi;
-    return arc.span >= 0 ? d / arc.span : (d - twoPi) / arc.span;
+    const d = arc.span >= 0 ? ((raw % twoPi) + twoPi) % twoPi : -((((-raw) % twoPi) + twoPi) % twoPi);
+    return arc.span === 0 ? 0 : d / arc.span;
   };
   return pieces
     .map((p) => (param(p.a) <= param(p.b) ? p : { h: p.h, a: p.b, b: p.a }))
@@ -1150,14 +1268,18 @@ function resolveOpening(spec: Opening, walls: Wall[], findings: Finding[]): Reso
     if (spec.on) {
       const { room, side, near } = spec.on;
       if (side) {
+        // `north | south | east | west` says nothing about a wall at 20°, so a side that
+        // matches nothing while an angled candidate exists is not "no such wall" — it is
+        // the wrong selector, and the message says which one works (§1.5).
         const angled = cands.filter((w) => w.axis === undefined);
-        if (angled.length > 0 && cands.every((w) => w.axis === undefined)) {
+        const bySide = cands.filter((w) => sideOf(w, room) === side);
+        if (bySide.length === 0 && angled.length > 0) {
           return fail(
             "wall.ambiguous",
-            `opening #${spec.index}: "on": { "side": "${side}" } cannot pick out a wall that is not axis-aligned — ${refLabel(a)} and ${refLabel(b)} share ${cands.length} angled or curved wall${cands.length === 1 ? "" : "s"}. Use "at": [x, y] instead, which names a point and works at any angle`,
+            `opening #${spec.index}: "on": { "side": "${side}" } cannot pick out a wall that is not axis-aligned — ${refLabel(a)} and ${refLabel(b)} share ${angled.length} angled or curved wall${angled.length === 1 ? "" : "s"}. Use "at": [x, y] instead, which names a point and works at any angle`,
           );
         }
-        cands = cands.filter((w) => sideOf(w, room) === side);
+        cands = bySide;
       }
       if (cands.length === 0) return fail("wall.unresolved", `opening #${spec.index}: ${room} has no wall to ${refLabel(a === room ? b : a)} on its ${side} side`);
       if (near && cands.length > 1) {
