@@ -849,7 +849,7 @@ issue, all `error`, each with the issue's own document path:
 | `space.no_access` / `reach.unreachable` | error | room without a door / not reachable from the street |
 | `habitable.no_window` / `wet.no_window` | warning | living space without a window or glazed exterior door / WC needing extraction |
 | `wet.opens_to_kitchen` | warning | WC door straight into a kitchen |
-| `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
+| `privacy.bedroom_through_route` | warning | a bedroom lies on every path from the entrance to another bedroom — an articulation point of the access graph, not merely a door between two bedrooms |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |
 | `opening.near_corner` | warning | sliver of wall < 0.1 m beside an opening |
 | `fixture.outside_space` / `fixture.overlap` | error | fixture escapes its room / two fixtures collide |

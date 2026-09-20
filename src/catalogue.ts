@@ -57,7 +57,7 @@ export const RULES: readonly RuleDoc[] = [
   { id: "habitable.no_window", severity: "warning", catches: "a living space has no daylight: no exterior window or glazed door" },
   { id: "wet.no_window", severity: "warning", catches: "a bathroom or WC has no window; plan extraction" },
   { id: "wet.opens_to_kitchen", severity: "warning", catches: "a WC door opens straight into a kitchen" },
-  { id: "privacy.bedroom_through_route", severity: "warning", catches: "a bedroom is the route to another bedroom" },
+  { id: "privacy.bedroom_through_route", severity: "warning", catches: "a bedroom lies on every path from the entrance to another bedroom: close its door and the second one cannot be reached. A door between two bedrooms is not enough on its own — a jack-and-jill pair that both open off the hall is deliberate, and quiet" },
   { id: "room.min_dimension", severity: "warning", catches: "a room is narrower than its kind wants — the short side of its largest clear rectangle, or, for a room with an angled or curved wall, the diameter of the largest circle that fits", option: "minDimension" },
   { id: "room.acute_corner", severity: "info", catches: "a corner under 25°: the mitred wall faces meet so far along each arm that the point of the room is wall rather than floor" },
   { id: "door.min_width", severity: "warning", catches: "a door is narrower than its role wants", option: "doorMinWidth" },
