@@ -14,7 +14,8 @@
     "corr_e": {"name":"Corredor nascente","kind":"corridor","zone":"work","poly":[[15,12],[18.2,6.457],[19.412,7.157],[16.212,12.7]]},
     "lavandaria": {"name":"Lavandaria","kind":"utility","zone":"work","poly":[[16.212,12.7],[17.412,10.622],[20.877,12.622],[19.677,14.7]]},
     "escritorio": {"name":"Escritório","kind":"office","zone":"work","poly":[[17.412,10.622],[19.412,7.157],[22.877,9.157],[20.877,12.622]]},
-    "brincar": {"name":"Sala de brincar","kind":"living","zone":"work","poly":[[18.2,6.457],[21,1.608],[25.677,4.308],[22.877,9.157]]}
+    "brincar": {"name":"Sala de brincar","kind":"living","zone":"work","poly":[[18.2,6.457],[21,1.608],[25.677,4.308],[22.877,9.157]]},
+    "garagem": {"name":"Garagem","kind":"garage","zone":"work","poly":[[16.577,20.069],[20.877,12.622],[25.899,15.522],[21.599,22.969]]}
   },
   "outdoor": {
     "deck": {"name":"Deck da piscina","poly":[[7,12],[5,8.536],[5,4],[17,4],[17,8.536],[15,12]]},
@@ -36,13 +37,15 @@
     {"type":"door","between":["corr_e","escritorio"],"at":[18.412,8.889],"width":0.9,"swingInto":"escritorio"},
     {"type":"door","between":["corr_e","brincar"],"at":[18.806,6.807],"width":1,"swingInto":"brincar"},
     {"type":"door","between":["corr_e","patio"],"at":[17.75,7.237],"width":1,"swingInto":"patio","glazed":true},
+    {"type":"door","between":["exterior","garagem"],"at":[19.088,21.519],"width":5,"sliding":true},
+    {"type":"door","between":["garagem","lavandaria"],"at":[20.277,13.661],"width":0.9,"swingInto":"lavandaria"},
     {"type":"window","between":["exterior","wc_w"],"at":[1.723,13.661],"width":0.6},
     {"type":"window","between":["exterior","quarto1"],"at":[0.223,11.063],"width":1.2},
     {"type":"window","between":["exterior","quarto2"],"at":[-1.527,8.032],"width":1.2},
     {"type":"window","between":["exterior","suite"],"at":[-2.977,5.52],"width":1.6},
     {"type":"window","between":["exterior","suite"],"at":[-0.926,0.872],"width":1.2},
     {"type":"window","between":["exterior","wc_suite"],"at":[-3.264,2.222],"width":0.6},
-    {"type":"window","between":["exterior","lavandaria"],"at":[20.277,13.661],"width":0.6},
+    {"type":"window","between":["exterior","garagem"],"at":[23.699,19.332],"width":1.2},
     {"type":"window","between":["exterior","escritorio"],"at":[21.877,10.889],"width":1.4},
     {"type":"window","between":["exterior","brincar"],"at":[24.277,6.733],"width":1.6},
     {"type":"window","between":["exterior","brincar"],"at":[23.338,2.958],"width":1.4}
