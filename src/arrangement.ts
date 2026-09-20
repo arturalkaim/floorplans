@@ -663,7 +663,11 @@ export function poleOfInaccessibility(
     const c = make(seed[0], seed[1], 0);
     if (c.d > best.d) best = c;
   }
-  const coarse = Math.max(precision, cellSize / 200);
+  // The quadtree's bound is cheap in the short direction and dear in the long one: on a
+  // 12 m corridor its near-optimal band is 12 m of cells, all of which have to be split
+  // to the tolerance. Scale the tolerance to the *long* side, and let the pattern search
+  // below close the rest — it walks, it does not tile.
+  const coarse = Math.max(precision, Math.max(w, h) / 200);
   let guard = 0;
   while (queue.length && guard++ < 200_000) {
     const c = pop();
