@@ -1,0 +1,13 @@
+{
+  "summary": {"error":2,"warning":5,"info":1},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"levels.ground.openings","line":3},
+    {"rule":"space.no_access","severity":"error","message":"Hall has no door or cased opening","path":"levels.ground.rooms.hall","rooms":["hall"],"at":[1.6,1],"level":"ground","line":4},
+    {"rule":"habitable.no_window","severity":"warning","message":"Loft Room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"levels.loft.rooms.main","rooms":["main"],"at":[3.6,2.5],"level":"loft","line":7},
+    {"rule":"room.min_dimension","severity":"warning","message":"Hall (hall): 0.65 m at its narrowest; comfort minimum is 1 m (clear floor 0.65 × 1.7 m)","path":"levels.ground.rooms.hall.rect","rooms":["hall"],"at":[1.6,1],"measured":0.65,"minimum":1,"rect":[1.2,0.15,0.65,1.7],"level":"ground","line":4},
+    {"level":"loft","rule":"structure.over_open_sky","severity":"warning","message":"Loft Room has 26 m² standing over no room on Ground Floor; a cantilever is real, but so is a room that has lost its support","path":"levels.loft.rooms.main","at":[3.308,2.731],"rooms":["main"],"line":7},
+    {"level":"loft","rule":"structure.over_open_sky","severity":"warning","message":"Shower Room has 5 m² standing over no room on Ground Floor; a cantilever is real, but so is a room that has lost its support","path":"levels.loft.rooms.shower","at":[7,1.25],"rooms":["shower"],"line":8},
+    {"rule":"wet.no_window","severity":"warning","message":"Shower Room has no exterior window; plan mechanical extraction","path":"levels.loft.rooms.shower","rooms":["shower"],"at":[7,1.25],"level":"loft","line":8},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 100 % of the interior (4 m²); above 10 % is worth questioning","path":"levels.ground.rooms","rooms":["hall"],"level":"ground","line":3}
+  ]
+}

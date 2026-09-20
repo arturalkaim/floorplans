@@ -1,0 +1,16 @@
+{
+  "summary": {"error":1,"warning":9,"info":1},
+  "findings": [
+    {"rule":"entrance.missing","severity":"error","message":"no door leads outside; the house cannot be entered","path":"openings"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 1 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north)","path":"rooms.bed1","rooms":["bed1"],"at":[4,1.5],"line":6},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 2 is habitable but has no exterior window or glazed exterior door and no exterior wall to put one on","path":"rooms.bed2","rooms":["bed2"],"at":[4,4.5],"line":9},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 3 is habitable but has no exterior window or glazed exterior door and no exterior wall to put one on","path":"rooms.bed3","rooms":["bed3"],"at":[4,7.5],"line":12},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 4 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the south)","path":"rooms.bed4","rooms":["bed4"],"at":[4,10.5],"line":15},
+    {"rule":"room.min_dimension","severity":"warning","message":"Corridor (corridor): 0.99 m at its narrowest; comfort minimum is 1 m (clear floor 0.99 × 11.7 m)","path":"rooms.corridor.rect","rooms":["corridor"],"at":[6.6,6],"measured":0.99,"minimum":1,"rect":[6.06,0.15,0.99,11.7],"line":3},
+    {"rule":"wet.no_window","severity":"warning","message":"Shower Room 1 has no exterior window; plan mechanical extraction","path":"rooms.shower1","rooms":["shower1"],"at":[1,1.5],"line":5},
+    {"rule":"wet.no_window","severity":"warning","message":"Shower Room 2 has no exterior window; plan mechanical extraction","path":"rooms.shower2","rooms":["shower2"],"at":[1,4.5],"line":8},
+    {"rule":"wet.no_window","severity":"warning","message":"Shower Room 3 has no exterior window; plan mechanical extraction","path":"rooms.shower3","rooms":["shower3"],"at":[1,7.5],"line":11},
+    {"rule":"wet.no_window","severity":"warning","message":"Shower Room 4 has no exterior window; plan mechanical extraction","path":"rooms.shower4","rooms":["shower4"],"at":[1,10.5],"line":14},
+    {"rule":"circulation.share","severity":"info","message":"Corridor take 17 % of the interior (14.4 m²); above 10 % is worth questioning","path":"rooms","rooms":["corridor"]}
+  ]
+}

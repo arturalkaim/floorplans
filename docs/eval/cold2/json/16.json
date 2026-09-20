@@ -1,0 +1,16 @@
+{
+  "title": "House with Utility",
+  "rooms": {
+    "utility": {"name": "Utility", "kind": "utility", "rect": [0, 0, 2, 4]},
+    "kitchen": {"name": "Kitchen", "kind": "kitchen", "rect": [2, 0, 4, 4]},
+    "living": {"name": "Living Room", "kind": "living", "rect": [6, 0, 4, 4]}
+  },
+  "outdoor": {
+    "yard": {"name": "Yard", "rect": [0, 4, 10, 4]}
+  },
+  "openings": [
+    {"type": "door", "between": ["utility", "yard"], "width": 0.9, "hinge": "start", "swingInto": "utility", "entrance": true},
+    {"type": "door", "between": ["utility", "kitchen"], "width": 0.8, "hinge": "start", "swingInto": "utility"},
+    {"type": "door", "between": ["kitchen", "living"], "width": 0.9, "hinge": "start", "swingInto": "living"}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "title": "Long Narrow House",
+  "rooms": {
+    "room1": {"name": "Room 1", "kind": "living", "rect": [0, 0, 3, 4]},
+    "room2": {"name": "Room 2", "kind": "kitchen", "rect": [3, 0, 3, 4]},
+    "room3": {"name": "Room 3", "kind": "bedroom", "rect": [6, 0, 3, 4]},
+    "room4": {"name": "Room 4", "kind": "bedroom", "rect": [9, 0, 3, 4]},
+    "room5": {"name": "Room 5", "kind": "wc", "rect": [12, 0, 3, 4]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "room1"], "on": {"room": "room1", "side": "west"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "room1"},
+    {"type": "door", "between": ["room1", "room2"], "width": 0.9, "hinge": "start", "swingInto": "room2"},
+    {"type": "door", "between": ["room2", "room3"], "width": 0.8, "hinge": "start", "swingInto": "room3"},
+    {"type": "door", "between": ["room3", "room4"], "width": 0.8, "hinge": "start", "swingInto": "room4"},
+    {"type": "door", "between": ["room4", "room5"], "width": 0.7, "hinge": "end", "swingInto": "room5"}
+  ]
+}

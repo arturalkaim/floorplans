@@ -1,0 +1,13 @@
+{
+  "title": "Shop",
+  "rooms": {
+    "shopfloor": {"name": "Shop Floor", "kind": "other", "rect": [0, 0, 6, 5]},
+    "storeroom": {"name": "Storeroom", "kind": "storage", "rect": [6, 0, 3, 3]},
+    "staffwc": {"name": "Staff WC", "kind": "wc", "rect": [6, 3, 3, 2]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "shopfloor"], "on": {"room": "shopfloor", "side": "north"}, "width": 1.8, "entrance": true, "hinge": "start", "swingInto": "shopfloor"},
+    {"type": "door", "between": ["shopfloor", "storeroom"], "width": 0.9, "hinge": "start", "swingInto": "storeroom"},
+    {"type": "door", "between": ["storeroom", "staffwc"], "width": 0.7, "hinge": "end", "swingInto": "staffwc"}
+  ]
+}

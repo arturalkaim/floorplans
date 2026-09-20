@@ -1,0 +1,8 @@
+{
+  "summary": {"error":0,"warning":2,"info":1},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"Office 1 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/east)","path":"rooms.office1","rooms":["office1"],"at":[5.7,1.5]},
+    {"rule":"habitable.no_window","severity":"warning","message":"Office 2 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the south/east)","path":"rooms.office2","rooms":["office2"],"at":[5.7,4.5]},
+    {"rule":"circulation.share","severity":"info","message":"Corridor take 17 % of the interior (7.2 m²); above 10 % is worth questioning","path":"rooms","rooms":["corridor"]}
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "title": "Cottage",
+  "rooms": {
+    "living": {"name": "Living Room", "kind": "living", "rect": [0, 0, 4, 4]},
+    "kitchen": {"name": "Kitchen", "kind": "kitchen", "rect": [4, 0, 3, 4]},
+    "bedroom": {"name": "Bedroom", "kind": "bedroom", "rect": [7, 0, 3, 4]}
+  },
+  "outdoor": {
+    "porch": {"name": "Porch", "covered": true, "rect": [0, 4, 10, 1.5]}
+  },
+  "openings": [
+    {"type": "door", "between": ["porch", "living"], "width": 0.9, "hinge": "start", "swingInto": "living", "entrance": true},
+    {"type": "door", "between": ["porch", "kitchen"], "width": 0.9, "hinge": "start", "swingInto": "kitchen"},
+    {"type": "door", "between": ["porch", "bedroom"], "width": 0.9, "hinge": "start", "swingInto": "bedroom"}
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "title": "Guest House",
+  "rooms": {
+    "corridor": {"name": "Corridor", "kind": "corridor", "rect": [6, 0, 1.2, 12], "circulation": true},
+    "shower1": {"name": "Shower Room 1", "kind": "wc", "rect": [0, 0, 2, 3]},
+    "bed1": {"name": "Bedroom 1", "kind": "bedroom", "rect": [2, 0, 4, 3]},
+    "shower2": {"name": "Shower Room 2", "kind": "wc", "rect": [0, 3, 2, 3]},
+    "bed2": {"name": "Bedroom 2", "kind": "bedroom", "rect": [2, 3, 4, 3]},
+    "shower3": {"name": "Shower Room 3", "kind": "wc", "rect": [0, 6, 2, 3]},
+    "bed3": {"name": "Bedroom 3", "kind": "bedroom", "rect": [2, 6, 4, 3]},
+    "shower4": {"name": "Shower Room 4", "kind": "wc", "rect": [0, 9, 2, 3]},
+    "bed4": {"name": "Bedroom 4", "kind": "bedroom", "rect": [2, 9, 4, 3]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "corridor"], "on": {"room": "corridor", "side": "north"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "corridor"},
+    {"type": "door", "between": ["corridor", "bed1"], "width": 0.8, "hinge": "start", "swingInto": "bed1"},
+    {"type": "door", "between": ["corridor", "bed2"], "width": 0.8, "hinge": "start", "swingInto": "bed2"},
+    {"type": "door", "between": ["corridor", "bed3"], "width": 0.8, "hinge": "start", "swingInto": "bed3"},
+    {"type": "door", "between": ["corridor", "bed4"], "width": 0.8, "hinge": "start", "swingInto": "bed4"},
+    {"type": "door", "between": ["bed1", "shower1"], "width": 0.7, "hinge": "end", "swingInto": "shower1"},
+    {"type": "door", "between": ["bed2", "shower2"], "width": 0.7, "hinge": "end", "swingInto": "shower2"},
+    {"type": "door", "between": ["bed3", "shower3"], "width": 0.7, "hinge": "end", "swingInto": "shower3"},
+    {"type": "door", "between": ["bed4", "shower4"], "width": 0.7, "hinge": "end", "swingInto": "shower4"}
+  ]
+}

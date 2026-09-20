@@ -1,0 +1,42 @@
+plan { title?: str ; units?: str ; walls?: walls ; north?: num ; stack?: str[] ; levels?: {id: level} ; vertical?: vertical[] ; grid?: grid }
+walls { exterior?: num ; partition?: num }
+grid { cols: num[] ; rows: num[] }
+layout { cols?: num[] ; rows?: num[] ; areas: str[] }
+level { name?: str ; height?: num ; ground?: bool ; rooms: {id: room} ; outdoor?: {id: outdoor} ; voids?: {id: void} ; layout?: layout ; openings?: opening[] ; fixtures?: fixture[] }
+room { poly?: point[] ; rect?: [x,y,w,h] ; kind?: enum(ROOM_KINDS) ; name?: str ; zone?: str ; habitable?: bool ; wet?: bool ; circulation?: bool } oneOf: "poly" xor "rect" — neither: place it in layout.areas instead
+outdoor { poly?: point[] ; rect?: [x,y,w,h] ; name?: str ; covered?: bool } oneOf: "poly" xor "rect" — neither: place it in layout.areas instead
+void { poly?: point[] ; rect?: [x,y,w,h] ; name?: str } oneOf: "poly" xor "rect" — neither: place it in layout.areas instead
+opening { id?: id ; type: enum(door|window|cased) ; between: str[] ; width: num ; position?: opening.position ; on?: opening.on ; at?: [x,y] ; hinge?: str ; swingInto?: str ; entrance?: bool ; glazed?: bool } oneOf: "on"/"position" xor "at"
+opening.on { room: str ; side?: enum(north|south|east|west) ; near?: [x,y] }
+opening.position { from: str ; distance: num }
+fixture { id?: id ; type: enum(FIXTURE_TYPES) ; in: str ; poly?: point[] ; at?: [x,y] ; size?: [x,y] ; depth?: num ; name?: str } oneOf: "poly" xor "at"+"size"
+vertical { id: id ; type: enum(stairs|lift|ramp) ; name?: str ; at: vertical.footprint[] ; up?: num ; risers?: num }
+vertical.footprint { level: str ; in: str ; poly?: point[] ; rect?: [x,y,w,h] } oneOf: "poly" xor "rect"
+
+id = /^[a-z][a-z0-9_]*$/
+axes: x east, y south; north = -y
+ROOM_KINDS = bedroom|living|kitchen|office|bath|wc|hall|corridor|storage|utility|garage|other
+FIXTURE_TYPES = pool|bath|shower|wc|sink|counter|island|stairs|other
+
+example:
+{
+  "title": "Cabana",
+  "walls": {"exterior":0.2,"partition":0.1},
+  "rooms": {
+    "sala": {"name":"Sala e cozinha","kind":"living","rect":[0,0,5,4]},
+    "wc": {"name":"Casa de banho","kind":"wc","rect":[5,0,1.2,2]},
+    "arrumos": {"name":"Arrumos","kind":"storage","rect":[5,2,1.2,2]}
+  },
+  "outdoor": {
+    "deck": {"name":"Deck","rect":[0,4,5,2]}
+  },
+  "openings": [
+    {"type":"door","between":["deck","sala"],"at":[0.9,4],"width":0.9,"hinge":"start","swingInto":"sala"},
+    {"type":"door","between":["sala","wc"],"position":{"from":"end","distance":0.5},"width":0.7,"hinge":"end","swingInto":"wc"},
+    {"type":"door","between":["sala","arrumos"],"position":{"from":"start","distance":0.5},"width":0.7,"hinge":"start","swingInto":"arrumos"},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"north"},"position":2.5,"width":2.4},
+    {"type":"window","between":["deck","sala"],"on":{"room":"sala","side":"south"},"position":3.4,"width":2},
+    {"type":"window","between":["exterior","sala"],"on":{"room":"sala","side":"west"},"width":1.2},
+    {"type":"window","between":["exterior","wc"],"on":{"room":"wc","side":"east"},"width":0.6}
+  ]
+}

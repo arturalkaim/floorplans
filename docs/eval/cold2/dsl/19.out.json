@@ -1,0 +1,9 @@
+{
+  "summary": {"error":0,"warning":3,"info":1},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 1 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"rooms.bed1","rooms":["bed1"],"at":[1.5,1.5],"line":3},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 2 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south)","path":"rooms.bed2","rooms":["bed2"],"at":[4.5,1.5],"line":4},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living Room (living): 2.7 m at its narrowest; comfort minimum is 3 m (clear floor 3.79 × 2.7 m)","path":"rooms.living.rect","rooms":["living"],"at":[8,1.5],"measured":2.7,"minimum":3,"rect":[6.06,0.15,3.79,2.7],"line":5},
+    {"rule":"entrance.multiple","severity":"info","message":"3 doors lead outside (Living Room, Bedroom 1, Bedroom 2); none is marked the main one with \"entrance\": true","path":"openings"}
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "summary": {"error":0,"warning":2,"info":0},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"Studio is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"rooms.studio","rooms":["studio"],"at":[2.5,2.4]},
+    {"rule":"wet.no_window","severity":"warning","message":"Shower Room has no exterior window; plan mechanical extraction","path":"rooms.shower","rooms":["shower"],"at":[5.75,2]}
+  ]
+}

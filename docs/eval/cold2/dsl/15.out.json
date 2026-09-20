@@ -1,0 +1,13 @@
+{
+  "summary": {"error":0,"warning":7,"info":1},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"Room 1 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"rooms.room1","rooms":["room1"],"at":[1.5,2],"line":3},
+    {"rule":"habitable.no_window","severity":"warning","message":"Room 2 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south)","path":"rooms.room2","rooms":["room2"],"at":[4.5,2],"line":4},
+    {"rule":"habitable.no_window","severity":"warning","message":"Room 3 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south)","path":"rooms.room3","rooms":["room3"],"at":[7.5,2],"line":5},
+    {"rule":"habitable.no_window","severity":"warning","message":"Room 4 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south)","path":"rooms.room4","rooms":["room4"],"at":[10.5,2],"line":6},
+    {"rule":"privacy.bedroom_through_route","severity":"warning","message":"Room 3 and Room 4 connect directly; one bedroom is a route to the other","path":"openings[3]","rooms":["room3","room4"],"at":[9,2],"opening":"door:room3-room4:0","line":12},
+    {"rule":"room.min_dimension","severity":"warning","message":"Room 1 (living): 2.79 m at its narrowest; comfort minimum is 3 m (clear floor 2.79 × 3.7 m)","path":"rooms.room1.rect","rooms":["room1"],"at":[1.5,2],"measured":2.79,"minimum":3,"rect":[0.15,0.15,2.79,3.7],"line":3},
+    {"rule":"wet.no_window","severity":"warning","message":"Room 5 has no exterior window; plan mechanical extraction","path":"rooms.room5","rooms":["room5"],"at":[13.5,2],"line":7},
+    {"rule":"privacy.bedroom_off_living","severity":"info","message":"Room 3 opens directly off Room 2","path":"openings[2]","rooms":["room2","room3"],"at":[6,2],"opening":"door:room2-room3:0","line":11}
+  ]
+}

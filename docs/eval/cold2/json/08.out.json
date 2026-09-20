@@ -1,0 +1,21 @@
+{
+  "summary": {"error":6,"warning":9,"info":1},
+  "findings": [
+    {"rule":"space.no_access","severity":"error","message":"Kitchen has no door or cased opening","path":"levels.ground.rooms.kitchen","rooms":["kitchen"],"at":[9,2],"level":"ground"},
+    {"rule":"space.no_access","severity":"error","message":"Bedroom 2 has no door or cased opening","path":"levels.first.rooms.bed2","rooms":["bed2"],"at":[9,1],"level":"first"},
+    {"rule":"space.no_access","severity":"error","message":"Bathroom has no door or cased opening","path":"levels.first.rooms.bathroom","rooms":["bathroom"],"at":[9,3],"level":"first"},
+    {"rule":"wall.unresolved","severity":"error","message":"opening #2 (door): hall and kitchen share no wall. hall touches: the exterior, living; kitchen touches: the exterior, living","path":"levels.ground.openings[2].between","opening":"door:hall-kitchen:0","rooms":["hall","kitchen"],"level":"ground"},
+    {"rule":"wall.unresolved","severity":"error","message":"opening #1 (door): landing and bed2 share no wall. landing touches: the exterior, bed1; bed2 touches: the exterior, bathroom, bed1","path":"levels.first.openings[1].between","opening":"door:bed2-landing:0","rooms":["landing","bed2"],"level":"first"},
+    {"rule":"wall.unresolved","severity":"error","message":"opening #2 (door): landing and bathroom share no wall. landing touches: the exterior, bed1; bathroom touches: bed2, the exterior, bed1","path":"levels.first.openings[2].between","opening":"door:bathroom-landing:0","rooms":["landing","bathroom"],"level":"first"},
+    {"rule":"door.swing_hits_fixture","severity":"warning","message":"door #0 swings into Main Stair in Hall; rehang it or move the fixture","path":"levels.ground.openings[0].hinge","at":[2,1.55],"rooms":["hall"],"opening":"door:exterior-hall:0","vertical":"main","level":"ground"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living Room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south)","path":"levels.ground.rooms.living","rooms":["living"],"at":[5.5,2],"level":"ground"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Kitchen is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/east)","path":"levels.ground.rooms.kitchen","rooms":["kitchen"],"at":[9,2],"level":"ground"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 1 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"levels.first.rooms.bed1","rooms":["bed1"],"at":[5.5,2],"level":"first"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom 2 is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/east)","path":"levels.first.rooms.bed2","rooms":["bed2"],"at":[9,1],"level":"first"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Hall (hall): 0.85 m at its narrowest; comfort minimum is 1 m (clear floor 1.29 × 0.85 m)","path":"levels.ground.rooms.hall.rect","rooms":["hall"],"at":[2.75,3.5],"measured":0.85,"minimum":1,"rect":[2.15,3,1.29,0.85],"level":"ground"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Landing (hall): 0.15 m at its narrowest; comfort minimum is 1 m (clear floor 1.29 × 0.15 m)","path":"levels.first.rooms.landing.rect","rooms":["landing"],"at":[2.75,1.85],"measured":0.15,"minimum":1,"rect":[2.15,1.7,1.29,0.15],"level":"first"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom 2 (bedroom): 1.79 m at its narrowest; comfort minimum is 2.4 m (clear floor 2.79 × 1.79 m)","path":"levels.first.rooms.bed2.rect","rooms":["bed2"],"at":[9,1],"measured":1.79,"minimum":2.4,"rect":[7.56,0.15,2.79,1.79],"level":"first"},
+    {"rule":"wet.no_window","severity":"warning","message":"Bathroom has no exterior window; plan mechanical extraction","path":"levels.first.rooms.bathroom","rooms":["bathroom"],"at":[9,3],"level":"first"},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 18 % of the interior (6 m²); above 10 % is worth questioning","path":"levels.ground.rooms","rooms":["hall"],"level":"ground"}
+  ]
+}

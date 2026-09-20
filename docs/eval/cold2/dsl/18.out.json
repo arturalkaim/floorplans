@@ -1,0 +1,7 @@
+{
+  "error": {
+    "issues": [
+      {"path":"","message":"line 3: room shopfloor: \"shop\" is not a room kind; one of bedroom, living, kitchen, office, bath, wc, hall, corridor, storage, utility, garage, other — a zone is written zone:<z>","kind":"syntax","line":3}
+    ]
+  }
+}

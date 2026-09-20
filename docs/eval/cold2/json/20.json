@@ -1,0 +1,47 @@
+{
+  "title": "Semi-Detached House",
+  "stack": ["ground", "first"],
+  "levels": {
+    "ground": {
+      "ground": true,
+      "rooms": {
+        "hall": {"name": "Hall", "kind": "hall", "rect": [0, 0, 2, 4], "circulation": true},
+        "living": {"name": "Living Room", "kind": "living", "rect": [2, 0, 4, 4]},
+        "kitchen": {"name": "Kitchen", "kind": "kitchen", "rect": [6, 0, 3, 4]}
+      },
+      "openings": [
+        {"type": "door", "between": ["exterior", "hall"], "on": {"room": "hall", "side": "west"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "hall"},
+        {"type": "door", "between": ["hall", "living"], "width": 0.9, "hinge": "start", "swingInto": "living"},
+        {"type": "door", "between": ["hall", "kitchen"], "width": 0.9, "hinge": "start", "swingInto": "kitchen"}
+      ]
+    },
+    "first": {
+      "height": 2.6,
+      "rooms": {
+        "landing": {"name": "Landing", "kind": "hall", "rect": [0, 0, 2, 2], "circulation": true},
+        "bed1": {"name": "Bedroom 1", "kind": "bedroom", "rect": [6, 0, 3, 2]},
+        "bed2": {"name": "Bedroom 2", "kind": "bedroom", "rect": [6, 2, 3, 2]},
+        "bathroom": {"name": "Bathroom", "kind": "wc", "rect": [0, 2, 2, 2]}
+      },
+      "voids": {
+        "living_void": {"name": "Void over Living Room", "rect": [2, 0, 4, 4]}
+      },
+      "openings": [
+        {"type": "door", "between": ["landing", "bed1"], "width": 0.8, "hinge": "start", "swingInto": "bed1"},
+        {"type": "door", "between": ["landing", "bed2"], "width": 0.8, "hinge": "start", "swingInto": "bed2"},
+        {"type": "door", "between": ["landing", "bathroom"], "width": 0.7, "hinge": "end", "swingInto": "bathroom"}
+      ]
+    }
+  },
+  "vertical": [
+    {
+      "id": "main",
+      "type": "stairs",
+      "name": "Main Stair",
+      "at": [
+        {"level": "ground", "in": "hall", "rect": [0.2, 0.2, 1, 2]},
+        {"level": "first", "in": "landing", "rect": [0.2, 0.2, 1, 1.6]}
+      ]
+    }
+  ]
+}

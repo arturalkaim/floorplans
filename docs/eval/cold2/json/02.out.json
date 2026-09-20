@@ -1,0 +1,11 @@
+{
+  "summary": {"error":0,"warning":5,"info":1},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"Bedroom is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west)","path":"rooms.bedroom","rooms":["bedroom"],"at":[1,2]},
+    {"rule":"habitable.no_window","severity":"warning","message":"Living & Kitchen is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/east)","path":"rooms.living","rooms":["living"],"at":[5.5,2.75]},
+    {"rule":"room.min_dimension","severity":"warning","message":"Bedroom (bedroom): 1.79 m at its narrowest; comfort minimum is 2.4 m (clear floor 1.79 × 3.7 m)","path":"rooms.bedroom.rect","rooms":["bedroom"],"at":[1,2],"measured":1.79,"minimum":2.4,"rect":[0.15,0.15,1.79,3.7]},
+    {"rule":"room.min_dimension","severity":"warning","message":"Living & Kitchen (living): 2.2 m at its narrowest; comfort minimum is 3 m (clear floor 3.79 × 2.2 m)","path":"rooms.living.rect","rooms":["living"],"at":[5.5,2.75],"measured":2.2,"minimum":3,"rect":[3.56,1.65,3.79,2.2]},
+    {"rule":"wet.no_window","severity":"warning","message":"Bathroom has no exterior window; plan mechanical extraction","path":"rooms.bathroom","rooms":["bathroom"],"at":[4.25,0.75]},
+    {"rule":"circulation.share","severity":"info","message":"Hall take 23 % of the interior (6 m²); above 10 % is worth questioning","path":"rooms","rooms":["hall"]}
+  ]
+}

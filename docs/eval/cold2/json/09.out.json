@@ -1,0 +1,10 @@
+{
+  "summary": {"error":0,"warning":5,"info":0},
+  "findings": [
+    {"rule":"habitable.no_window","severity":"warning","message":"North Room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"rooms.north_room","rooms":["north_room"],"at":[5,1.5]},
+    {"rule":"habitable.no_window","severity":"warning","message":"South Room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"rooms.south_room","rooms":["south_room"],"at":[5,8.5]},
+    {"rule":"habitable.no_window","severity":"warning","message":"West Room is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"rooms.west_room","rooms":["west_room"],"at":[1.5,5]},
+    {"rule":"room.min_dimension","severity":"warning","message":"North Room (living): 2.7 m at its narrowest; comfort minimum is 3 m (clear floor 3.7 × 2.7 m)","path":"rooms.north_room.rect","rooms":["north_room"],"at":[5,1.5],"measured":2.7,"minimum":3,"rect":[3.15,0.15,3.7,2.7]},
+    {"rule":"wet.no_window","severity":"warning","message":"East Room has no exterior window; plan mechanical extraction","path":"rooms.east_room","rooms":["east_room"],"at":[8.5,5]}
+  ]
+}

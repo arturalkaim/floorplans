@@ -1,0 +1,19 @@
+{
+  "title": "Bungalow",
+  "rooms": {
+    "hall": {"name": "Hall", "kind": "hall", "rect": [3, 3, 3, 3], "circulation": true},
+    "living": {"name": "Living Room", "kind": "living", "rect": [3, 0, 3, 3]},
+    "bed1": {"name": "Bedroom 1", "kind": "bedroom", "rect": [0, 3, 3, 3]},
+    "bed2": {"name": "Bedroom 2", "kind": "bedroom", "rect": [6, 3, 3, 3]},
+    "bed3": {"name": "Bedroom 3", "kind": "bedroom", "rect": [3, 6, 1.8, 3]},
+    "bathroom": {"name": "Bathroom", "kind": "wc", "rect": [4.8, 6, 1.2, 3]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "living"], "on": {"room": "living", "side": "north"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "living"},
+    {"type": "door", "between": ["hall", "living"], "width": 0.9, "hinge": "start", "swingInto": "living"},
+    {"type": "door", "between": ["hall", "bed1"], "width": 0.8, "hinge": "start", "swingInto": "bed1"},
+    {"type": "door", "between": ["hall", "bed2"], "width": 0.8, "hinge": "start", "swingInto": "bed2"},
+    {"type": "door", "between": ["hall", "bed3"], "width": 0.8, "hinge": "start", "swingInto": "bed3"},
+    {"type": "door", "between": ["hall", "bathroom"], "width": 0.7, "hinge": "end", "swingInto": "bathroom"}
+  ]
+}

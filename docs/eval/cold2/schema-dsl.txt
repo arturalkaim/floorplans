@@ -1,0 +1,71 @@
+# floorplan DSL — one entity per line; `{` as the first character means JSON instead
+# axes: x east, y south; north = -y
+
+## statements
+
+plan ["Title"] [units:m] [walls <ext>/<part>] [north <deg>] [stack <id>,…]
+  — document header; every part is optional, so a plan may have no plan line at all
+
+walls <ext>/<part> | walls exterior:<n> | walls partition:<n>
+  — wall thicknesses; the canonical printer folds this onto the plan line
+
+north <deg>
+  — bearing of "up" in degrees; the canonical printer folds this onto the plan line
+
+grid cols <n>,… rows <n>,…
+  — the shared track grid every level's layout may sit on
+
+level <id> ["Name"] [h<height>] [ground]
+  — a storey header: every statement after it belongs to that level, until the next one
+
+room <id> ["Name"] [<kind>] [<zone>] [rect <x>,<y> <w>x<h> | poly <x>,<y> …] [habitable] [wet] [circulation]
+  — one room; the two bare words are the kind then the zone, and the kind must be a real one
+
+outdoor <id> ["Name"] [covered] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
+  — a terrace, courtyard or garden: outside, but not the street
+
+void <id> ["Name"] [rect <x>,<y> <w>x<h> | poly <x>,<y> …]
+  — a hole in this storey's floor: a stairwell, or the void over a double-height room
+
+layout [cols <n>,…] [rows <n>,…]
+        <cell> <cell> …   (one indented row per grid row)
+  — the one multi-line statement: an ASCII picture placing already-declared spaces on the track grid
+
+<type> <a>><b> | <type> <room>[.<side>]   [@<d> | @-<d> | at:<x>,<y>]  w<width>
+        [on:<room>[.<side>]] [near:<x>,<y>] [hinge:start|end] [swing:<space>] [entrance] [glazed] [id:<id>]
+  — one opening. `<room>[.<side>]` alone is the short form of `exterior><room>` with an `on`
+
+fixture <type> in:<space> (at <x>,<y> size <w>x<h> | poly <x>,<y> …) ["Name"] [depth:<n>] [id:<id>]
+  — a thing standing in a space: a pool, a bath, a counter
+
+stairs|lift|ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)
+        at <level> in:<space> rect <x>,<y> <w>x<h> | poly <x>,<y> …      (one indented line per level served)
+    e.g. stairs main
+           at ground in:hall rect 3.6,0.4 1.2x3
+           at first in:landing rect 3.6,0.4 1.2x3
+  — vertical circulation: the only entity that spans levels, joined by its id and never by overlap — one `at` line per level it serves, never one line per element
+
+# anything after a # is ignored, as is a blank line
+  — comments and blank lines are not part of the document and are dropped by the printer
+
+## poly elements
+
+  <x>,<y>
+  arc <x>,<y> r<radius> [cw|ccw] [large]
+
+## example
+
+plan "Cabana" walls 0.2/0.1
+
+room sala "Sala e cozinha" living rect 0,0 5x4
+room wc "Casa de banho" wc rect 5,0 1.2x2
+room arrumos "Arrumos" storage rect 5,2 1.2x2
+outdoor deck "Deck" rect 0,4 5x2
+
+door deck>sala at:0.9,4 w0.9 hinge:start swing:sala
+door sala>wc @-0.5 w0.7 hinge:end swing:wc
+door sala>arrumos @0.5 w0.7 hinge:start swing:arrumos
+window sala.north @2.5 w2.4
+window deck>sala @3.4 w2 on:sala.south
+window sala.west w1.2
+window wc.east w0.6

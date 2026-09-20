@@ -1,0 +1,7 @@
+{
+  "summary": {"error":0,"warning":1,"info":1},
+  "findings": [
+    {"rule":"wet.no_window","severity":"warning","message":"WC has no exterior window; plan mechanical extraction","path":"rooms.wc","rooms":["wc"],"at":[3.75,1.5]},
+    {"rule":"entrance.multiple","severity":"info","message":"2 doors lead outside (Changing Room, WC); the main one is Changing Room","path":"openings"}
+  ]
+}

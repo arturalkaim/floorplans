@@ -1,0 +1,8 @@
+{
+  "error": {
+    "issues": [
+      {"path":"openings[0]","message":"has both \"at\" and \"on\"/\"position\"; use one","kind":"conflict"},
+      {"path":"fixtures[0].type","message":"must be one of pool, bath, shower, wc, sink, counter, island, stairs, other","kind":"type"}
+    ]
+  }
+}

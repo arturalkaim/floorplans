@@ -1,0 +1,17 @@
+{
+  "title": "Flat on a Grid",
+  "grid": {"cols": [3, 3], "rows": [3, 3]},
+  "rooms": {
+    "living": {"name": "Living Room", "kind": "living"},
+    "hall": {"name": "Hall", "kind": "hall", "circulation": true},
+    "bedroom": {"name": "Bedroom", "kind": "bedroom"},
+    "bathroom": {"name": "Bathroom", "kind": "wc"}
+  },
+  "layout": {"areas": ["living hall", "bedroom bathroom"]},
+  "openings": [
+    {"type": "door", "between": ["exterior", "living"], "on": {"room": "living", "side": "west"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "living"},
+    {"type": "door", "between": ["living", "hall"], "width": 0.9, "hinge": "start", "swingInto": "hall"},
+    {"type": "door", "between": ["living", "bedroom"], "width": 0.8, "hinge": "start", "swingInto": "bedroom"},
+    {"type": "door", "between": ["hall", "bathroom"], "width": 0.7, "hinge": "end", "swingInto": "bathroom"}
+  ]
+}

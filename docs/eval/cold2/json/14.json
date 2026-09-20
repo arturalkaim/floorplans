@@ -1,0 +1,17 @@
+{
+  "title": "Office Suite",
+  "rooms": {
+    "corridor": {"name": "Corridor", "kind": "corridor", "rect": [3, 0, 1.2, 6], "circulation": true},
+    "reception": {"name": "Reception", "kind": "other", "rect": [0, 0, 3, 3]},
+    "meeting": {"name": "Meeting Room", "kind": "other", "rect": [0, 3, 3, 3]},
+    "office1": {"name": "Office 1", "kind": "office", "rect": [4.2, 0, 3, 3]},
+    "office2": {"name": "Office 2", "kind": "office", "rect": [4.2, 3, 3, 3]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "reception"], "on": {"room": "reception", "side": "west"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "reception"},
+    {"type": "door", "between": ["reception", "corridor"], "width": 0.9, "hinge": "start", "swingInto": "corridor"},
+    {"type": "door", "between": ["corridor", "meeting"], "width": 0.8, "hinge": "start", "swingInto": "meeting"},
+    {"type": "door", "between": ["corridor", "office1"], "width": 0.8, "hinge": "start", "swingInto": "office1"},
+    {"type": "door", "between": ["corridor", "office2"], "width": 0.8, "hinge": "start", "swingInto": "office2"}
+  ]
+}

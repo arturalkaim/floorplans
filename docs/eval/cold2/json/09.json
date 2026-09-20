@@ -1,0 +1,19 @@
+{
+  "title": "Courtyard House",
+  "outdoor": {
+    "courtyard": {"name": "Courtyard", "rect": [3, 3, 4, 4]}
+  },
+  "rooms": {
+    "north_room": {"name": "North Room", "kind": "living", "rect": [3, 0, 4, 3]},
+    "south_room": {"name": "South Room", "kind": "bedroom", "rect": [3, 7, 4, 3]},
+    "west_room": {"name": "West Room", "kind": "bedroom", "rect": [0, 3, 3, 4]},
+    "east_room": {"name": "East Room", "kind": "wc", "rect": [7, 3, 3, 4]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "north_room"], "on": {"room": "north_room", "side": "north"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "north_room"},
+    {"type": "door", "between": ["courtyard", "north_room"], "width": 0.9, "hinge": "start", "swingInto": "north_room"},
+    {"type": "door", "between": ["courtyard", "south_room"], "width": 0.9, "hinge": "start", "swingInto": "south_room"},
+    {"type": "door", "between": ["courtyard", "west_room"], "width": 0.9, "hinge": "start", "swingInto": "west_room"},
+    {"type": "door", "between": ["courtyard", "east_room"], "width": 0.9, "hinge": "start", "swingInto": "east_room"}
+  ]
+}

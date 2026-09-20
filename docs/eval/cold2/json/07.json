@@ -1,0 +1,34 @@
+{
+  "title": "Cabin with Sleeping Loft",
+  "stack": ["ground", "loft"],
+  "levels": {
+    "ground": {
+      "ground": true,
+      "rooms": {
+        "main": {"name": "Cabin Room", "kind": "living", "rect": [0, 0, 5, 5]}
+      },
+      "openings": [
+        {"type": "door", "between": ["exterior", "main"], "on": {"room": "main", "side": "south"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "main"},
+        {"type": "window", "between": ["exterior", "main"], "on": {"room": "main", "side": "north"}, "width": 1.5}
+      ]
+    },
+    "loft": {
+      "height": 2,
+      "rooms": {
+        "loftroom": {"name": "Loft", "kind": "bedroom", "rect": [0, 0, 5, 2.5]}
+      }
+    }
+  },
+  "vertical": [
+    {
+      "id": "ladder",
+      "type": "stairs",
+      "name": "Ladder Stair",
+      "up": 70,
+      "at": [
+        {"level": "ground", "in": "main", "rect": [3.8, 0.2, 1, 2]},
+        {"level": "loft", "in": "loftroom", "rect": [3.8, 0.2, 1, 2]}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "title": "Two-Bedroom Flat",
+  "rooms": {
+    "corridor": {"name": "Corridor", "kind": "corridor", "rect": [3, 0, 1.2, 6], "circulation": true},
+    "bed1": {"name": "Bedroom 1", "kind": "bedroom", "rect": [0, 0, 3, 3]},
+    "bed2": {"name": "Bedroom 2", "kind": "bedroom", "rect": [0, 3, 3, 3]},
+    "bathroom": {"name": "Bathroom", "kind": "wc", "rect": [4.2, 0, 1.8, 2]},
+    "living": {"name": "Living Room", "kind": "living", "rect": [0, 6, 6, 4]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "living"], "on": {"room": "living", "side": "south"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "living"},
+    {"type": "door", "between": ["corridor", "bed1"], "width": 0.8, "hinge": "start", "swingInto": "bed1"},
+    {"type": "door", "between": ["corridor", "bed2"], "width": 0.8, "hinge": "start", "swingInto": "bed2"},
+    {"type": "door", "between": ["corridor", "bathroom"], "width": 0.7, "hinge": "end", "swingInto": "bathroom"},
+    {"type": "door", "between": ["corridor", "living"], "width": 0.9, "hinge": "start", "swingInto": "living"}
+  ]
+}

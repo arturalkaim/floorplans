@@ -1,0 +1,17 @@
+{
+  "title": "Pool House",
+  "rooms": {
+    "changing": {"name": "Changing Room", "kind": "other", "rect": [0, 0, 3, 3]},
+    "wc": {"name": "WC", "kind": "wc", "rect": [3, 0, 1.5, 3]}
+  },
+  "outdoor": {
+    "deck": {"name": "Deck", "rect": [0, 3, 6, 6]}
+  },
+  "fixtures": [
+    {"type": "pool", "in": "deck", "at": [0.5, 3.5], "size": [5, 5], "name": "Pool", "depth": 1.4}
+  ],
+  "openings": [
+    {"type": "door", "between": ["changing", "deck"], "width": 0.9, "hinge": "start", "swingInto": "changing", "entrance": true},
+    {"type": "door", "between": ["wc", "deck"], "width": 0.9, "hinge": "end", "swingInto": "wc"}
+  ]
+}

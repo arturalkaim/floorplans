@@ -1,0 +1,36 @@
+{
+  "title": "Loft Conversion",
+  "stack": ["ground", "loft"],
+  "levels": {
+    "ground": {
+      "ground": true,
+      "rooms": {
+        "hall": {"name": "Hall", "kind": "hall", "rect": [0, 0, 2, 2], "circulation": true}
+      },
+      "openings": [
+        {"type": "door", "between": ["exterior", "hall"], "on": {"room": "hall", "side": "north"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "hall"}
+      ]
+    },
+    "loft": {
+      "height": 2.4,
+      "rooms": {
+        "main": {"name": "Loft Room", "kind": "living", "rect": [0, 0, 6, 5]},
+        "shower": {"name": "Shower Room", "kind": "wc", "rect": [6, 0, 2, 2.5]}
+      },
+      "openings": [
+        {"type": "door", "between": ["main", "shower"], "width": 0.7, "hinge": "end", "swingInto": "shower", "id": "showerdoor1"}
+      ]
+    }
+  },
+  "vertical": [
+    {
+      "id": "main_stair",
+      "type": "stairs",
+      "name": "Stair",
+      "at": [
+        {"level": "ground", "in": "hall", "rect": [0.2, 0.2, 1, 1.6]},
+        {"level": "loft", "in": "main", "rect": [0.2, 0.2, 1, 1.6]}
+      ]
+    }
+  ]
+}

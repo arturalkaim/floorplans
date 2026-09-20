@@ -1,0 +1,15 @@
+{
+  "title": "Kitchen Extension",
+  "rooms": {
+    "kitchen": {"name": "Kitchen", "kind": "kitchen", "rect": [0, 0, 4, 4]}
+  },
+  "outdoor": {
+    "terrace": {"name": "Terrace", "rect": [4, 0, 4, 4]}
+  },
+  "fixtures": [
+    {"type": "counter", "in": "kitchen", "at": [0.2, 0.2], "size": [3, 0.6], "name": "Counter Run", "depth": 0.6}
+  ],
+  "openings": [
+    {"type": "door", "between": ["kitchen", "terrace"], "width": 1.8, "hinge": "start", "swingInto": "kitchen", "glazed": true}
+  ]
+}

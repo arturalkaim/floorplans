@@ -1,0 +1,8 @@
+{
+  "summary": {"error":1,"warning":2,"info":0},
+  "findings": [
+    {"rule":"space.no_access","severity":"error","message":"Loft has no door or cased opening","path":"levels.loft.rooms.loftroom","rooms":["loftroom"],"at":[1.9,1.25],"level":"loft"},
+    {"rule":"habitable.no_window","severity":"warning","message":"Loft is habitable but has no exterior window or glazed exterior door (it has an exterior wall on the north/south/west/east)","path":"levels.loft.rooms.loftroom","rooms":["loftroom"],"at":[1.9,1.25],"level":"loft"},
+    {"rule":"room.min_dimension","severity":"warning","message":"Loft (bedroom): 2.2 m at its narrowest; comfort minimum is 2.4 m (clear floor 3.65 × 2.2 m)","path":"levels.loft.rooms.loftroom.rect","rooms":["loftroom"],"at":[1.9,1.25],"measured":2.2,"minimum":2.4,"rect":[0.15,0.15,3.65,2.2],"level":"loft"}
+  ]
+}

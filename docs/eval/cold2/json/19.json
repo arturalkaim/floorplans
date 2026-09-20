@@ -1,0 +1,19 @@
+{
+  "title": "Holiday Let",
+  "rooms": {
+    "bed1": {"name": "Bedroom 1", "kind": "bedroom", "rect": [0, 0, 3, 3]},
+    "bed2": {"name": "Bedroom 2", "kind": "bedroom", "rect": [3, 0, 3, 3]},
+    "living": {"name": "Living Room", "kind": "living", "rect": [6, 0, 4, 3]}
+  },
+  "outdoor": {
+    "terrace": {"name": "Terrace", "covered": true, "rect": [0, 3, 10, 3]}
+  },
+  "fixtures": [
+    {"type": "shower", "in": "terrace", "at": [8.5, 3.5], "size": [1, 1], "name": "Outdoor Shower"}
+  ],
+  "openings": [
+    {"type": "door", "between": ["living", "terrace"], "width": 1.5, "hinge": "start", "swingInto": "living", "glazed": true, "entrance": true},
+    {"type": "door", "between": ["bed1", "terrace"], "width": 0.9, "hinge": "start", "swingInto": "bed1"},
+    {"type": "door", "between": ["bed2", "terrace"], "width": 0.9, "hinge": "start", "swingInto": "bed2"}
+  ]
+}

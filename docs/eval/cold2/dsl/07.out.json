@@ -1,0 +1,8 @@
+{
+  "error": {
+    "issues": [
+      {"path":"levels.loft.openings[0].between[1]","message":"unknown space \"main\"; expected a room id, an outdoor space id, or \"exterior\"","kind":"reference"},
+      {"path":"levels.loft.openings[1].between[1]","message":"unknown space \"main\"; expected a room id, an outdoor space id, or \"exterior\"","kind":"reference"}
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "summary": {"error":0,"warning":1,"info":0},
+  "findings": [
+    {"rule":"wet.no_window","severity":"warning","message":"Staff WC has no exterior window; plan mechanical extraction","path":"rooms.staffwc","rooms":["staffwc"],"at":[7.5,4]}
+  ]
+}

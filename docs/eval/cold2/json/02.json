@@ -1,0 +1,15 @@
+{
+  "title": "One-Bedroom Flat",
+  "rooms": {
+    "hall": {"name": "Hall", "kind": "hall", "rect": [2, 0, 1.5, 4], "circulation": true},
+    "bedroom": {"name": "Bedroom", "kind": "bedroom", "rect": [0, 0, 2, 4]},
+    "bathroom": {"name": "Bathroom", "kind": "wc", "rect": [3.5, 0, 1.5, 1.5]},
+    "living": {"name": "Living & Kitchen", "kind": "living", "rect": [3.5, 1.5, 4, 2.5]}
+  },
+  "openings": [
+    {"type": "door", "between": ["exterior", "hall"], "on": {"room": "hall", "side": "north"}, "width": 0.9, "entrance": true, "hinge": "start", "swingInto": "hall"},
+    {"type": "door", "between": ["hall", "bedroom"], "width": 0.8, "hinge": "start", "swingInto": "bedroom"},
+    {"type": "door", "between": ["hall", "bathroom"], "width": 0.7, "hinge": "end", "swingInto": "bathroom"},
+    {"type": "door", "between": ["hall", "living"], "width": 0.9, "hinge": "start", "swingInto": "living"}
+  ]
+}
