@@ -324,16 +324,27 @@ are rectangles, and writing them as `rect` costs 186 tokens less.
 | `between` | the two spaces the opening joins: room ids, an outdoor space id, or `"exterior"` for the street. At least one end must be a room — nothing is built between two outdoor spaces |
 | `on` | disambiguates when the pair shares several walls: `{ "room", "side": north\|south\|east\|west, "near": [x,y] }` |
 | `position` | `"center"` (default), a number (metres from the wall's start to the opening centre), or `{ "from": "start"\|"end", "distance" }` |
+| `at` | `[x, y]`: place the opening by an absolute point instead of `on` + `position` — picks the nearest wall between the two spaces in `between` and projects the point onto it |
 | `width` | metres |
 | `hinge` | doors: `"start"` or `"end"` jamb. Walls run west→east and north→south. |
 | `swingInto` | doors: room the leaf opens into (default: the room in `between`, never the street or a terrace) |
 | `entrance` | doors: mark the main entrance. It must lead to the street, or you get `entrance.not_street` |
+| `glazed` | doors: `true` for a glazed door (default `false`) — counts as daylight for `habitable.no_window`, same as a window |
 
 An **entrance** is a door to the street: to `"exterior"`, or to an outdoor space the
 border flood fill reaches. A door onto an enclosed courtyard is a perfectly good door —
 it is allowed, it joins the two spaces in the access graph, and it never satisfies
 `entrance.missing`. `reach.unreachable` walks from the street the same way, so a room you
 can only get to by crossing a courtyard is reachable exactly when the courtyard is.
+
+`at` is mutually exclusive with `on` and `position`, exactly as a room's `poly` and `rect`
+are; giving both is `has both "at" and "on"/"position"; use one`. It is the selector that
+survives angled walls — `on.side` asks which compass side a *derived* wall segment starts
+from, which has no meaning once walls stop being axis-aligned, while `at` just names a
+point and lets the library find the nearest wall. If that point is farther from every
+candidate wall than half its thickness plus a small tolerance, that is `opening.off_wall`,
+naming the nearest wall and the distance; a point equidistant from two candidates is
+`wall.ambiguous`, exactly as an unresolved `on` would be.
 
 ### Fixtures
 
@@ -363,6 +374,12 @@ an interior pool stops counting as floor you can stand on; outdoor spaces net of
 fixtures the same way, giving a deck's area clear of its pool. `schedule.waterArea`
 totals the pools wherever they stand.
 
+`fixtureArea` only deducts a fixture that is **fully inside** the room or outdoor space
+named in `in`; one that straddles or misses the boundary deducts nothing there —
+`fixture.outside_space` already says why — rather than silently reducing usable floor by
+its whole area. Deducting just the overlapping sliver of a straddling fixture needs exact
+polygon intersection, which the geometry core will add; this is the stopgap until then.
+
 A pool is a `pool` whether it sits in a spa room or on a terrace — that is why `in`
 accepts an outdoor id. Model the terrace as the `outdoor` space and the water as a
 fixture standing on it, rather than calling the pool itself an outdoor space; otherwise
@@ -375,12 +392,13 @@ Every finding is `{ rule, severity, message, at?, rooms?, opening? }`.
 | Rule | Severity | Catches |
 |---|---|---|
 | `tiling.gap` / `tiling.overlap` | error | hole in the plan / two rooms share area |
-| `wall.unresolved` / `wall.ambiguous` | error | opening names rooms with no (or several) shared walls |
+| `wall.unresolved` / `wall.ambiguous` | error | opening names rooms with no (or several) shared walls, or `at` names a point equidistant from more than one |
 | `opening.overflow` / `opening.collision` | error | opening wider than its wall / two openings overlap |
+| `opening.off_wall` | error | an opening's `at` point is farther from the nearest wall than half its thickness plus a small tolerance |
 | `window.not_exterior` | error | window on an interior wall |
 | `entrance.missing` | error | no door leads to the street |
 | `space.no_access` / `reach.unreachable` | error | room without a door / not reachable from the street |
-| `habitable.no_window` / `wet.no_window` | warning | living space without daylight / WC needing extraction |
+| `habitable.no_window` / `wet.no_window` | warning | living space without a window or glazed exterior door / WC needing extraction |
 | `wet.opens_to_kitchen` | warning | WC door straight into a kitchen |
 | `privacy.bedroom_through_route` | warning | bedroom is the route to another bedroom |
 | `room.min_dimension` / `door.min_width` | warning | comfort minimums per room kind and door role |
