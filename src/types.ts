@@ -5,6 +5,21 @@ export type Pt = [number, number];
 export type Side = "north" | "south" | "east" | "west";
 export type Axis = "h" | "v";
 
+/**
+ * A curved edge of a ring, as the document authors it:
+ * `{ "arc": [x, y], "r": 3.5, "sweep": "ccw" }` is *an arc from the previous corner to
+ * [x, y], of radius r, turning that way*. The centre is derived and never stored, so
+ * `r` can be edited on its own and the record cannot become inconsistent.
+ */
+export interface ArcSpec {
+  /** radius, metres; at least half the chord */
+  r: number;
+  /** which way it turns, seen on the page (y grows south) */
+  sweep: "cw" | "ccw";
+  /** the arc subtends more than 180°; without it the minor arc is meant */
+  large: boolean;
+}
+
 export type RoomKind =
   | "bedroom"
   | "living"
