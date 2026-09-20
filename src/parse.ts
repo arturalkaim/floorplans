@@ -82,8 +82,235 @@ export const FIXTURE_TYPES: ReadonlySet<string> = new Set<FixtureType>([
 export const VERTICAL_TYPES: ReadonlySet<string> = new Set<VerticalType>(["stairs", "lift", "ramp"]);
 const ID_RE = /^[a-z][a-z0-9_]*$/;
 
-/** the keys a level block may hold — also the keys a single-level document holds inline */
-const LEVEL_CONTENT_KEYS = ["rooms", "outdoor", "voids", "layout", "openings", "fixtures"] as const;
+/**
+ * The document's own schema, machine-readable. `checkKeys` below reads its known-key
+ * lists from here (see FIELDS_OF and the per-object constants that follow), so a field
+ * this table does not mention is a field the parser rejects, by construction — SCHEMA and
+ * the parser cannot drift apart the way the README's hand-written tables and
+ * `app/src/routes/reference.tsx` used to (docs/agent-review.md B10). `floorplan --schema`
+ * prints this table; that is the ≈600-token replacement for the README's ~2 400-token
+ * prose an agent no longer needs to read.
+ */
+export interface FieldDoc {
+  name: string;
+  /**
+   * A short, actionable type tag. `"number[]"` is not one of the nine shapes the review
+   * asked for (number, string, [x,y], [x,y,w,h], point[], string[], enum, boolean,
+   * object) — it was added because `grid.cols`/`grid.rows`/`layout.cols`/`layout.rows`
+   * are lists of plain numbers, and tagging them `"object"` would tell an agent nothing
+   * about how to write one; `"number[]"` follows the same naming the review already used
+   * for `point[]` and `string[]`.
+   */
+  type: "number" | "number[]" | "string" | "[x,y]" | "[x,y,w,h]" | "point[]" | "string[]" | "enum" | "boolean" | "object";
+  required: boolean;
+  /** For `type: "enum"`: a reference to the exported vocabulary itself, never a copy. */
+  enum?: ReadonlySet<string>;
+  /** One sentence: units, default, and what reads it. */
+  doc: string;
+}
+
+export interface ObjectDoc {
+  /** Dotted path names a nested shape that has no id of its own, e.g. an opening's `on`. */
+  object:
+    | "plan"
+    | "walls"
+    | "grid"
+    | "layout"
+    | "level"
+    | "room"
+    | "outdoor"
+    | "void"
+    | "opening"
+    | "opening.on"
+    | "opening.position"
+    | "fixture"
+    | "vertical"
+    | "vertical.footprint";
+  fields: readonly FieldDoc[];
+  /** Mutual exclusions among this object's fields, one sentence each. */
+  oneOf?: readonly string[];
+}
+
+export const SCHEMA: readonly ObjectDoc[] = [
+  {
+    object: "plan",
+    fields: [
+      { name: "title", type: "string", required: false, doc: "display name" },
+      { name: "units", type: "string", required: false, doc: 'only "m"; default "m"' },
+      { name: "walls", type: "object", required: false, doc: "wall-thickness overrides; see walls" },
+      { name: "north", type: "number", required: false, doc: 'bearing of "up", degrees from north; default 0' },
+      { name: "stack", type: "string[]", required: false, doc: "ground-up level-id order; default the levels map's own key order" },
+      { name: "levels", type: "object", required: false, doc: "id → level map; presence = multi-level; see level" },
+      { name: "vertical", type: "object", required: false, doc: "array of stairs/lifts/ramps spanning levels; see vertical" },
+      { name: "grid", type: "object", required: false, doc: "shared {cols,rows} track grid; see grid" },
+    ],
+  },
+  {
+    object: "walls",
+    fields: [
+      { name: "exterior", type: "number", required: false, doc: "metres; default 0.3" },
+      { name: "partition", type: "number", required: false, doc: "metres; default 0.12" },
+    ],
+  },
+  {
+    object: "grid",
+    fields: [
+      { name: "cols", type: "number[]", required: true, doc: "column widths, metres, left→right" },
+      { name: "rows", type: "number[]", required: true, doc: "row heights, metres, top→bottom" },
+    ],
+  },
+  {
+    object: "layout",
+    fields: [
+      { name: "cols", type: "number[]", required: false, doc: "column widths, metres; omit to use the shared grid's cols" },
+      { name: "rows", type: "number[]", required: false, doc: "row heights, metres; omit to use the shared grid's rows" },
+      { name: "areas", type: "string[]", required: true, doc: 'one row per string, space-separated cell ids, "." = empty; same id in several cells = one space' },
+    ],
+  },
+  {
+    object: "level",
+    fields: [
+      { name: "name", type: "string", required: false, doc: "display name; default the level id" },
+      { name: "height", type: "number", required: false, doc: "floor-to-floor, metres; used by stair.pitch/stair.headroom" },
+      { name: "ground", type: "boolean", required: false, doc: "true = street meets this level; default first in stack" },
+      { name: "rooms", type: "object", required: true, doc: "id → room map, ≥1 entry; see room" },
+      { name: "outdoor", type: "object", required: false, doc: "id → outdoor map; see outdoor" },
+      { name: "voids", type: "object", required: false, doc: "id → void map; see void" },
+      { name: "layout", type: "object", required: false, doc: "grid-authoring shortcut for rooms/outdoor/voids; see layout" },
+      { name: "openings", type: "object", required: false, doc: "array of openings; see opening" },
+      { name: "fixtures", type: "object", required: false, doc: "array of fixtures; see fixture" },
+    ],
+  },
+  {
+    object: "room",
+    fields: [
+      { name: "poly", type: "point[]", required: false, doc: "rectilinear polygon, any winding, ≥4 corners" },
+      { name: "rect", type: "[x,y,w,h]", required: false, doc: "metres; expands to poly" },
+      { name: "kind", type: "enum", required: false, enum: ROOM_KINDS, doc: 'drives habitable/wet/circulation defaults + colour; default "other"' },
+      { name: "name", type: "string", required: false, doc: "display name; default the room id" },
+      { name: "zone", type: "string", required: false, doc: "fill-colour label; default kind" },
+      { name: "habitable", type: "boolean", required: false, doc: "overrides the kind-based default" },
+      { name: "wet", type: "boolean", required: false, doc: "overrides the kind-based default" },
+      { name: "circulation", type: "boolean", required: false, doc: "overrides the kind-based default" },
+    ],
+    oneOf: ['"poly" xor "rect" — neither: place it in layout.areas instead'],
+  },
+  {
+    object: "outdoor",
+    fields: [
+      { name: "poly", type: "point[]", required: false, doc: "rectilinear polygon, any winding, ≥4 corners" },
+      { name: "rect", type: "[x,y,w,h]", required: false, doc: "metres; expands to poly" },
+      { name: "name", type: "string", required: false, doc: "display name; default the id" },
+      { name: "covered", type: "boolean", required: false, doc: "true = covered terrace/porch; default false" },
+    ],
+    oneOf: ['"poly" xor "rect" — neither: place it in layout.areas instead'],
+  },
+  {
+    object: "void",
+    fields: [
+      { name: "poly", type: "point[]", required: false, doc: "rectilinear polygon, any winding, ≥4 corners" },
+      { name: "rect", type: "[x,y,w,h]", required: false, doc: "metres; expands to poly" },
+      { name: "name", type: "string", required: false, doc: "display name; default the id" },
+    ],
+    oneOf: ['"poly" xor "rect" — neither: place it in layout.areas instead'],
+  },
+  {
+    object: "opening",
+    fields: [
+      { name: "id", type: "string", required: false, doc: "^[a-z][a-z0-9_]*$, unique on its level; default <type>:<a>-<b>:<n> over the sorted pair" },
+      { name: "type", type: "enum", required: true, enum: OPENING_TYPES, doc: "cased = archway: access like a door, no leaf" },
+      { name: "between", type: "string[]", required: true, doc: '[a, b]: room/outdoor ids, or "exterior" for the street; ≥1 must be a room' },
+      { name: "width", type: "number", required: true, doc: "metres, > 0" },
+      { name: "position", type: "object", required: false, doc: 'along the wall: "center" (default), a number (metres from the run\'s start), or {from:"start"|"end", distance}' },
+      { name: "on", type: "object", required: false, doc: "which wall when between shares >1: {room, side?, near?}; see opening.on" },
+      { name: "at", type: "[x,y]", required: false, doc: "absolute point; nearest wall shared by between is picked" },
+      { name: "hinge", type: "string", required: false, doc: 'doors only: "start"|"end" jamb; default "start"' },
+      { name: "swingInto", type: "string", required: false, doc: "doors only: which between space the leaf swings into; default the room side" },
+      { name: "entrance", type: "boolean", required: false, doc: "doors only: marks the main entrance; default false" },
+      { name: "glazed", type: "boolean", required: false, doc: "doors only: counts as daylight like a window; default false" },
+    ],
+    oneOf: ['"on"/"position" xor "at"'],
+  },
+  {
+    object: "opening.on",
+    fields: [
+      { name: "room", type: "string", required: true, doc: "one of between's two spaces" },
+      { name: "side", type: "enum", required: false, enum: SIDES, doc: "restricts the wall search to one side of room" },
+      { name: "near", type: "[x,y]", required: false, doc: "restricts the wall search to the nearest candidate to this point" },
+    ],
+  },
+  {
+    object: "opening.position",
+    fields: [
+      { name: "from", type: "string", required: true, doc: '"start"|"end" of the wall run' },
+      { name: "distance", type: "number", required: true, doc: "metres from that end, ≥0" },
+    ],
+  },
+  {
+    object: "fixture",
+    fields: [
+      { name: "id", type: "string", required: false, doc: "^[a-z][a-z0-9_]*$, unique on its level; default <type>:<in>:<n>" },
+      { name: "type", type: "enum", required: true, enum: FIXTURE_TYPES, doc: "also sets the default name" },
+      { name: "in", type: "string", required: true, doc: "room/outdoor id it stands in" },
+      { name: "poly", type: "point[]", required: false, doc: "explicit polygon" },
+      { name: "at", type: "[x,y]", required: false, doc: "top-left corner; used with size" },
+      { name: "size", type: "[x,y]", required: false, doc: "[width, height], metres; used with at" },
+      { name: "depth", type: "number", required: false, doc: "metres; shown on the drawing label only" },
+      { name: "name", type: "string", required: false, doc: "display name; default the capitalized type" },
+    ],
+    oneOf: ['"poly" xor "at"+"size"'],
+  },
+  {
+    object: "vertical",
+    fields: [
+      { name: "id", type: "string", required: true, doc: "^[a-z][a-z0-9_]*$; joins levels, never by footprint overlap" },
+      { name: "type", type: "enum", required: true, enum: VERTICAL_TYPES, doc: "stairs, lift, or ramp" },
+      { name: "name", type: "string", required: false, doc: "display name; default the capitalized type" },
+      { name: "at", type: "object", required: true, doc: "≥1 {level, in, poly|rect}, one per level served; see vertical.footprint" },
+      { name: "up", type: "number", required: false, doc: "bearing up, degrees from north; needed for stair.headroom" },
+      { name: "risers", type: "number", required: false, doc: "whole number ≥2; drives stair.pitch/stair.headroom" },
+    ],
+  },
+  {
+    object: "vertical.footprint",
+    fields: [
+      { name: "level", type: "string", required: true, doc: "a level id declared in this document's levels" },
+      { name: "in", type: "string", required: true, doc: "room/outdoor id to step off into" },
+      { name: "poly", type: "point[]", required: false, doc: "explicit footprint polygon" },
+      { name: "rect", type: "[x,y,w,h]", required: false, doc: "[x, y, width, height], metres" },
+    ],
+    oneOf: ['"poly" xor "rect"'],
+  },
+];
+
+/** The field names of one SCHEMA object, in declaration order. Throws on a typo'd name so
+ * a call site can never silently fall back to an empty known-key list. */
+function fieldNames(object: ObjectDoc["object"]): readonly string[] {
+  const doc = SCHEMA.find((o) => o.object === object);
+  if (!doc) throw new Error(`SCHEMA has no entry for ${JSON.stringify(object)}`);
+  return doc.fields.map((f) => f.name);
+}
+
+// One constant per checkKeys call site below, computed once from SCHEMA — never an inline
+// array of key strings — so a field the docs do not mention is a field the parser rejects,
+// by construction (test/schema.test.ts guards this with a grep over this file).
+const PLAN_FIELDS = fieldNames("plan");
+const LEVEL_FIELDS = fieldNames("level");
+// the level-content keys a single-level document also accepts inline at its top: every
+// `level` field except the three that only make sense inside `levels.<id>` itself
+const LEVEL_CONTENT_FIELDS = LEVEL_FIELDS.filter((n) => n !== "name" && n !== "height" && n !== "ground");
+const WALLS_FIELDS = fieldNames("walls");
+const GRID_FIELDS = fieldNames("grid");
+const LAYOUT_FIELDS = fieldNames("layout");
+const ROOM_FIELDS = fieldNames("room");
+const OUTDOOR_FIELDS = fieldNames("outdoor");
+const VOID_FIELDS = fieldNames("void");
+const OPENING_FIELDS = fieldNames("opening");
+const OPENING_ON_FIELDS = fieldNames("opening.on");
+const OPENING_POSITION_FIELDS = fieldNames("opening.position");
+const FIXTURE_FIELDS = fieldNames("fixture");
+const VERTICAL_FIELDS = fieldNames("vertical");
+const VERTICAL_FOOTPRINT_FIELDS = fieldNames("vertical.footprint");
 
 type J = Record<string, unknown>;
 const isObj = (v: unknown): v is J => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -157,19 +384,12 @@ export function parse(input: unknown): Plan {
   }
 
   const hasLevels = doc["levels"] !== undefined;
-  checkKeys(
-    "",
-    doc,
-    hasLevels
-      ? ["title", "units", "walls", "north", "stack", "levels", "vertical", "grid"]
-      : ["title", "units", "walls", "north", "stack", "levels", "vertical", "grid", ...LEVEL_CONTENT_KEYS],
-    bad,
-  );
+  checkKeys("", doc, hasLevels ? PLAN_FIELDS : [...PLAN_FIELDS, ...LEVEL_CONTENT_FIELDS], bad);
 
   const title = typeof doc["title"] === "string" ? doc["title"] : undefined;
   if (doc["units"] !== undefined && doc["units"] !== "m") bad("units", 'only "m" is supported');
   const wallsIn = isObj(doc["walls"]) ? doc["walls"] : {};
-  checkKeys("walls", wallsIn, ["exterior", "partition"], bad);
+  checkKeys("walls", wallsIn, WALLS_FIELDS, bad);
   const exterior = wallsIn["exterior"] ?? 0.3;
   const partition = wallsIn["partition"] ?? 0.12;
   if (!isNum(exterior) || exterior <= 0) bad("walls.exterior", "must be a positive number (metres)");
@@ -185,7 +405,7 @@ export function parse(input: unknown): Plan {
     const g = doc["grid"];
     if (!isObj(g)) bad("grid", "must be an object { cols, rows }");
     else {
-      checkKeys("grid", g, ["cols", "rows"], bad);
+      checkKeys("grid", g, GRID_FIELDS, bad);
       const cols = readTracks("grid.cols", g["cols"], bad);
       const rows = readTracks("grid.rows", g["rows"], bad);
       if (cols && rows) grid = { cols, rows };
@@ -239,7 +459,7 @@ export function parse(input: unknown): Plan {
           continue;
         }
         const path = `levels.${lid}`;
-        checkKeys(path, v, ["name", "height", "ground", ...LEVEL_CONTENT_KEYS], bad);
+        checkKeys(path, v, LEVEL_FIELDS, bad);
         const levelName = typeof v["name"] === "string" ? v["name"] : lid;
         let height: number | undefined;
         if (v["height"] !== undefined) {
@@ -266,7 +486,7 @@ export function parse(input: unknown): Plan {
       bad(path, "must be an object");
       return;
     }
-    checkKeys(path, v, ["id", "type", "name", "at", "up", "risers"], bad);
+    checkKeys(path, v, VERTICAL_FIELDS, bad);
     const authored = Object.keys(v);
     const vid = v["id"];
     if (typeof vid !== "string" || !ID_RE.test(vid)) {
@@ -304,7 +524,7 @@ export function parse(input: unknown): Plan {
         bad(ap, "must be an object { level, in, rect | poly }");
         return;
       }
-      checkKeys(ap, a, ["level", "in", "poly", "rect"], bad);
+      checkKeys(ap, a, VERTICAL_FOOTPRINT_FIELDS, bad);
       const lv = a["level"];
       if (typeof lv !== "string" || !levelIds.includes(lv)) {
         bad(`${ap}.level`, `must name a level; expected one of ${levelIds.join(", ")}`, "reference");
@@ -495,7 +715,7 @@ function parseLevelContent(
       bad(P(`rooms.${rid}`), "must be an object");
       continue;
     }
-    checkKeys(P(`rooms.${rid}`), v, ["poly", "rect", "kind", "name", "zone", "habitable", "wet", "circulation"], bad);
+    checkKeys(P(`rooms.${rid}`), v, ROOM_FIELDS, bad);
     readGeometry(P(`rooms.${rid}`), rid, v);
   }
   for (const [oid, v] of Object.entries(outdoorIn)) {
@@ -505,7 +725,7 @@ function parseLevelContent(
       bad(P(`outdoor.${oid}`), "must be an object");
       continue;
     }
-    checkKeys(P(`outdoor.${oid}`), v, ["poly", "rect", "name", "covered"], bad);
+    checkKeys(P(`outdoor.${oid}`), v, OUTDOOR_FIELDS, bad);
     readGeometry(P(`outdoor.${oid}`), oid, v);
   }
   for (const [vid, v] of Object.entries(voidsIn)) {
@@ -516,7 +736,7 @@ function parseLevelContent(
       bad(P(`voids.${vid}`), "must be an object");
       continue;
     }
-    checkKeys(P(`voids.${vid}`), v, ["poly", "rect", "name"], bad);
+    checkKeys(P(`voids.${vid}`), v, VOID_FIELDS, bad);
     readGeometry(P(`voids.${vid}`), vid, v);
   }
 
@@ -628,7 +848,7 @@ function parseLevelContent(
       bad(p, "must be an object");
       return;
     }
-    checkKeys(p, o, ["id", "type", "between", "width", "position", "on", "at", "hinge", "swingInto", "entrance", "glazed"], bad);
+    checkKeys(p, o, OPENING_FIELDS, bad);
     const type = o["type"];
     if (!OPENING_TYPES.has(type as string)) {
       bad(`${p}.type`, `must be one of door, window, cased`);
@@ -673,7 +893,7 @@ function parseLevelContent(
       if (pos === undefined || pos === "center") position = "center";
       else if (isNum(pos)) position = { from: "start", distance: snap(pos) };
       else if (isObj(pos)) {
-        checkKeys(`${p}.position`, pos, ["from", "distance"], bad);
+        checkKeys(`${p}.position`, pos, OPENING_POSITION_FIELDS, bad);
         if ((pos["from"] === "start" || pos["from"] === "end") && isNum(pos["distance"]) && pos["distance"] >= 0)
           position = { from: pos["from"] as Jamb, distance: snap(pos["distance"]) };
         else bad(`${p}.position`, '"center", a number (metres from start to centre) or { from: "start"|"end", distance }');
@@ -681,7 +901,7 @@ function parseLevelContent(
 
       if (o["on"] !== undefined) {
         const s = o["on"];
-        if (isObj(s)) checkKeys(`${p}.on`, s, ["room", "side", "near"], bad);
+        if (isObj(s)) checkKeys(`${p}.on`, s, OPENING_ON_FIELDS, bad);
         if (!isObj(s) || typeof s["room"] !== "string" || (s["room"] !== a && s["room"] !== b) || s["room"] === "exterior")
           bad(`${p}.on.room`, "must name one of the spaces in `between`, and not \"exterior\"", "reference");
         else {
@@ -760,7 +980,7 @@ function parseLevelContent(
       bad(path, "must be an object");
       return;
     }
-    checkKeys(path, v, ["id", "type", "in", "poly", "at", "size", "depth", "name"], bad);
+    checkKeys(path, v, FIXTURE_FIELDS, bad);
     const type = v["type"];
     if (!FIXTURE_TYPES.has(type as string))
       bad(`${path}.type`, `must be one of ${[...FIXTURE_TYPES].join(", ")}`);
@@ -848,7 +1068,7 @@ function compileLayout(
     bad(P("layout"), "must be an object { cols, rows, areas }");
     return;
   }
-  checkKeys(P("layout"), layout, ["cols", "rows", "areas"], bad);
+  checkKeys(P("layout"), layout, LAYOUT_FIELDS, bad);
   const tracks = (k: "cols" | "rows"): number[] | undefined => {
     if (layout[k] === undefined && sharedGrid) return sharedGrid[k];
     const v = layout[k];

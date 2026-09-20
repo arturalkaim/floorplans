@@ -66,6 +66,20 @@ a { color: var(--accent); }
 .exit[data-code="1"] { color: var(--sev-warning); }
 .exit[data-code="2"] { color: var(--sev-error); }
 
+/* level switcher: which storey the drawing, findings and schedule are scoped to */
+.levels { display: flex; gap: 2px; margin-bottom: 12px; }
+.levels button {
+  font-family: var(--cond); font-size: 12.5px; font-weight: 600; letter-spacing: .02em;
+  color: var(--muted); background: var(--sheet); border: 1px solid var(--rule); padding: 6px 13px; cursor: pointer;
+}
+.levels button:hover { color: var(--ink); background: var(--rule-soft); }
+.levels button[data-active="true"] { color: var(--ink); background: var(--accent-soft); border-color: var(--accent); }
+.levels .ground-badge { margin-left: 6px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* building totals, under the selected level's own room schedule */
+.building-totals { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 9px 14px; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.building-totals strong { color: var(--ink); font-weight: 600; }
+
 /* playground layout */
 .cols { display: grid; grid-template-columns: minmax(330px, .82fr) minmax(0, 1.5fr); gap: 16px; align-items: start; }
 @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } .source { order: 2; } .drawing-col { order: 1; } }
@@ -129,8 +143,12 @@ tfoot td { font-weight: 600; font-variant-numeric: tabular-nums; border-top: 1px
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .card { display: flex; flex-direction: column; text-decoration: none; color: inherit; background: var(--sheet); border: 1px solid var(--rule); }
 .card:hover { border-color: var(--accent); }
-.card .thumb { padding: 12px; border-bottom: 1px solid var(--rule-soft); display: flex; align-items: center; justify-content: center; min-height: 190px; overflow: hidden; }
+.card .thumb { position: relative; padding: 12px; border-bottom: 1px solid var(--rule-soft); display: flex; align-items: center; justify-content: center; min-height: 190px; overflow: hidden; }
 .card .thumb svg { max-height: 190px; width: auto; }
+.card .thumb .badge {
+  position: absolute; top: 8px; right: 8px; font-family: var(--mono); font-size: 10.5px;
+  background: var(--sheet); border: 1px solid var(--rule); color: var(--muted); padding: 2px 7px;
+}
 .card .meta { padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; }
 .card .meta h3 { font-family: var(--cond); font-size: 16px; font-weight: 700; margin: 0; }
 .card .meta p { margin: 0; color: var(--muted); font-size: 12.5px; }

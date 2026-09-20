@@ -23,6 +23,10 @@ import type { RenderOptions } from "./svg.ts";
 export { parse, PlanError, derive, checkRules, renderSvg, sortFindings };
 // the parser's own vocabularies, so documentation cannot drift from what it accepts
 export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES, VERTICAL_TYPES } from "./parse.ts";
+// the parser's own field table, so documentation cannot drift from what it accepts either —
+// `floorplan --schema` prints this
+export { SCHEMA } from "./parse.ts";
+export type { FieldDoc, ObjectDoc } from "./parse.ts";
 export { RULES, ruleById } from "./catalogue.ts";
 // owner classes: rooms, outdoor spaces, the street and holes, plus the predicates that
 // tell them apart — a consumer reading model.walls or model.access needs these

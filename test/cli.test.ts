@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { formatFindings, run } from "../src/cli.ts";
 import type { CliIo } from "../src/cli.ts";
+import { SCHEMA } from "../src/index.ts";
 import { twoRooms } from "./helpers.ts";
 
 function fakeIo(files: Record<string, string>, stdin = "") {
@@ -131,6 +132,50 @@ describe("cli", () => {
     const res = spawnSync(process.execPath, ["src/bin.ts", "fixtures/casa-t3.json", "--lint"], { cwd: new URL("..", import.meta.url), encoding: "utf8" });
     assert.equal(res.status, 1, res.stderr);
     assert.match(res.stdout, /circulation\.share/);
+  });
+});
+
+describe("cli: --schema", () => {
+  it("needs no input file and exits 0", () => {
+    const t = fakeIo({});
+    assert.equal(run(["--schema"], t.io), 0);
+    assert.notEqual(t.out(), "");
+    assert.equal(t.err(), "");
+  });
+
+  it("prints JSON that parses, and round-trips SCHEMA (modulo enum sets becoming arrays)", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const printed = JSON.parse(t.out());
+    assert.ok(Array.isArray(printed));
+    const plain = SCHEMA.map((o) => ({
+      object: o.object,
+      fields: o.fields.map((f) => ({
+        name: f.name,
+        type: f.type,
+        required: f.required,
+        ...(f.enum ? { enum: [...f.enum] } : {}),
+        doc: f.doc,
+      })),
+      ...(o.oneOf ? { oneOf: o.oneOf } : {}),
+    }));
+    assert.deepEqual(printed, plain);
+  });
+
+  it("documents every object the parser's checkKeys calls need", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const objects = JSON.parse(t.out()).map((o: { object: string }) => o.object);
+    for (const name of ["plan", "room", "outdoor", "void", "opening", "opening.on", "opening.position", "fixture", "vertical", "vertical.footprint", "walls", "grid", "layout", "level"])
+      assert.ok(objects.includes(name), `--schema is missing ${name}`);
+  });
+
+  it("--schema=md prints a Markdown table per object and needs no input file", () => {
+    const t = fakeIo({});
+    assert.equal(run(["--schema=md"], t.io), 0);
+    assert.match(t.out(), /^## plan\b/m);
+    assert.match(t.out(), /^## room\b/m);
+    assert.match(t.out(), /\| field \| type \| required \| enum \| doc \|/);
   });
 });
 
