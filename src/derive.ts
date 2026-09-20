@@ -195,9 +195,14 @@ export function derive(plan: Plan): Analysis {
     bbox: bbox(fixture.poly),
     area: snap(Math.abs(shoelace(fixture.poly))),
   }));
+  // Fixtures fully inside their own host's polygon: fixtureAreaOf below deducts only these
+  // (D3), sharing the same containment check that raises fixture.outside_space.
+  const containedFixtures = new Set<number>();
   for (const fm of fixtureModels) {
     const host = hostPoly.get(fm.fixture.in);
-    if (host && !polyInside(fm.fixture.poly, host)) {
+    const inside = host !== undefined && polyInside(fm.fixture.poly, host);
+    if (inside) containedFixtures.add(fm.fixture.index);
+    else if (host) {
       findings.push({
         rule: "fixture.outside_space",
         severity: "error",
@@ -224,8 +229,17 @@ export function derive(plan: Plan): Analysis {
       });
     }
   }
+  // INVARIANT: deducts only fixtures fully contained in the room's own polygon (D3). The
+  // exact fix — deducting just the overlapping area for a straddling fixture — needs face
+  // classification from the geometry core and waits for it (docs/gaps-design.md §1.3.2);
+  // this stopgap is the common case (nothing straddles today) and is not thrown away when
+  // that lands, it is subsumed by it.
   const fixtureAreaOf = (id: string) =>
-    snap(fixtureModels.filter((m) => m.fixture.in === id).reduce((t, m) => t + m.area, 0));
+    snap(
+      fixtureModels
+        .filter((m) => m.fixture.in === id && containedFixtures.has(m.fixture.index))
+        .reduce((t, m) => t + m.area, 0),
+    );
 
   // floor standing under a fixture is not floor you can use
   const occupied: boolean[][] = [];

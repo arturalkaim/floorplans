@@ -306,6 +306,14 @@ describe("rules: a pool is a pool wherever it stands", () => {
     assert.equal(only(f, "fixture.outside_space").length, 1);
   });
 
+  it("the escaping fixture is not deducted from the deck's usable area (D3)", () => {
+    const escaping = { ...plan, fixtures: [{ type: "pool", in: "deck", at: [1, 4.5], size: [3, 9] }] };
+    const { model } = analyze(parse(escaping));
+    const deck = schedule(model).outdoor.find((o) => o.id === "deck")!;
+    assert.equal(deck.fixtureArea, 0);
+    assert.equal(deck.usableArea, deck.area);
+  });
+
   it("does not report the deck itself as a gap or a room", () => {
     const f = run(plan);
     assert.ok(!has(f, "tiling.gap"));

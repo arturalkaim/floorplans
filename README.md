@@ -330,6 +330,12 @@ an interior pool stops counting as floor you can stand on; outdoor spaces net of
 fixtures the same way, giving a deck's area clear of its pool. `schedule.waterArea`
 totals the pools wherever they stand.
 
+`fixtureArea` only deducts a fixture that is **fully inside** the room or outdoor space
+named in `in`; one that straddles or misses the boundary deducts nothing there —
+`fixture.outside_space` already says why — rather than silently reducing usable floor by
+its whole area. Deducting just the overlapping sliver of a straddling fixture needs exact
+polygon intersection, which the geometry core will add; this is the stopgap until then.
+
 A pool is a `pool` whether it sits in a spa room or on a terrace — that is why `in`
 accepts an outdoor id. Model the terrace as the `outdoor` space and the water as a
 fixture standing on it, rather than calling the pool itself an outdoor space; otherwise

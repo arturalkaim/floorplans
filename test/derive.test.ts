@@ -369,3 +369,19 @@ describe("derive: opening `at` — absolute placement (B5)", () => {
     assert.match(f.message, /equidistant from 2 wall segments/);
   });
 });
+
+describe("derive: usable area deducts only contained fixtures (D3)", () => {
+  it("deducts a fixture fully inside the room, not one that straddles its boundary", () => {
+    const { model, findings } = analyze({
+      rooms: { a: { kind: "living", poly: rect(0, 0, 4, 4) } },
+      fixtures: [
+        { type: "counter", in: "a", at: [0.2, 0.2], size: [1, 1] }, // fully inside: 1 m²
+        { type: "island", in: "a", at: [3, 3], size: [3, 3] }, // straddles the east and south walls
+      ],
+    });
+    assert.ok(has(findings, "fixture.outside_space"));
+    const room = model.rooms.find((m) => m.room.id === "a")!;
+    assert.equal(room.fixtureArea, 1, "only the fully-contained counter is deducted");
+    assert.equal(room.usableArea, Math.round((room.clearArea - 1) * 1000) / 1000);
+  });
+});
