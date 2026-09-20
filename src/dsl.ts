@@ -917,6 +917,17 @@ export function parseDsl(text: string): DslDocument {
         levelled = true;
         cursor.i++;
         const id = idTok.text;
+        // A second `level a` header used to replace the first level's content object
+        // wholesale — every room, opening and fixture already written under it simply
+        // vanished from the document, and the document still linted clean
+        // (docs/agent-review.md B3). The DSL sees every line, so it can — and must —
+        // catch this itself; JSON.parse would already have collapsed the duplicate key
+        // before parse() ever saw it.
+        const dupLevel = positions.get(`levels.${id}#id`);
+        if (dupLevel) {
+          fail(idTok.start, `level ${JSON.stringify(id)} was already declared on line ${dupLevel.line}`);
+          return;
+        }
         record(`levels.${id}#id`, idTok.start, idTok.end, (v) => String(v));
         const lv: J = {};
         while (cursor.i < toks.length) {
@@ -954,6 +965,15 @@ export function parseDsl(text: string): DslDocument {
         sawContent = true;
         const id = idTok.text;
         const base = P(`${kindKey}.${id}`);
+        // Same last-wins hazard as a duplicate level header (B3): `groupOf(kindKey)[id] =
+        // …` below would silently replace the first declaration rather than add a second
+        // one, and a re-declared room, outdoor space or void would lint clean while
+        // quietly losing its first geometry, name and flags.
+        const dup = positions.get(`${base}#id`);
+        if (dup) {
+          fail(idTok.start, `${verb.text} ${JSON.stringify(id)} was already declared on line ${dup.line}`);
+          return;
+        }
         record(`${base}#id`, idTok.start, idTok.end, (v) => String(v));
         const e: J = {};
         let sawKind = false;
@@ -1740,6 +1760,15 @@ export function isDslText(text: string): boolean {
  * Read a source text (or pass a value straight through) as the JSON document shape.
  * `positions` is present only for a DSL document, and is what gives a finding its `line`
  * and an edit its splice range.
+ *
+ * A JSON document with a duplicate object key is last-wins here too (docs/agent-review.md
+ * B3), because `JSON.parse` is native and never exposes the fact a key repeated — by the
+ * time this function sees the result, the duplicate is already gone. That is inherent to
+ * `JSON.parse` and not this module's to fix; jsonpos.ts's own hand-rolled parser sees
+ * every key as it goes and *could* detect it cheaply for editing (see its test file), but
+ * that parser is not the one `readSource` uses for validation. This function's own DSL
+ * path has no such excuse, which is why parseDsl's `SPACE_STATEMENTS` and `level` cases
+ * raise a DslError on a repeated id instead of overwriting it.
  */
 export function readSource(input: unknown): { doc: unknown; positions?: DslPositions } {
   if (typeof input !== "string") return { doc: input };

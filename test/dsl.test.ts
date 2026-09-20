@@ -242,6 +242,66 @@ describe("errors carry the line, and every bad line is reported", () => {
   });
 });
 
+/**
+ * docs/agent-review.md B3: `groupOf(kindKey)[id] = …` (rooms/outdoor/voids) and
+ * `levels[id] = …` used to overwrite silently on a repeated id — a second `room hall`
+ * won outright, and a second `level a` header dropped everything the first one's body
+ * had written, with the document still linting clean. `JSON.parse` has the identical
+ * last-wins weakness for a duplicate object key (test/jsonpos.test.ts's sibling note),
+ * but that is a property of native `JSON.parse` itself, invisible by the time any object
+ * reaches `parse()`; the DSL parser sees every line as it goes and has no such excuse.
+ */
+describe("a duplicate id is a DslError, not last-wins (B3)", () => {
+  it("names both lines for a duplicate room", () => {
+    const [i] = issuesOf('room hall rect 0,0 3x3 "Hall A"\nroom hall rect 3,0 3x3 "Hall B"');
+    assert.equal(i!.line, 2);
+    assert.equal(i!.message, 'line 2: room "hall" was already declared on line 1');
+  });
+
+  it("names both lines for a duplicate outdoor space", () => {
+    const [i] = issuesOf("outdoor deck rect 0,0 3x3\noutdoor deck rect 3,0 3x3");
+    assert.equal(i!.message, 'line 2: outdoor "deck" was already declared on line 1');
+  });
+
+  it("names both lines for a duplicate void", () => {
+    const [i] = issuesOf("room a rect 0,0 3x3\nvoid v rect 3,0 1x1\nvoid v rect 4,0 1x1");
+    assert.equal(i!.message, 'line 3: void "v" was already declared on line 2');
+  });
+
+  it("names both lines for a duplicate level, and does not silently drop the first level's rooms", () => {
+    const issues = issuesOf("level a\nroom x rect 0,0 3x3\nlevel a\nroom y rect 0,0 3x3");
+    assert.ok(
+      issues.some((iss) => iss.message === 'line 3: level "a" was already declared on line 1'),
+      issues.map((iss) => iss.message).join("\n"),
+    );
+  });
+
+  it("does not flag the first declaration, only the repeat", () => {
+    assert.deepEqual(doc("room hall rect 0,0 3x3"), { rooms: { hall: { rect: [0, 0, 3, 3] } } });
+    assert.deepEqual(doc("level a\nroom hall rect 0,0 3x3\nlevel b\nroom hall rect 0,0 3x3"), {
+      levels: { a: { rooms: { hall: { rect: [0, 0, 3, 3] } } }, b: { rooms: { hall: { rect: [0, 0, 3, 3] } } } },
+    });
+  });
+
+  // authored opening/fixture/vertical ids are arrays, never map keys, so dsl.ts never had
+  // the last-wins hazard for them — parse.ts's schema-level `readId` (shared with JSON)
+  // already reports a duplicate authored id as `schema.conflict`, with the right DSL line
+  // via the same `path` → `line` resolution every other schema finding gets. Regression
+  // guard, not a fix: this is what "cover … authored opening/fixture/vertical ids" checks.
+  it("a duplicate authored id on an opening, a fixture and a vertical element already resolves to its line", () => {
+    const openings = lint("room sala rect 0,0 3x3\nroom wc rect 3,0 2x2\ndoor sala>wc w0.9 id:p\ndoor sala>wc w0.9 id:p\n");
+    assert.deepEqual(openings.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "openings[1].id", 4]]);
+
+    const fixtures = lint("room sala rect 0,0 3x3\nfixture counter in:sala at 0,0 size 1x1 id:c\nfixture counter in:sala at 1,1 size 1x1 id:c\n");
+    assert.deepEqual(fixtures.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "fixtures[1].id", 3]]);
+
+    const vertical = lint(
+      "room hall rect 0,0 3x3\nstairs main\n  at ground in:hall rect 0,0 1x1\nstairs main\n  at ground in:hall rect 1,1 1x1\n",
+    );
+    assert.deepEqual(vertical.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "vertical[1].id", 4]]);
+  });
+});
+
 describe("sniffing: `{` is JSON, anything else is the DSL", () => {
   it("classifies by the first non-space character only", () => {
     assert.equal(isDslText('{"rooms":{}}'), false);
