@@ -301,7 +301,7 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
     tokens: [
       { token: "<x>,<y>", field: "arc.arc", required: true, doc: "where the arc ends; it starts at the previous corner" },
       { token: "r<radius>", field: "arc.r", required: true, doc: "radius, metres; at least half the chord" },
-      { token: "cw|ccw", field: "arc.sweep", required: true, doc: "which way it turns on the page, y growing south; default cw" },
+      { token: "cw|ccw", field: "arc.sweep", required: false, doc: "which way it turns on the page, y growing south; default cw" },
       { token: "large", field: "arc.large", required: false, doc: "the arc longer than a half circle; default the minor one" },
     ],
   },
@@ -919,6 +919,17 @@ export function parseDsl(text: string): DslDocument {
         levelled = true;
         cursor.i++;
         const id = idTok.text;
+        // A second `level a` header used to replace the first level's content object
+        // wholesale — every room, opening and fixture already written under it simply
+        // vanished from the document, and the document still linted clean
+        // (docs/agent-review.md B3). The DSL sees every line, so it can — and must —
+        // catch this itself; JSON.parse would already have collapsed the duplicate key
+        // before parse() ever saw it.
+        const dupLevel = positions.get(`levels.${id}#id`);
+        if (dupLevel) {
+          fail(idTok.start, `level ${JSON.stringify(id)} was already declared on line ${dupLevel.line}`);
+          return;
+        }
         record(`levels.${id}#id`, idTok.start, idTok.end, (v) => String(v));
         const lv: J = {};
         while (cursor.i < toks.length) {
@@ -956,6 +967,15 @@ export function parseDsl(text: string): DslDocument {
         sawContent = true;
         const id = idTok.text;
         const base = P(`${kindKey}.${id}`);
+        // Same last-wins hazard as a duplicate level header (B3): `groupOf(kindKey)[id] =
+        // …` below would silently replace the first declaration rather than add a second
+        // one, and a re-declared room, outdoor space or void would lint clean while
+        // quietly losing its first geometry, name and flags.
+        const dup = positions.get(`${base}#id`);
+        if (dup) {
+          fail(idTok.start, `${verb.text} ${JSON.stringify(id)} was already declared on line ${dup.line}`);
+          return;
+        }
         record(`${base}#id`, idTok.start, idTok.end, (v) => String(v));
         const e: J = {};
         let sawKind = false;
@@ -1097,7 +1117,20 @@ export function parseDsl(text: string): DslDocument {
             fail(spaces.start, `${verb.text} needs two spaces separated by ">"; got ${JSON.stringify(spaces.text)}`);
             return;
           }
-          record(`${base}.between`, spaces.start, spaces.end, (v) => (Array.isArray(v) ? `${String(v[0])}>${String(v[1])}` : String(v)));
+          record(`${base}.between`, spaces.start, spaces.end, (v) => {
+            if (!Array.isArray(v) || v.length !== 2) return String(v);
+            const [a, b] = v as [unknown, unknown];
+            // Setting the whole `between` pair must not silently drop the wall side this
+            // token also carries (docs/agent-review.md B11): this span covers the entire
+            // short-form selector, side included, so printing the plain long form here
+            // unconditionally used to erase the side with no trace — `window suite.north`
+            // spliced to `["exterior","wc"]` became `window exterior>wc`, silently
+            // widening "the north wall" to "any of wc's four walls" (`wall.ambiguous`).
+            // When the new pair keeps the short form expressible, re-print the selector
+            // with the side kept, against the new room; otherwise fall back to the long
+            // form, which has no side of its own to lose.
+            return a === "exterior" && b !== "exterior" ? `${String(b)}${side !== undefined ? `.${side}` : ""}` : `${String(a)}>${String(b)}`;
+          });
           record(`${base}.between[1]`, spaces.start, spaces.start + room.length, (v) => String(v));
           o["between"] = ["exterior", room];
           if (side !== undefined) {
@@ -1460,15 +1493,21 @@ export function parseDsl(text: string): DslDocument {
       continue;
     }
     if (toks.length === 0) continue;
-    // An indented line is a continuation of the pending layout/vertical statement — unless
-    // its first token is itself a statement keyword, in which case it is a statement like
-    // any other. This is what lets a `level`'s body be written indented (the cold-agent
-    // eval's own worked example shows it that way, docs/eval/cold3a/cold-run.md "the one
-    // failure mode": 3/20 plans failed to parse because an agent indented `room`/`door`/
-    // `window` lines under `level`, reading the picture as prescriptive). Indentation is
-    // never significant beyond this one check — no dedent tracking, no depth comparison —
-    // so nesting further under an already-indented statement still works the same way.
-    if (/^[ \t]/.test(raw) && !statementVerbs().includes(toks[0]!.text)) {
+    // An indented line is a continuation of a pending layout/vertical statement whenever
+    // one is pending, full stop — a `layout`'s row or a vertical element's `at` line may
+    // start with any token, including one that also happens to be a statement verb (a
+    // room called "stairs" or "door" placed in `layout.areas`, docs/agent-review.md B4).
+    // Only when *nothing* is pending does the first token's identity decide anything: if
+    // it is a statement keyword, the indented line is a statement of its own, which is
+    // what lets a `level`'s body be written indented (the cold-agent eval's own worked
+    // example shows it that way, docs/eval/cold3a/cold-run.md "the one failure mode":
+    // 3/20 plans failed to parse because an agent indented `room`/`door`/`window` lines
+    // under `level`, reading the picture as prescriptive). The verb check must never run
+    // while a continuation is pending — that is exactly the ambiguity a cell named
+    // `stairs` exposed. Indentation is otherwise never significant — no dedent tracking,
+    // no depth comparison — so nesting further under an already-indented statement, or
+    // under a level, still works the same way.
+    if (/^[ \t]/.test(raw) && (pending || !statementVerbs().includes(toks[0]!.text))) {
       continuation(raw, toks);
       continue;
     }
@@ -1766,6 +1805,15 @@ export function isDslText(text: string): boolean {
  * Read a source text (or pass a value straight through) as the JSON document shape.
  * `positions` is present only for a DSL document, and is what gives a finding its `line`
  * and an edit its splice range.
+ *
+ * A JSON document with a duplicate object key is last-wins here too (docs/agent-review.md
+ * B3), because `JSON.parse` is native and never exposes the fact a key repeated — by the
+ * time this function sees the result, the duplicate is already gone. That is inherent to
+ * `JSON.parse` and not this module's to fix; jsonpos.ts's own hand-rolled parser sees
+ * every key as it goes and *could* detect it cheaply for editing (see its test file), but
+ * that parser is not the one `readSource` uses for validation. This function's own DSL
+ * path has no such excuse, which is why parseDsl's `SPACE_STATEMENTS` and `level` cases
+ * raise a DslError on a repeated id instead of overwriting it.
  */
 export function readSource(input: unknown): { doc: unknown; positions?: DslPositions } {
   if (typeof input !== "string") return { doc: input };

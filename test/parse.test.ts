@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { parse, PlanError } from "../src/parse.ts";
+import type { PlanIssue } from "../src/parse.ts";
 import { shoelace } from "../src/geometry.ts";
 import { rect, twoRooms } from "./helpers.ts";
 
@@ -15,8 +16,8 @@ const issuesOf = (input: unknown): string[] => {
   }
 };
 
-/** The full issue list (path + message), for tests that check message text. */
-const issueListOf = (input: unknown): { path: string; message: string }[] => {
+/** The full issue list (path + message + kind), for tests that check message text or kind. */
+const issueListOf = (input: unknown): PlanIssue[] => {
   try {
     parse(input);
     return [];
@@ -75,8 +76,10 @@ describe("parse: schema errors carry paths", () => {
     assert.ok(paths.includes("openings[0].between[1]"));
   });
   it("rejects bad kinds and bad opening fields", () => {
+    // "b", not "exterior": that id is reserved (see the dedicated describe block below);
+    // this test is about the other bad fields, so it steers clear of that concern.
     const paths = issuesOf({
-      rooms: { exterior: { poly: rect(0, 0, 1, 1) }, a: { kind: "ballroom", poly: rect(1, 0, 1, 1) } },
+      rooms: { b: { poly: rect(0, 0, 1, 1) }, a: { kind: "ballroom", poly: rect(1, 0, 1, 1) } },
       openings: [
         { type: "window", between: ["exterior", "a"], width: 1, hinge: "start" },
         { type: "door", between: ["a", "a"], width: 1 },
@@ -87,9 +90,6 @@ describe("parse: schema errors carry paths", () => {
         { type: "arch", between: ["exterior", "a"], width: 1 },
       ],
     });
-    // "exterior" is no longer a reserved room id: Owner is a tagged union, so a room
-    // called "exterior" cannot be confused with the street
-    assert.ok(!paths.includes("rooms.exterior"), paths.join(", "));
     for (const p of [
       "rooms.a.kind",
       "openings[0].hinge",
@@ -196,6 +196,39 @@ describe("parse: rect shorthand", () => {
 
   it("reports a bad rect once, not also as missing geometry", () => {
     assert.deepEqual(issuesOf({ rooms: { a: { rect: [0, 0, 0, 2] } } }), ["rooms.a.rect"]);
+  });
+});
+
+/**
+ * docs/agent-review.md B5: the DSL grammar (dsl.ts's DSL_SCHEMA) always documented
+ * "default cw" for an arc's `sweep`, and the DSL parser already produced an arc object
+ * with no `sweep` key when the token was omitted — but this schema-level parser refused
+ * that same document outright, rejecting the very default the reference promised.
+ */
+describe("parse: an arc's sweep defaults to \"cw\" when omitted (B5)", () => {
+  const poly = (sweep?: "cw" | "ccw") => [
+    [0, 0],
+    [4, 0],
+    sweep === undefined ? { arc: [4, 4], r: 2.5 } : { arc: [4, 4], r: 2.5, sweep },
+    [0, 4],
+  ];
+
+  // the arc belongs to the edge that *arrives* at its point, i.e. the previous corner's —
+  // for `poly(sweep)` above, that's index 1 ([4,0] -> the arc's own [4,4])
+  const ARC_INDEX = 1;
+
+  it("accepts a missing sweep and treats it as \"cw\"", () => {
+    const withDefault = parse({ rooms: { sala: { poly: poly(undefined) } } });
+    const explicitCw = parse({ rooms: { sala: { poly: poly("cw") } } });
+    assert.deepEqual(withDefault.rooms[0]!.arcs, explicitCw.rooms[0]!.arcs);
+    assert.equal(withDefault.rooms[0]!.arcs[ARC_INDEX]!.sweep, "cw");
+  });
+
+  it("still accepts an explicit \"ccw\", and still rejects anything else", () => {
+    assert.equal(parse({ rooms: { sala: { poly: poly("ccw") } } }).rooms[0]!.arcs[ARC_INDEX]!.sweep, "ccw");
+    assert.deepEqual(issuesOf({ rooms: { sala: { poly: [[0, 0], [4, 0], { arc: [4, 4], r: 2.5, sweep: "clockwise" }, [0, 4]] } } }), [
+      "rooms.sala.poly[2].sweep",
+    ]);
   });
 });
 
@@ -429,13 +462,59 @@ describe("parse: an opening may name a declared outdoor space", () => {
     }
   });
 
-  it("accepts a room whose id is \"exterior\": the street is a different owner kind", () => {
-    const plan = parse({
+});
+
+/**
+ * docs/agent-review.md B7: `Owner` became a tagged union (c8c5ec4) so an *internal*
+ * `{kind:"room",id:"exterior"}` can never be mistaken for the street's own
+ * `{kind:"exterior"}` — true, and it is why that commit stopped reserving "exterior" and
+ * "gap" as room ids. But `between`/`on`/`in` are still plain strings resolved before any
+ * `Owner` exists: `spaceRef` (above) treats the literal "exterior" as the street *before*
+ * it ever checks a declared room, so a room actually called "exterior" could be declared
+ * and then never named again — `door exterior>sala` always means the street, never that
+ * room. The tagged union doesn't help here because the ambiguity is in the text, not in
+ * the value the text eventually becomes; the reservation has to live at that boundary.
+ */
+describe("parse: \"exterior\" and \"gap\" are reserved space ids (B7)", () => {
+  it("rejects a room called \"exterior\", with a schema.reference message that says why", () => {
+    const issues = issueListOf({
       walls: { exterior: 0.3, partition: 0.12 },
       rooms: { exterior: { name: "Odd", kind: "living", poly: rect(0, 0, 4, 3) } },
       openings: [],
     });
-    assert.deepEqual(plan.rooms.map((r) => r.id), ["exterior"]);
+    const issue = issues.find((i) => i.path === "rooms.exterior");
+    assert.ok(issue, "expected an issue at rooms.exterior");
+    assert.equal(issue!.kind, "reference");
+    assert.match(issue!.message, /reserved/);
+    assert.match(issue!.message, /"between"/);
+  });
+
+  it("rejects a room called \"gap\" too", () => {
+    const issues = issueListOf({ rooms: { gap: { poly: rect(0, 0, 4, 3) } } });
+    const issue = issues.find((i) => i.path === "rooms.gap");
+    assert.ok(issue, "expected an issue at rooms.gap");
+    assert.equal(issue!.kind, "reference");
+    assert.match(issue!.message, /reserved/);
+  });
+
+  it("rejects an outdoor space, a void and a level called \"exterior\"", () => {
+    assert.ok(
+      issueListOf({ rooms: { a: { rect: [0, 0, 3, 3] } }, outdoor: { exterior: { rect: [3, 0, 2, 2] } } }).some((i) => i.path === "outdoor.exterior"),
+    );
+    assert.ok(
+      issueListOf({ rooms: { a: { rect: [0, 0, 3, 3] } }, voids: { exterior: { rect: [3, 0, 2, 2] } } }).some((i) => i.path === "voids.exterior"),
+    );
+    assert.ok(
+      issueListOf({ levels: { exterior: { rooms: { a: { rect: [0, 0, 3, 3] } } } } }).some((i) => i.path === "levels.exterior"),
+    );
+  });
+
+  it("still resolves the literal \"exterior\" in `between` as the street, reservation and all", () => {
+    // The room can't be declared, but the finding for it should say so precisely once —
+    // it must not also cascade into "unknown space" errors for every opening that (validly)
+    // names the street.
+    const issues = issueListOf(twoRooms({ openings: [{ type: "door", between: ["exterior", "a"], width: 0.9 }] }));
+    assert.deepEqual(issues, []);
   });
 });
 

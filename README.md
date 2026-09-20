@@ -641,6 +641,12 @@ renderer never see it — but it is worth having: it is 18 tokens cheaper per ro
 the one way to write a rectangle you cannot get wrong. Eleven of casa-t3's thirteen rooms
 are rectangles, and writing them as `rect` costs 186 tokens less.
 
+`"exterior"` and `"gap"` are reserved and cannot be used as a room, outdoor space, void or
+level id (`schema.reference`): `between`, `on` and `in` resolve those exact words to the
+street and to an undeclared gap in the floor plan, as plain strings, before they ever check
+whether a declared space answers to them — so a space authored with either id could be
+declared but never referenced again.
+
 ### Curved walls
 
 Any entry of a `poly` may be an **arc** instead of a corner:
@@ -651,11 +657,12 @@ Any entry of a `poly` may be an **arc** instead of a corner:
 
 It means *an arc from the previous corner to `[x, y]`, of radius `r`, turning that way*.
 `sweep` is which way it turns seen on the page, where y grows south, so `"cw"` from the
-top of a clock face goes east. `large` picks the arc of more than 180°; without it the
-minor arc is meant. The centre is derived and never stored, which is what lets `r` be
-edited on its own — a radius handle splices one number and the record cannot become
-inconsistent. A ring may not *start* with an arc: the first entry is the corner it starts
-from.
+top of a clock face goes east; omit it and `"cw"` is meant — the one-token-cheaper spelling
+for the common case, and both the DSL grammar and `--schema` say so. `large` picks the arc
+of more than 180°; without it the minor arc is meant. The centre is derived and never
+stored, which is what lets `r` be edited on its own — a radius handle splices one number
+and the record cannot become inconsistent. A ring may not *start* with an arc: the first
+entry is the corner it starts from.
 
 ```jsonc
 "rotunda": { "name": "Rotunda", "kind": "hall", "poly": [

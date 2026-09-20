@@ -94,6 +94,26 @@ describe("the grammar: one entity per line", () => {
     assert.deepEqual(doc("layout\n  a b\n  a c"), { layout: { areas: ["a b", "a c"] } });
   });
 
+  // docs/agent-review.md B4: a layout row is a continuation, full stop, whenever a layout
+  // is pending — even when its first cell id is also a statement verb ("stairs", "door",
+  // "void", "level", …, all legal room ids under ID_RE). The old rule read the row's first
+  // token as a *statement* whenever it looked like a verb, which is exactly backwards while
+  // a layout is still collecting rows: `  stairs hall` used to become a `vertical` element
+  // named "hall", not the layout's own row.
+  it("treats a layout row as a continuation even when its first cell id is a statement verb", () => {
+    assert.deepEqual(doc("room stairs rect 0,0 1x1\nroom hall rect 1,0 1x1\nlayout cols 1,1 rows 1\n  stairs hall"), {
+      rooms: { stairs: { rect: [0, 0, 1, 1] }, hall: { rect: [1, 0, 1, 1] } },
+      layout: { cols: [1, 1], rows: [1], areas: ["stairs hall"] },
+    });
+    assert.deepEqual(doc("room door rect 0,0 1x1\nroom hall rect 1,0 1x1\nlayout cols 1,1 rows 1\n  door hall"), {
+      rooms: { door: { rect: [0, 0, 1, 1] }, hall: { rect: [1, 0, 1, 1] } },
+      layout: { cols: [1, 1], rows: [1], areas: ["door hall"] },
+    });
+    // a level's indented body is unaffected: nothing is pending there, so the verb rule
+    // still applies and a `room`/`door` line is a statement, exactly as before
+    assert.deepEqual(doc("level ground\n  room hall rect 0,0 3x3"), doc("level ground\nroom hall rect 0,0 3x3"));
+  });
+
   it("reads an opening's spaces, placement, width and flags in any token order", () => {
     const a = doc("door hall>wc @0.6 w0.8 hinge:end swing:wc entrance glazed id:porta");
     const b = doc("door hall>wc w0.8 @0.6 id:porta glazed entrance swing:wc hinge:end");
@@ -187,6 +207,25 @@ describe("the grammar: one entity per line", () => {
     });
     assert.equal(toDsl(doc("room r poly 5,2 5,5 arc 11,5 r3.5 ccw 11,2")), "room r poly 5,2 5,5 arc 11,5 r3.5 ccw 11,2\n");
   });
+
+  // docs/agent-review.md B5: the grammar always documented "default cw" for a missing
+  // sweep token (dsl.ts's DSL_SCHEMA entry), but the schema-level parser refused to accept
+  // a poly missing one. The DSL side of this was never the problem — omitting the token
+  // already produced an arc object with no `sweep` key — so this just pins that it still
+  // does, and that both spellings (omitted and explicit "cw") round-trip and lint clean.
+  it("omits sweep when the token is left out, and both spellings lint clean (B5)", () => {
+    assert.deepEqual(doc("room sala poly 0,0 4,0 arc 4,4 r2.5 0,4"), {
+      rooms: { sala: { poly: [[0, 0], [4, 0], { arc: [4, 4], r: 2.5 }, [0, 4]] } },
+    });
+    const omitted = lint("room sala poly 0,0 4,0 arc 4,4 r2.5 0,4\ndoor sala.south w0.9 entrance");
+    const explicitCw = lint("room sala poly 0,0 4,0 arc 4,4 r2.5 cw 0,4\ndoor sala.south w0.9 entrance");
+    assert.deepEqual(omitted.findings, []);
+    assert.deepEqual(explicitCw.findings, []);
+    // and the printer keeps each spelling exactly as authored — omitting the default
+    // never invents a token, and an explicit "cw" is never silently dropped
+    assert.equal(toDsl(doc("room sala poly 0,0 4,0 arc 4,4 r2.5 0,4")), "room sala poly 0,0 4,0 arc 4,4 r2.5 0,4\n");
+    assert.equal(toDsl(doc("room sala poly 0,0 4,0 arc 4,4 r2.5 cw 0,4")), "room sala poly 0,0 4,0 arc 4,4 r2.5 cw 0,4\n");
+  });
 });
 
 describe("errors carry the line, and every bad line is reported", () => {
@@ -239,6 +278,74 @@ describe("errors carry the line, and every bad line is reported", () => {
     const swing = lint("room a living rect 0,0 4x3\nroom b office rect 4,0 3x3\ndoor a>b w0.8 swing:b sliding");
     assert.deepEqual(swing.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "openings[0].swingInto", 3]]);
     assert.equal(swing.findings[0]!.message, 'a sliding door has no swing; drop "swingInto" or "sliding"');
+  });
+
+  // docs/agent-review.md B7: reserved-id schema errors are also parse.ts's business (same
+  // path as the reference test above), so a DSL author sees them with the right line too.
+  it("reports \"exterior\" as a reserved room id from the DSL path, with its line", () => {
+    const r = lint("room exterior rect 0,0 3x3");
+    assert.deepEqual(r.findings.map((f) => [f.rule, f.path, f.line]), [["schema.reference", "rooms.exterior", 1]]);
+    assert.match(r.findings[0]!.message, /reserved/);
+  });
+});
+
+/**
+ * docs/agent-review.md B3: `groupOf(kindKey)[id] = …` (rooms/outdoor/voids) and
+ * `levels[id] = …` used to overwrite silently on a repeated id — a second `room hall`
+ * won outright, and a second `level a` header dropped everything the first one's body
+ * had written, with the document still linting clean. `JSON.parse` has the identical
+ * last-wins weakness for a duplicate object key (test/jsonpos.test.ts's sibling note),
+ * but that is a property of native `JSON.parse` itself, invisible by the time any object
+ * reaches `parse()`; the DSL parser sees every line as it goes and has no such excuse.
+ */
+describe("a duplicate id is a DslError, not last-wins (B3)", () => {
+  it("names both lines for a duplicate room", () => {
+    const [i] = issuesOf('room hall rect 0,0 3x3 "Hall A"\nroom hall rect 3,0 3x3 "Hall B"');
+    assert.equal(i!.line, 2);
+    assert.equal(i!.message, 'line 2: room "hall" was already declared on line 1');
+  });
+
+  it("names both lines for a duplicate outdoor space", () => {
+    const [i] = issuesOf("outdoor deck rect 0,0 3x3\noutdoor deck rect 3,0 3x3");
+    assert.equal(i!.message, 'line 2: outdoor "deck" was already declared on line 1');
+  });
+
+  it("names both lines for a duplicate void", () => {
+    const [i] = issuesOf("room a rect 0,0 3x3\nvoid v rect 3,0 1x1\nvoid v rect 4,0 1x1");
+    assert.equal(i!.message, 'line 3: void "v" was already declared on line 2');
+  });
+
+  it("names both lines for a duplicate level, and does not silently drop the first level's rooms", () => {
+    const issues = issuesOf("level a\nroom x rect 0,0 3x3\nlevel a\nroom y rect 0,0 3x3");
+    assert.ok(
+      issues.some((iss) => iss.message === 'line 3: level "a" was already declared on line 1'),
+      issues.map((iss) => iss.message).join("\n"),
+    );
+  });
+
+  it("does not flag the first declaration, only the repeat", () => {
+    assert.deepEqual(doc("room hall rect 0,0 3x3"), { rooms: { hall: { rect: [0, 0, 3, 3] } } });
+    assert.deepEqual(doc("level a\nroom hall rect 0,0 3x3\nlevel b\nroom hall rect 0,0 3x3"), {
+      levels: { a: { rooms: { hall: { rect: [0, 0, 3, 3] } } }, b: { rooms: { hall: { rect: [0, 0, 3, 3] } } } },
+    });
+  });
+
+  // authored opening/fixture/vertical ids are arrays, never map keys, so dsl.ts never had
+  // the last-wins hazard for them — parse.ts's schema-level `readId` (shared with JSON)
+  // already reports a duplicate authored id as `schema.conflict`, with the right DSL line
+  // via the same `path` → `line` resolution every other schema finding gets. Regression
+  // guard, not a fix: this is what "cover … authored opening/fixture/vertical ids" checks.
+  it("a duplicate authored id on an opening, a fixture and a vertical element already resolves to its line", () => {
+    const openings = lint("room sala rect 0,0 3x3\nroom wc rect 3,0 2x2\ndoor sala>wc w0.9 id:p\ndoor sala>wc w0.9 id:p\n");
+    assert.deepEqual(openings.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "openings[1].id", 4]]);
+
+    const fixtures = lint("room sala rect 0,0 3x3\nfixture counter in:sala at 0,0 size 1x1 id:c\nfixture counter in:sala at 1,1 size 1x1 id:c\n");
+    assert.deepEqual(fixtures.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "fixtures[1].id", 3]]);
+
+    const vertical = lint(
+      "room hall rect 0,0 3x3\nstairs main\n  at ground in:hall rect 0,0 1x1\nstairs main\n  at ground in:hall rect 1,1 1x1\n",
+    );
+    assert.deepEqual(vertical.findings.map((f) => [f.rule, f.path, f.line]), [["schema.conflict", "vertical[1].id", 4]]);
   });
 });
 

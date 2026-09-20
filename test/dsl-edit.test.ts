@@ -84,6 +84,48 @@ describe("a splice into a DSL document touches one token and nothing else", () =
   });
 });
 
+/**
+ * docs/agent-review.md B11: a short-form opening's `between` span covers the whole
+ * selector token, side included (`suite.south`), because that is where the side lives in
+ * the source — there is no separate token for it. Splicing a plain `a>b` into that whole
+ * span used to erase the side with no trace: `set openings[0].between ["exterior","wc"]`
+ * on `window suite.north …` produced `window exterior>wc …`, silently widening "the north
+ * wall" into "any of wc's four walls" (`wall.ambiguous`).
+ */
+describe("`set … between` on a short-form opening keeps its side (B11)", () => {
+  const text = "room hall rect 0,0 3x3\nroom suite rect 3,0 3x3\nroom wc rect 0,3 3x3\nwindow suite.south w1.5\n";
+
+  it("moves the side onto the new room when the pair is still exterior-anchored", () => {
+    const out = dslSpliceAll(text, [{ path: ["openings", 0, "between"], literal: JSON.stringify(["exterior", "wc"]) }]);
+    assert.match(out, /^window wc\.south w1\.5$/m);
+    assert.deepEqual(parseDsl(out).doc, {
+      rooms: { hall: { rect: [0, 0, 3, 3] }, suite: { rect: [3, 0, 3, 3] }, wc: { rect: [0, 3, 3, 3] } },
+      openings: [{ type: "window", between: ["exterior", "wc"], width: 1.5, on: { room: "wc", side: "south" } }],
+    });
+  });
+
+  it("keeps the side for a short-form door too", () => {
+    const doorText = "room hall rect 0,0 3x3\nroom suite rect 3,0 3x3\nroom wc rect 0,3 3x3\ndoor suite.south w0.9\n";
+    const out = dslSpliceAll(doorText, [{ path: ["openings", 0, "between"], literal: JSON.stringify(["exterior", "wc"]) }]);
+    assert.match(out, /^door wc\.south w0\.9$/m);
+  });
+
+  it("falls back to the long form, with no dangling side, when the new pair drops \"exterior\"", () => {
+    const out = dslSpliceAll(text, [{ path: ["openings", 0, "between"], literal: JSON.stringify(["hall", "suite"]) }]);
+    assert.match(out, /^window hall>suite w1\.5$/m);
+    assert.deepEqual(parseDsl(out).doc, {
+      rooms: { hall: { rect: [0, 0, 3, 3] }, suite: { rect: [3, 0, 3, 3] }, wc: { rect: [0, 3, 3, 3] } },
+      openings: [{ type: "window", between: ["hall", "suite"], width: 1.5 }],
+    });
+  });
+
+  it("between[1] alone already kept the side untouched (regression guard, not the bug)", () => {
+    const out = dslSpliceAll(text, [{ path: ["openings", 0, "between", 1], literal: '"wc"' }]);
+    assert.match(out, /^window wc\.south w1\.5$/m);
+    assert.deepEqual((parseDsl(out).doc as { openings: Array<{ on?: unknown }> }).openings[0]!.on, { room: "wc", side: "south" });
+  });
+});
+
 describe("drags write back to the DSL line", () => {
   it("moves a wall by rewriting the rect on each room's line", () => {
     const text = load("cabin", "dsl");

@@ -276,9 +276,19 @@ export const GROUND_LEVEL = "ground";
 // ---------- derived ----------
 
 /**
- * Who owns a face of the arrangement. A tagged union rather than a widened string, so a
- * room whose id happens to be "exterior" can never be mistaken for the street and every
- * consumer has to say which kind of space it means.
+ * Who owns a face of the arrangement. A tagged union rather than a widened string, so an
+ * `Owner` for a room whose id happens to be "exterior" — `{kind:"room",id:"exterior"}` —
+ * can never be mistaken for the street's own `{kind:"exterior"}`, once each has already
+ * been built, and every consumer has to say which kind of space it means.
+ *
+ * That guarantee is about values of this type; it says nothing about the document. A
+ * room's id still has to travel through `between`, `on` and `in` as a plain string first,
+ * and `spaceRef` (parse.ts) resolves the literal `"exterior"` to the street before it ever
+ * looks at declared rooms — no `Owner` exists yet at that point for the tagged union to
+ * keep apart. `parse()` therefore reserves `"exterior"` and `"gap"` as space ids
+ * (`RESERVED_SPACE_IDS`, docs/agent-review.md B7): the ambiguity this type was built to
+ * rule out for its own values is still fully possible one layer up, in the text an author
+ * writes, and only a rejection at declaration time closes it.
  *
  * `overlap` is declared but not produced yet: a cell claimed by several rooms still takes
  * the first of them as its owner and the region is reported as `tiling.overlap`. The

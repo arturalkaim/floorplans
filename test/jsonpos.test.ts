@@ -64,6 +64,25 @@ describe("jsonpos: parsing", () => {
     assert.equal(nodeAt(root, ["a", "nope"]), undefined);
     assert.equal(nodeAt(root, ["a", "b", "deeper"]), undefined);
   });
+
+  /**
+   * docs/agent-review.md B3 asks whether a duplicate JSON object key is detectable here —
+   * it is, cheaply: `value()`'s object loop (above `members.set(key, memberValue)`) sees
+   * every "key": value pair in source order as it goes, unlike native `JSON.parse`, which
+   * never exposes the fact a key repeated. A `members.has(key)` check before the `.set()`
+   * would catch it for the price of one more read of a JS `Map`.
+   *
+   * This test only pins the current, inherited behaviour — last-wins, silently, exactly
+   * like `JSON.parse` — because adding that check belongs to jsonpos.ts, which is outside
+   * this fix's file list (src/dsl.ts, src/parse.ts, src/types.ts). Recorded here as the
+   * decision the brief asked for: cheap to detect, not fixed in this change.
+   */
+  it("is last-wins on a duplicate object key, exactly like JSON.parse (documented, not fixed here)", () => {
+    const text = `{ "a": 1, "a": 2 }`;
+    const root = parseWithPositions(text);
+    assert.equal(text.slice(nodeAt(root, ["a"])!.start, nodeAt(root, ["a"])!.end), "2");
+    assert.deepEqual(JSON.parse(text), { a: 2 });
+  });
 });
 
 describe("jsonpos: editing preserves everything it does not touch", () => {
