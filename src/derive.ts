@@ -1548,19 +1548,34 @@ export function paramAt(w: Wall, p: Pt): number {
   if (w.axis === "h") return p[0];
   if (w.axis === "v") return p[1];
   const q = ptMm(p);
-  let best = w.from;
-  let bestD = Infinity;
-  const n = Math.max(2, Math.ceil((w.length * 1000) / 10));
-  for (let i = 0; i <= n; i++) {
-    const s = (i / n) * w.length * 1000;
+  const total = w.length * 1000;
+  const at = (s: number) => {
     const c = alongGeometry(w.geometry, s);
-    const d = Math.hypot(c[0] - q[0], c[1] - q[1]);
+    return Math.hypot(c[0] - q[0], c[1] - q[1]);
+  };
+  // a centimetre sweep to find the bracket, then bisection inside it: a chain's
+  // parameter has no closed form, but the distance along it is unimodal near its
+  // minimum, and an opening's centre has to be right to the millimetre
+  const n = Math.max(2, Math.ceil(total / 10));
+  let best = 0;
+  let bestD = Infinity;
+  for (let i = 0; i <= n; i++) {
+    const s = (i / n) * total;
+    const d = at(s);
     if (d < bestD) {
       bestD = d;
-      best = w.from + s / 1000;
+      best = s;
     }
   }
-  return best;
+  let lo = Math.max(0, best - total / n);
+  let hi = Math.min(total, best + total / n);
+  for (let i = 0; i < 40 && hi - lo > 1e-4; i++) {
+    const a = lo + (hi - lo) / 3;
+    const b = hi - (hi - lo) / 3;
+    if (at(a) <= at(b)) hi = b;
+    else lo = a;
+  }
+  return w.from + (lo + hi) / 2 / 1000;
 }
 
 /** Unit tangent of a wall at parameter `t`, pointing the way `from` → `to` runs. */

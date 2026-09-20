@@ -275,3 +275,59 @@ describe("the predicates that used to measure bounding boxes", () => {
     assert.ok(has(hit, "door.swing_hits_fixture"), rulesOf(hit).join(", "));
   });
 });
+
+
+describe("a wall that runs smoothly from straight into curved is one wall", () => {
+  // two rooms split by a line that goes down, round a quarter circle tangentially, and
+  // on east: three pieces, no corner between any of them, so one `chain` wall
+  const plan = {
+    walls: { exterior: 0.3, partition: 0.12 },
+    rooms: {
+      a: { kind: "living", poly: [[0, 0], [0, 3], { arc: [3, 6], r: 3, sweep: "ccw" }, [8, 6], [8, 10], [-5, 10], [-5, 0]] },
+      b: { kind: "living", poly: [[0, 0], [8, 0], [8, 6], [3, 6], { arc: [0, 3], r: 3, sweep: "cw" }] },
+    },
+    openings: [
+      { type: "door", between: ["exterior", "a"], on: { room: "a", side: "west" }, width: 1, entrance: true },
+      { type: "door", between: ["a", "b"], at: [0, 1.5], width: 0.9 },
+    ],
+  };
+
+  it("chains the three pieces into one wall of the right length", () => {
+    const { model, findings } = analyze(parse(plan));
+    assert.ok(!rulesOf(findings).some((r) => r.startsWith("tiling.")), rulesOf(findings).join(", "));
+    const chained = model.walls.filter((w) => w.geometry.kind === "chain");
+    assert.equal(chained.length, 1);
+    const w = chained[0]!;
+    assert.equal(w.kind, "partition");
+    assert.deepEqual(
+      w.geometry.kind === "chain" && w.geometry.parts.map((p) => p.kind),
+      ["segment", "arc", "segment"],
+    );
+    // 3 m straight, a quarter of a 3 m circle, 5 m straight
+    assert.ok(Math.abs(w.length - (3 + (Math.PI * 3) / 2 + 5)) < 0.001, `${w.length}`);
+  });
+
+  it("splits a corner apart even when the pieces share two owners", () => {
+    // the same two rooms, but with a right angle where the arc was
+    const square = {
+      ...plan,
+      rooms: {
+        a: { kind: "living", poly: [[0, 0], [0, 6], [8, 6], [8, 10], [-5, 10], [-5, 0]] },
+        b: { kind: "living", poly: [[0, 0], [8, 0], [8, 6], [0, 6]] },
+      },
+      openings: [plan.openings[0]],
+    };
+    const { model } = analyze(parse(square));
+    const shared = model.walls.filter((w) => w.kind === "partition");
+    assert.equal(shared.length, 2, "a corner is two walls, not one — which is what wall.ambiguous rests on");
+    assert.equal(shared.filter((w) => w.geometry.kind === "chain").length, 0);
+  });
+
+  it("places an opening on the straight part of a chain by arc length", () => {
+    const { model } = analyze(parse(plan));
+    const door = model.openings.find((o) => o.spec.at !== undefined)!;
+    assert.equal(door.wall.geometry.kind, "chain");
+    assert.deepEqual(door.center, [0, 1.5]);
+    assert.ok(door.from >= 0 && door.to <= door.wall.length);
+  });
+});
