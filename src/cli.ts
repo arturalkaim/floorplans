@@ -33,11 +33,12 @@
 // `floorplan plan.dsl --json` need nothing here. `fmt` is the converter between the two.
 
 import { appendAt, insertKey, JsonPosError, removeAt, spliceAt } from "./jsonpos.ts";
-import { DslPosError, dslSchemaText, dslSpliceAt, isDslText, readSource, toDsl } from "./dsl.ts";
+import { COMPASS_LINE, DslPosError, dslSchemaText, dslSpliceAt, isDslText, readSource, toDsl } from "./dsl.ts";
 import { formatPlan } from "./format.ts";
 import {
   FIXTURE_TYPES,
   floorplan,
+  ID_RE,
   isSchemaFinding,
   lint,
   OPENING_TYPES,
@@ -78,10 +79,10 @@ A plan file may be JSON or the line DSL; the first non-space character says whic
 --out may contain {level}, and then one file per level is written.
 --json alone is { summary, findings }; =all adds schedule and walls; =schedule and
        =walls select one section.
---schema prints one typed-signature line per object, no docs (default; 568 tokens);
-         =full prints the same table as compact JSON with docs (2 554 tokens);
+--schema prints one typed-signature line per object, no docs, plus a legend
+         (id format, compass axes); =full prints the same table as compact JSON with docs;
          =md prints it as a Markdown table for a human reader;
-         =dsl prints the line DSL's grammar. Needs no input file.`;
+         =dsl prints the line DSL's grammar and the same legend. Needs no input file.`;
 
 export function run(argv: string[], io: CliIo): number {
   if (argv[0] === "set") return runSet(argv.slice(1), io);
@@ -582,36 +583,63 @@ function printSchema(mode: SchemaMode): string {
   }
 }
 
+/** Every object name SCHEMA declares, for `objectRef` below to check a `"; see X"` or
+ * dotted-name reference against — a name that fits neither convention fails loudly there
+ * rather than printing a name nothing else in the table has. */
+const SCHEMA_OBJECT_NAMES = new Set<string>(SCHEMA.map((o) => o.object));
+const SEE_REF = /see ([\w.]+)$/;
+
+/**
+ * The object a `type: "object"` field's doc points at — the word after a trailing
+ * `"; see X"`, the convention SCHEMA's docs already use to point at a nested shape — or,
+ * for the one field that has no such doc (`opening.position`), the dotted-name convention
+ * SCHEMA itself uses for a nested shape with no id of its own (`${object}.${field}`).
+ * Shared by `schemaTerse` and `schemaMarkdown` so both surfaces resolve a reference
+ * identically and cannot describe it two different ways.
+ */
+function objectRef(owner: ObjectDoc["object"], f: FieldDoc): string {
+  const name = SEE_REF.exec(f.doc)?.[1] ?? `${owner}.${f.name}`;
+  if (!SCHEMA_OBJECT_NAMES.has(name)) throw new Error(`objectRef: ${owner}.${f.name} is type "object" but resolves to unknown object ${JSON.stringify(name)}`);
+  return name;
+}
+
+/**
+ * How a `type: "object"` field's cardinality (`f.shape`, src/parse.ts) prints: bare for a
+ * single nested object (`opening.on`), `X[]` for a list (`opening[]`), `{id: X}` for an
+ * id-keyed map (`{id: room}`). This is the fix for docs/eval/cold/cold-run.md's headline
+ * failure: `type: "object"` alone cannot distinguish "a map keyed by an id you invent" from
+ * "an array" from "a single nested object", and every one of 20 cold-agent JSON authoring
+ * attempts guessed "array" for `levels` — the majority shape in the old table — and lost.
+ * The `id` placeholder in the map form is the same word the legend's `id = …` line (below)
+ * defines, so it doubles as a pointer to the id constraint on that key.
+ */
+function objectFieldType(owner: ObjectDoc["object"], f: FieldDoc): string {
+  const name = objectRef(owner, f);
+  return f.shape === "map" ? `{id: ${name}}` : f.shape === "list" ? `${name}[]` : name;
+}
+
 /**
  * `--schema` (default): one typed-signature line per object, generated from SCHEMA with no
- * doc text — required fields bare, optional `name?`, and no per-field prose, which is what
- * gets this under 800 tokens where `schemaJson` (2 554) and the README prose it replaced
- * (2 358, docs/agent-review.md B10) cannot. `--schema=full` below still carries every doc
- * string for the cases that need it.
+ * doc text — required fields bare, optional `name?`, and no per-field prose — plus a short
+ * legend (id format, compass axes, spelled-out enum vocabularies). `--schema=full` below
+ * still carries every doc string for the cases that need it.
  *
  * An enum with ≤6 values is spelled out inline (`enum(door|window|cased)`); a bigger one
  * (room.kind, fixture.type) is a name (`enum(ROOM_KINDS)`) resolved against VOCABULARIES
  * and spelled out once, in the trailing legend — never twice, and never copied by hand.
  *
  * A field typed `"object"` names another line of this same table (`opening.on`, `level`)
- * rather than printing `object`, which would tell an agent nothing about its shape. The
- * referenced name is read from the field's own doc string — the word after a trailing
- * `"; see X"`, the convention SCHEMA's docs already use to point at a nested shape — or,
- * for the one field that has no such doc (`opening.position`), from the dotted-name
- * convention SCHEMA itself uses for a nested shape with no id of its own
- * (`${object}.${field}`). Either way the reference is checked against SCHEMA's own object
- * names, so a future field that fits neither convention fails loudly here rather than
- * printing a name nothing else in the table has.
+ * rather than printing `object`, and its cardinality besides (`objectFieldType` above) —
+ * `object` alone is what made every cold-agent JSON authoring attempt in
+ * docs/eval/cold/cold-run.md guess wrong about `levels`.
+ *
+ * A field literally named `id` (`opening.id`, `fixture.id`, `vertical.id`) prints as type
+ * `id` instead of `str`, pointing at the same legend line the `{id: X}` map notation does —
+ * both are the one constraint parse.ts's `ID_RE` enforces on every id in the document,
+ * including the map keys (`room`/`outdoor`/`void`/`level` ids) that have no field of their
+ * own to attach a doc string to.
  */
 function schemaTerse(): string {
-  const objectNames = new Set<string>(SCHEMA.map((o) => o.object));
-  const seeRef = /see ([\w.]+)$/;
-  const objectRef = (owner: ObjectDoc["object"], f: FieldDoc): string => {
-    const name = seeRef.exec(f.doc)?.[1] ?? `${owner}.${f.name}`;
-    if (!objectNames.has(name)) throw new Error(`schemaTerse: ${owner}.${f.name} is type "object" but resolves to unknown object ${JSON.stringify(name)}`);
-    return name;
-  };
-
   const usedVocabularies = new Set<string>();
   const enumType = (owner: ObjectDoc["object"], f: FieldDoc): string => {
     const values = [...f.enum!];
@@ -632,15 +660,31 @@ function schemaTerse(): string {
     "[x,y,w,h]": "[x,y,w,h]",
     "point[]": "point[]",
   };
-  const fieldType = (owner: ObjectDoc["object"], f: FieldDoc): string =>
-    f.type === "object" ? objectRef(owner, f) : f.type === "enum" ? enumType(owner, f) : TYPE_TAG[f.type];
+  // INVARIANT: every field literally named "id" matches ID_RE — the one place that fact is
+  // read off a field's *name* rather than an explicit SCHEMA flag, mirrored by the `{id: X}`
+  // map notation above using the same bare word for the constraint on a map's own keys.
+  let usesIdTag = false;
+  const fieldType = (owner: ObjectDoc["object"], f: FieldDoc): string => {
+    if (f.type === "object") return objectFieldType(owner, f);
+    if (f.type === "enum") return enumType(owner, f);
+    if (f.type === "string" && f.name === "id") {
+      usesIdTag = true;
+      return "id";
+    }
+    return TYPE_TAG[f.type];
+  };
 
   const lines = SCHEMA.map((o) => {
     const fields = o.fields.map((f) => `${f.name}${f.required ? "" : "?"}: ${fieldType(o.object, f)}`).join(" ; ");
     const oneOf = o.oneOf && o.oneOf.length > 0 ? ` oneOf: ${o.oneOf.join("; ")}` : "";
     return `${o.object} { ${fields} }${oneOf}`;
   });
-  const legend = VOCABULARIES.filter((v) => usedVocabularies.has(v.name)).map((v) => `${v.name} = ${[...v.values].join("|")}`);
+  const usesMapShape = SCHEMA.some((o) => o.fields.some((f) => f.shape === "map"));
+  const legend = [
+    ...(usesIdTag || usesMapShape ? [`id = ${ID_RE}`] : []),
+    COMPASS_LINE,
+    ...VOCABULARIES.filter((v) => usedVocabularies.has(v.name)).map((v) => `${v.name} = ${[...v.values].join("|")}`),
+  ];
   return `${[...lines, "", ...legend].join("\n")}\n`;
 }
 
@@ -658,7 +702,8 @@ const VOCABULARIES: readonly { name: string; values: ReadonlySet<string> }[] = [
  * same one-entity-per-line convention `formatPlan` (src/format.ts) already uses for a plan
  * document, reused here because a field is exactly that kind of entity. `enum` prints as
  * an array; SCHEMA holds it as a reference to the vocabulary Set itself (JSON has no set
- * type to print it as).
+ * type to print it as). `shape` (fix 1, docs/eval/cold/cold-run.md) prints only when the
+ * field has one, i.e. only for `type: "object"` fields.
  */
 function schemaJson(): string {
   const plain = SCHEMA.map((o) => ({
@@ -675,16 +720,21 @@ function fieldToJson(f: FieldDoc): Record<string, unknown> {
     type: f.type,
     required: f.required,
     ...(f.enum ? { enum: [...f.enum] } : {}),
+    ...(f.shape ? { shape: f.shape } : {}),
     doc: f.doc,
   };
 }
 
-/** `--schema=md`: the same field table as one Markdown table per object, for a human reader. */
+/** `--schema=md`: the same field table as one Markdown table per object, for a human reader.
+ * A `type: "object"` field's type column shows `objectFieldType`'s cardinality-aware label
+ * (`{id: room}`, `opening[]`) instead of the bare word `object`, for the same reason the
+ * terse form does (fix 1, docs/eval/cold/cold-run.md). */
 function schemaMarkdown(): string {
   const section = (o: ObjectDoc): string => {
     const rows = o.fields.map((f) => {
       const enumCol = f.enum ? [...f.enum].join(", ") : "";
-      return `| \`${f.name}\` | ${f.type} | ${f.required ? "yes" : "no"} | ${enumCol} | ${f.doc.replace(/\|/g, "\\|")} |`;
+      const typeCol = f.type === "object" ? objectFieldType(o.object, f) : f.type;
+      return `| \`${f.name}\` | ${typeCol} | ${f.required ? "yes" : "no"} | ${enumCol} | ${f.doc.replace(/\|/g, "\\|")} |`;
     });
     const oneOf = o.oneOf && o.oneOf.length > 0 ? `\n\n${o.oneOf.map((s) => `_${s}_`).join("\n")}` : "";
     return `## ${o.object}\n\n| field | type | required | enum | doc |\n|---|---|---|---|---|\n${rows.join("\n")}${oneOf}\n`;

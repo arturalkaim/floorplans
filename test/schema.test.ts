@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "../src/index.ts";
+import { FIXTURE_TYPES, ID_RE, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "../src/index.ts";
 
 const SRC = readFileSync(new URL("../src/parse.ts", import.meta.url), "utf8");
 // Everything from here on is document-parsing logic: `obj["key"]`-style bracket access
@@ -101,10 +101,33 @@ describe("SCHEMA is the source checkKeys reads its known keys from", () => {
     }
   });
 
+  // Fix 2, docs/eval/cold/cold-run.md: every field literally named "id" (opening.id,
+  // fixture.id, vertical.id) is documented as matching ID_RE, and its doc string carries
+  // the regex's own source text rather than a hand-typed copy that could drift from it —
+  // `floorplan --schema`'s legend takes the same constant (test/cli.test.ts).
+  it("documents every field named \"id\" with parse.ts's own ID_RE source, not a copy", () => {
+    for (const o of SCHEMA) for (const f of o.fields) if (f.name === "id") assert.ok(f.doc.startsWith(ID_RE.source), `${o.object}.id's doc does not start with ID_RE.source (${ID_RE.source}): ${f.doc}`);
+  });
+
   it("has no duplicate field name within one object, and every object has at least one field", () => {
     for (const o of SCHEMA) {
       assert.ok(o.fields.length > 0, `${o.object} has no fields`);
       assert.equal(new Set(o.fields.map((f) => f.name)).size, o.fields.length, `${o.object} has a duplicate field name`);
+    }
+  });
+
+  // Fix 1, docs/eval/cold/cold-run.md: `type: "object"` alone cannot say whether a field is
+  // a single nested object, an array, or an id-keyed map — the ambiguity that made every
+  // cold-agent JSON authoring attempt guess "array" for `levels` and fail schema on line
+  // one. `shape` is the fact SCHEMA now carries for exactly this, and it means nothing for
+  // any other field type — so this asserts the two sets (object-typed, shape-carrying)
+  // coincide exactly in both directions.
+  it("gives every `type: \"object\"` field a shape, and no other field one", () => {
+    for (const o of SCHEMA) {
+      for (const f of o.fields) {
+        if (f.type === "object") assert.ok(f.shape, `${o.object}.${f.name} is type "object" but has no shape`);
+        else assert.equal(f.shape, undefined, `${o.object}.${f.name} has type ${f.type} but also a shape`);
+      }
     }
   });
 

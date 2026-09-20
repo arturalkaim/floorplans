@@ -89,7 +89,10 @@ export const FIXTURE_TYPES: ReadonlySet<string> = new Set<FixtureType>([
   "other",
 ]);
 export const VERTICAL_TYPES: ReadonlySet<string> = new Set<VerticalType>(["stairs", "lift", "ramp"]);
-const ID_RE = /^[a-z][a-z0-9_]*$/;
+// Exported so `floorplan --schema`'s terse legend can print the *actual* regex the parser
+// enforces rather than a hand-typed copy that could drift from it (docs/eval/cold/cold-run.md:
+// the cold-agent eval never saw this constraint at all, because nothing printed it).
+export const ID_RE = /^[a-z][a-z0-9_]*$/;
 
 /**
  * The document's own schema, machine-readable. `checkKeys` below reads its known-key
@@ -114,6 +117,22 @@ export interface FieldDoc {
   required: boolean;
   /** For `type: "enum"`: a reference to the exported vocabulary itself, never a copy. */
   enum?: ReadonlySet<string>;
+  /**
+   * For `type: "object"` only: which of three cardinalities the field actually holds —
+   * `"object"` alone cannot say, and that one omission is what made every cold-agent JSON
+   * authoring attempt guess "array" for `levels` and fail schema on line one
+   * (docs/eval/cold/cold-run.md). The parser already knows this per field (`Object.entries`
+   * for a map, `Array.isArray` for a list, a plain nested read for one); `shape` is that
+   * same fact surfaced to the field table so `--schema`/`--schema=full`/`--schema=md` can
+   * print `{id: room}`, `opening[]`, or a bare `opening.on` instead of three fields that all
+   * read `object`.
+   *
+   *  - "one":  a single nested object (`opening.on`, `plan.grid`)
+   *  - "list": an array (`level.openings`, `vertical.at`)
+   *  - "map":  an object keyed by an id the author invents, the id itself never a field
+   *    (`plan.levels`, `level.rooms`)
+   */
+  shape?: "one" | "list" | "map";
   /** One sentence: units, default, and what reads it. */
   doc: string;
 }
@@ -146,12 +165,12 @@ export const SCHEMA: readonly ObjectDoc[] = [
     fields: [
       { name: "title", type: "string", required: false, doc: "display name" },
       { name: "units", type: "string", required: false, doc: 'only "m"; default "m"' },
-      { name: "walls", type: "object", required: false, doc: "wall-thickness overrides; see walls" },
+      { name: "walls", type: "object", required: false, shape: "one", doc: "wall-thickness overrides; see walls" },
       { name: "north", type: "number", required: false, doc: 'bearing of "up", degrees from north; default 0' },
       { name: "stack", type: "string[]", required: false, doc: "ground-up level-id order; default the levels map's own key order" },
-      { name: "levels", type: "object", required: false, doc: "id → level map; presence = multi-level; see level" },
-      { name: "vertical", type: "object", required: false, doc: "array of stairs/lifts/ramps spanning levels; see vertical" },
-      { name: "grid", type: "object", required: false, doc: "shared {cols,rows} track grid; see grid" },
+      { name: "levels", type: "object", required: false, shape: "map", doc: "id → level map; presence = multi-level; see level" },
+      { name: "vertical", type: "object", required: false, shape: "list", doc: "array of stairs/lifts/ramps spanning levels; see vertical" },
+      { name: "grid", type: "object", required: false, shape: "one", doc: "shared {cols,rows} track grid; see grid" },
     ],
   },
   {
@@ -182,12 +201,12 @@ export const SCHEMA: readonly ObjectDoc[] = [
       { name: "name", type: "string", required: false, doc: "display name; default the level id" },
       { name: "height", type: "number", required: false, doc: "floor-to-floor, metres; used by stair.pitch/stair.headroom" },
       { name: "ground", type: "boolean", required: false, doc: "true = street meets this level; default first in stack" },
-      { name: "rooms", type: "object", required: true, doc: "id → room map, ≥1 entry; see room" },
-      { name: "outdoor", type: "object", required: false, doc: "id → outdoor map; see outdoor" },
-      { name: "voids", type: "object", required: false, doc: "id → void map; see void" },
-      { name: "layout", type: "object", required: false, doc: "grid-authoring shortcut for rooms/outdoor/voids; see layout" },
-      { name: "openings", type: "object", required: false, doc: "array of openings; see opening" },
-      { name: "fixtures", type: "object", required: false, doc: "array of fixtures; see fixture" },
+      { name: "rooms", type: "object", required: true, shape: "map", doc: "id → room map, ≥1 entry; see room" },
+      { name: "outdoor", type: "object", required: false, shape: "map", doc: "id → outdoor map; see outdoor" },
+      { name: "voids", type: "object", required: false, shape: "map", doc: "id → void map; see void" },
+      { name: "layout", type: "object", required: false, shape: "one", doc: "grid-authoring shortcut for rooms/outdoor/voids; see layout" },
+      { name: "openings", type: "object", required: false, shape: "list", doc: "array of openings; see opening" },
+      { name: "fixtures", type: "object", required: false, shape: "list", doc: "array of fixtures; see fixture" },
     ],
   },
   {
@@ -230,8 +249,8 @@ export const SCHEMA: readonly ObjectDoc[] = [
       { name: "type", type: "enum", required: true, enum: OPENING_TYPES, doc: "cased = archway: access like a door, no leaf" },
       { name: "between", type: "string[]", required: true, doc: '[a, b]: room/outdoor ids, or "exterior" for the street; ≥1 must be a room' },
       { name: "width", type: "number", required: true, doc: "metres, > 0" },
-      { name: "position", type: "object", required: false, doc: 'along the wall: "center" (default), a number (metres from the run\'s start), or {from:"start"|"end", distance}' },
-      { name: "on", type: "object", required: false, doc: "which wall when between shares >1: {room, side?, near?}; see opening.on" },
+      { name: "position", type: "object", required: false, shape: "one", doc: 'along the wall: "center" (default), a number (metres from the run\'s start), or {from:"start"|"end", distance}' },
+      { name: "on", type: "object", required: false, shape: "one", doc: "which wall when between shares >1: {room, side?, near?}; see opening.on" },
       { name: "at", type: "[x,y]", required: false, doc: "absolute point; nearest wall shared by between is picked" },
       { name: "hinge", type: "string", required: false, doc: 'doors only: "start"|"end" jamb; default "start"' },
       { name: "swingInto", type: "string", required: false, doc: "doors only: which between space the leaf swings into; default the room side" },
@@ -275,7 +294,7 @@ export const SCHEMA: readonly ObjectDoc[] = [
       { name: "id", type: "string", required: true, doc: "^[a-z][a-z0-9_]*$; joins levels, never by footprint overlap" },
       { name: "type", type: "enum", required: true, enum: VERTICAL_TYPES, doc: "stairs, lift, or ramp" },
       { name: "name", type: "string", required: false, doc: "display name; default the capitalized type" },
-      { name: "at", type: "object", required: true, doc: "≥1 {level, in, poly|rect}, one per level served; see vertical.footprint" },
+      { name: "at", type: "object", required: true, shape: "list", doc: "≥1 {level, in, poly|rect}, one per level served; see vertical.footprint" },
       { name: "up", type: "number", required: false, doc: "bearing up, degrees from north; needed for stair.headroom" },
       { name: "risers", type: "number", required: false, doc: "whole number ≥2; drives stair.pitch/stair.headroom" },
     ],

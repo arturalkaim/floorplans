@@ -55,6 +55,15 @@ export interface DslStatementDoc {
   syntax: string;
   doc: string;
   tokens: readonly DslTokenDoc[];
+  /**
+   * A concrete worked snippet, printed between `syntax` and `doc` — before the prose, not
+   * after it, so the shape it demonstrates cannot be skimmed past as a parenthetical. Only
+   * the "stairs | lift | ramp" statement has one: `docs/eval/cold/cold-run.md` found 4 of 20
+   * cold-agent DSL authors wrote a single `at` line for a multi-level stair despite the
+   * syntax's own "(one indented line per level served)" aside, because a sentence about
+   * cardinality is exactly the fact a worked example removes any doubt about.
+   */
+  example?: string;
 }
 
 const GEOM = "rect <x>,<y> <w>x<h> | poly <x>,<y> …";
@@ -210,7 +219,8 @@ export const DSL_SCHEMA: readonly DslStatementDoc[] = [
     syntax:
       'stairs|lift|ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)\n' +
       `        at <level> in:<space> ${GEOM}      (one indented line per level served)`,
-    doc: "vertical circulation: the only entity that spans levels, joined by its id and never by overlap",
+    example: "    e.g. stairs main\n           at ground in:hall rect 3.6,0.4 1.2x3\n           at first in:landing rect 3.6,0.4 1.2x3",
+    doc: "vertical circulation: the only entity that spans levels, joined by its id and never by overlap — one `at` line per level it serves, never one line per element",
     tokens: [
       { token: "stairs|lift|ramp", field: "plan.vertical", required: false, doc: "the statement itself" },
       { token: "stairs|lift|ramp", field: "vertical.type", required: true, doc: "the verb is the type" },
@@ -1739,15 +1749,28 @@ export function lineOf(positions: DslPositions, path: string): number | undefine
 // the coverage table, rendered
 // ---------------------------------------------------------------------------
 
+/** The x/y ↔ compass fact neither reference used to state at all (docs/eval/cold/cold-run.md
+ * item 3: brief 04's cold-agent porch placement guessed the wrong sign for south). Source:
+ * `derive.ts`'s per-room wall search reads a room's north wall off its *minimum* y and its
+ * south wall off its *maximum* y (`rect.y0`/`rect.y1`), and its west/east the same way on x —
+ * so y increases southward and x increases eastward. Shared verbatim by `schemaTerse` (cli.ts)
+ * and this function so the two references cannot state it two different ways. */
+export const COMPASS_LINE = "axes: x east, y south; north = -y";
+
 /** `--schema=dsl`: one line per statement kind with its tokens, then the field index. */
 export function dslSchemaText(): string {
   const out: string[] = [
     "# floorplan DSL — one entity per line; `{` as the first character means JSON instead",
+    `# ${COMPASS_LINE}`,
     "",
     "## statements",
     "",
   ];
-  for (const s of DSL_SCHEMA) out.push(s.syntax.split("\n").join("\n"), `  — ${s.doc}`, "");
+  for (const s of DSL_SCHEMA) {
+    out.push(s.syntax.split("\n").join("\n"));
+    if (s.example) out.push(s.example);
+    out.push(`  — ${s.doc}`, "");
+  }
   out.push(`## poly elements`, "", `  <x>,<y>`, `  ${ARC_SYNTAX}`, "");
   out.push("## every schema field, and the token that writes it", "");
   for (const o of SCHEMA) {

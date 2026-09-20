@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { formatFindings, run } from "../src/cli.ts";
 import type { CliIo } from "../src/cli.ts";
-import { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "../src/index.ts";
+import { COMPASS_LINE, FIXTURE_TYPES, ID_RE, OPENING_TYPES, ROOM_KINDS, SCHEMA, SIDES, VERTICAL_TYPES } from "../src/index.ts";
 import { twoRooms } from "./helpers.ts";
 
 function fakeIo(files: Record<string, string>, stdin = "") {
@@ -148,7 +148,10 @@ describe("cli: --schema (terse, default)", () => {
     run(["--schema"], t.io);
     const out = t.out();
     for (const o of SCHEMA) {
-      const line = new RegExp(`^${o.object.replace(/\./g, "\\.")} \\{([^}]*)\\}`, "m").exec(out);
+      // Greedy up to the *last* `}` on the line, not the first: a map-shaped field now
+      // prints its own nested `{id: X}`, so the naive "stop at the nearest brace" capture
+      // would truncate the body at that inner brace instead of the object's own closing one.
+      const line = new RegExp(`^${o.object.replace(/\./g, "\\.")} \\{(.*)\\}`, "m").exec(out);
       assert.ok(line, `--schema has no line for object ${o.object}`);
       const body = line[1]!;
       for (const f of o.fields) {
@@ -174,7 +177,7 @@ describe("cli: --schema (terse, default)", () => {
     run(["--schema"], t.io);
     const out = t.out();
     for (const o of SCHEMA) {
-      const line = new RegExp(`^${o.object.replace(/\./g, "\\.")} \\{([^}]*)\\}`, "m").exec(out)!;
+      const line = new RegExp(`^${o.object.replace(/\./g, "\\.")} \\{(.*)\\}`, "m").exec(out)!;
       const body = line[1]!;
       for (const f of o.fields) {
         const re = new RegExp(`\\b${f.name}(\\??):`);
@@ -192,10 +195,47 @@ describe("cli: --schema (terse, default)", () => {
     for (const o of SCHEMA) for (const f of o.fields) if (f.doc.length > 20) assert.ok(!out.includes(f.doc), `--schema still contains the doc text for ${o.object}.${f.name}`);
   });
 
-  it("stays well under the ~800-token budget (docs/agent-review.md B10): measured 1 826 chars / 568 gpt-tokenizer o200k_base tokens for all 14 objects/73 fields; this asserts a char proxy so the suite carries no tokenizer dependency", () => {
+  it("stays well under the ~800-token budget (docs/agent-review.md B10): measured 1 914 chars / 616 gpt-tokenizer o200k_base tokens for all 14 objects/73 fields plus the id/compass legend; this asserts a char proxy so the suite carries no tokenizer dependency", () => {
     const t = fakeIo({});
     run(["--schema"], t.io);
-    assert.ok(t.out().length < 2400, `--schema terse form grew to ${t.out().length} chars, past the regression ceiling`);
+    assert.ok(t.out().length < 2500, `--schema terse form grew to ${t.out().length} chars, past the regression ceiling`);
+  });
+});
+
+// fix 1 (docs/eval/cold/cold-run.md): `type: "object"` alone cannot say whether a field is
+// a single object, a list or an id-keyed map, and that is what made every cold-agent JSON
+// authoring attempt guess "array" for `levels`. `f.shape` is the fix; these three lines are
+// the ones the eval's own report calls out by name.
+describe("cli: --schema shows cardinality, not just type", () => {
+  it("prints levels/rooms/openings/vertical.at with their actual shape", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    const out = t.out();
+    assert.match(out, /\blevels\?: \{id: level\}/, "plan.levels should read as an id-keyed map, not a bare object reference");
+    assert.match(out, /\brooms: \{id: room\}/, "level.rooms should read as an id-keyed map, not a bare object reference");
+    assert.match(out, /\bopenings\?: opening\[\]/, "level.openings should read as a list, not a bare object reference");
+    assert.match(out, /\bat: vertical\.footprint\[\]/, "vertical.at should read as a list, not a bare object reference");
+  });
+});
+
+// fix 2 (docs/eval/cold/cold-run.md): the id constraint every room/outdoor/void/level key
+// and every opening/fixture/vertical id must satisfy was never stated anywhere; the eval's
+// cold-agent authors used kebab-case ids and failed schema on `vertical[0].id` in 4 of 20
+// JSON files for exactly this reason.
+describe("cli: --schema legend states the id format and the compass axes", () => {
+  it("prints the id legend line using parse.ts's own ID_RE, not a hand-typed copy", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    assert.match(t.out(), new RegExp(`^id = ${ID_RE.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
+    // and the id-typed fields point at it rather than printing a plain "str"
+    assert.match(t.out(), /\bid\?: id\b/);
+    assert.match(t.out(), /\bid: id\b/);
+  });
+
+  it("prints the compass axes line", () => {
+    const t = fakeIo({});
+    run(["--schema"], t.io);
+    assert.ok(t.out().includes(COMPASS_LINE), "--schema is missing the compass axes line");
   });
 });
 
@@ -219,6 +259,7 @@ describe("cli: --schema=full", () => {
         type: f.type,
         required: f.required,
         ...(f.enum ? { enum: [...f.enum] } : {}),
+        ...(f.shape ? { shape: f.shape } : {}),
         doc: f.doc,
       })),
       ...(o.oneOf ? { oneOf: o.oneOf } : {}),

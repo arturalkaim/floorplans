@@ -26,13 +26,13 @@ to read a plan back" below).
 
 | load | what it is | tokens |
 |---|---|---:|
-| `floorplan --schema` | one compact typed-signature line per object, no docs — all 14 objects and 73 fields | 568 |
-| `floorplan --schema=dsl` | the line DSL's grammar: every statement, and the token that writes each of those 73 fields | 1 388 |
-| `floorplan --schema=full` | the same JSON table with types, enums and a one-sentence doc per field | 2 554 |
-| `floorplan --schema=md` | the full table as Markdown, for a human | 2 200 |
+| `floorplan --schema` | one compact typed-signature line per object, with cardinality (`{id: room}`, `opening[]`) and a legend — all 14 objects and 73 fields | 616 |
+| `floorplan --schema=dsl` | the line DSL's grammar: every statement, and the token that writes each of those 73 fields | 1 469 |
+| `floorplan --schema=full` | the same JSON table with types, enums, cardinality and a one-sentence doc per field | 2 606 |
+| `floorplan --schema=md` | the full table as Markdown, for a human | 2 225 |
 
 Take `--schema` when you are editing a document you already have, and
-`--schema=dsl` when you are writing one from scratch: it costs 820 tokens more
+`--schema=dsl` when you are writing one from scratch: it costs 853 tokens more
 and the documents it teaches you to write are about half the size, so it pays
 for itself on the first house. All four are generated from the library itself,
 so none can list a field, a token or a rule the parser and linter do not
@@ -146,11 +146,14 @@ finding shows `—`.
 `--schema` needs no input file: it prints every object's field list, read straight from
 the table the parser itself validates against (see "Plan format" below). Default is one
 typed-signature line per object — name, required/`?`, type, enum values inlined at ≤6 or a
-`enum(NAME)` reference otherwise, spelled out once in a trailing legend — no doc text, 568
-tokens for all 14 objects/73 fields. `--schema=full` prints the same table as compact JSON
-with name, type, required, enum values and the one-sentence doc, one field per line, 2 554
-tokens. `--schema=md` prints the full table as Markdown. `--schema=dsl` prints the line
-DSL's grammar instead, from its own table (see "The line DSL" below), 1 388 tokens.
+`enum(NAME)` reference otherwise, spelled out once in a trailing legend, cardinality on
+every nested-object field (`{id: room}` for an id-keyed map, `opening[]` for a list, bare
+`opening.on` for a single nested object) — plus the id format and the x/y ↔ compass axes:
+no per-field doc text, 616 tokens for all 14 objects/73 fields. `--schema=full` prints the
+same table as compact JSON with name, type, required, enum values, cardinality and the
+one-sentence doc, one field per line, 2 606 tokens. `--schema=md` prints the full table as
+Markdown. `--schema=dsl` prints the line DSL's grammar instead, from its own table (see
+"The line DSL" below), 1 469 tokens.
 
 `fmt` canonicalises a plan and converts it between the two syntaxes. Without `--to` the
 file keeps the syntax it is in; `--out` writes somewhere else, which is what a conversion
@@ -320,10 +323,11 @@ close to a real field (`"positon"` → `did you mean "position"?`). A key prefix
 (`"_note"`, `"x-generator"`) and it is silently ignored.
 
 The prose and examples below teach the shape; **`floorplan --schema` is the authoritative
-field list** — every object, field, type and mutual exclusion, terse, read directly from the
-same table `checkKeys` validates against, so it cannot list a field the parser does not also
-accept. `--schema=full` adds each field's one-sentence doc (units, defaults, what reads it)
-as compact JSON; `--schema=md` prints that same detail as Markdown for a human reader.
+field list** — every object, field, type, cardinality (a single object, a list, or an
+id-keyed map) and mutual exclusion, terse, read directly from the same table `checkKeys`
+validates against, so it cannot list a field the parser does not also accept. `--schema=full`
+adds each field's one-sentence doc (units, defaults, what reads it) as compact JSON;
+`--schema=md` prints that same detail as Markdown for a human reader.
 
 ```jsonc
 {
@@ -828,7 +832,7 @@ refuses such a document rather than dropping the key.
 
 ### The grammar
 
-Printed by `floorplan --schema=dsl` (1 388 tokens) and generated below from the same
+Printed by `floorplan --schema=dsl` (1 469 tokens) and generated below from the same
 table, so neither can describe a token the parser does not take. `[...]` is optional.
 
 <!-- generated from DSL_SCHEMA by test/readme-dsl.test.ts; run it with UPDATE_README=1 after a grammar change -->
@@ -871,7 +875,7 @@ fixture <type> in:<space> (at <x>,<y> size <w>x<h> | poly <x>,<y> …) ["Name"] 
 
 stairs|lift|ramp <id> ["Name"] [up:<deg>] [risers:<n>]   (or: vertical <id> <type> …)
         at <level> in:<space> rect <x>,<y> <w>x<h> | poly <x>,<y> …      (one indented line per level served)
-    vertical circulation: the only entity that spans levels, joined by its id and never by overlap
+    vertical circulation: the only entity that spans levels, joined by its id and never by overlap — one `at` line per level it serves, never one line per element
 
 # anything after a # is ignored, as is a blank line
     comments and blank lines are not part of the document and are dropped by the printer

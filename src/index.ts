@@ -25,6 +25,9 @@ import type { RenderOptions } from "./svg.ts";
 export { parse, PlanError, derive, checkRules, renderSvg, sortFindings };
 // the parser's own vocabularies, so documentation cannot drift from what it accepts
 export { FIXTURE_TYPES, OPENING_TYPES, ROOM_KINDS, SIDES, VERTICAL_TYPES } from "./parse.ts";
+// the parser's own id constraint, so `--schema`'s legend prints the regex the parser
+// actually enforces rather than a hand-typed copy of it
+export { ID_RE } from "./parse.ts";
 // the parser's own field table, so documentation cannot drift from what it accepts either —
 // `floorplan --schema` prints this
 export { SCHEMA } from "./parse.ts";
@@ -48,7 +51,7 @@ export type { RuleDoc } from "./catalogue.ts";
 // authoring support: keep a document canonical, and edit one value in place
 export { formatPlan, formatText } from "./format.ts";
 // the line DSL: the authoring front-end, and its grammar as data
-export { ARC_SYNTAX, DSL_SCHEMA, DslError, DslPosError, dslSchemaText, dslSpliceAll, dslSpliceAt, isDslText, lineOf, parseDsl, readSource, toDsl } from "./dsl.ts";
+export { ARC_SYNTAX, COMPASS_LINE, DSL_SCHEMA, DslError, DslPosError, dslSchemaText, dslSpliceAll, dslSpliceAt, isDslText, lineOf, parseDsl, readSource, toDsl } from "./dsl.ts";
 export type { DslDocument, DslIssue, DslPositions, DslSpan, DslStatementDoc, DslTokenDoc } from "./dsl.ts";
 export {
   appendAt,

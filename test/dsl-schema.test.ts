@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { DSL_SCHEMA, dslSchemaText, parseDsl, SCHEMA, toDsl } from "../src/index.ts";
+import { COMPASS_LINE, DSL_SCHEMA, dslSchemaText, parseDsl, SCHEMA, toDsl } from "../src/index.ts";
 
 /** Every `<object>.<field>` the JSON schema has. */
 const schemaFields = SCHEMA.flatMap((o) => o.fields.map((f) => `${o.object}.${f.name}`));
@@ -34,6 +34,32 @@ describe("the DSL grammar covers the whole schema", () => {
     const text = dslSchemaText();
     for (const s of DSL_SCHEMA) assert.ok(text.includes(s.syntax.split("\n")[0]!), `--schema=dsl omits ${s.statement}`);
     for (const f of schemaFields) assert.match(text, new RegExp(`^${f.replace(/\./g, "\\.")}\\s`, "m"), `--schema=dsl omits ${f}`);
+  });
+
+  // Fix 5, docs/eval/cold/cold-run.md item 2 under "Rule findings": 4 of 20 cold-agent DSL
+  // authors wrote a single `at` line for a multi-level stair despite the syntax's own "(one
+  // indented line per level served)" aside — a sentence about cardinality is exactly the
+  // fact a worked example removes any doubt about, so this one is the *first* thing shown
+  // under the statement, before the prose.
+  it("puts the stairs statement's worked multi-level example before its doc sentence, not after", () => {
+    const text = dslSchemaText();
+    const stairs = DSL_SCHEMA.find((s) => s.statement === "stairs | lift | ramp")!;
+    assert.ok(stairs.example, "the stairs statement should have a worked example");
+    const exampleAt = text.indexOf(stairs.example!);
+    const docAt = text.indexOf(`— ${stairs.doc}`);
+    assert.ok(exampleAt !== -1 && docAt !== -1 && exampleAt < docAt, "the worked example should appear before the doc sentence");
+    // and it actually shows one `at` line per level, the fact 4/20 cold-agent DSL files got
+    // wrong
+    const atLines = stairs.example!.split("\n").filter((l) => l.trim().startsWith("at "));
+    assert.equal(atLines.length, 2, `the stairs example should show 2 "at" lines (one per level served), found ${atLines.length}`);
+  });
+
+  // Fix 3, docs/eval/cold/cold-run.md item 3: neither reference stated which x/y direction
+  // is which compass side, and brief 04's cold-agent porch placement guessed the wrong sign
+  // for south. Source: derive.ts reads a room's north wall off its minimum y and its south
+  // wall off its maximum y (and west/east the same way on x), so y increases southward.
+  it("states the x/y ↔ compass convention", () => {
+    assert.ok(dslSchemaText().includes(COMPASS_LINE));
   });
 });
 
