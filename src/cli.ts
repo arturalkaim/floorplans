@@ -4,7 +4,7 @@
 //                       [--areas clear|centreline|none] [--mark error|warning|info|none]
 // floorplan set <plan.json> <path> <value> [--json] [--dry-run]
 // floorplan patch <plan.json> <patch.json|-> [--patch <patch.json|->] [--json] [--dry-run]
-// floorplan --schema[=md]
+// floorplan --schema[=full|md]
 // Exit codes: 0 clean (or only info), 1 findings at warning or above, 2 usage / parse error.
 // The executable entry point is bin.ts, which wires stdio/fs onto `run` unconditionally;
 // this module stays a plain, IO-free function so tests can drive it with a fake CliIo.
@@ -19,12 +19,29 @@
 // tokens instead of ~780 of schedule (docs/gaps-design.md §2.4). The schedule and the
 // derived walls are behind `--json=all`, or selected on their own.
 //
-// `--schema` exists so an agent can load the field list (~600 tokens) instead of the
-// README's prose (~2400 tokens) — see docs/agent-review.md B10.
+// `--schema` exists so an agent can load the field list instead of the README's prose
+// (docs/agent-review.md B10). The default is a terse typed-signature line per object, no
+// docs, 568 tokens for all 14 objects/73 fields; `--schema=full` is the same table as
+// compact JSON with one-sentence docs (2 554 tokens), and `--schema=md` is the Markdown
+// form for a human reader. All three are printed from SCHEMA — see schemaTerse below.
 
 import { appendAt, insertKey, JsonPosError, removeAt, spliceAt } from "./jsonpos.ts";
 import { formatPlan } from "./format.ts";
-import { floorplan, isSchemaFinding, lint, SCHEMA, schedule, summarize, walls, worstSeverity } from "./index.ts";
+import {
+  FIXTURE_TYPES,
+  floorplan,
+  isSchemaFinding,
+  lint,
+  OPENING_TYPES,
+  ROOM_KINDS,
+  SCHEMA,
+  schedule,
+  SIDES,
+  summarize,
+  VERTICAL_TYPES,
+  walls,
+  worstSeverity,
+} from "./index.ts";
 import type { FieldDoc, LintResult, ObjectDoc } from "./index.ts";
 import type { JsonPath } from "./jsonpos.ts";
 import type { Finding, Severity } from "./types.ts";
@@ -45,14 +62,15 @@ const USAGE = `usage: floorplan <plan.json> [--out plan.svg] [--level id] [--lin
                  [--areas clear|centreline|none] [--mark error|warning|info|none]
        floorplan set <plan.json> <path> <value> [--json] [--dry-run]
        floorplan patch <plan.json> <patch.json|-> [--json] [--dry-run]
-       floorplan --schema[=md]
+       floorplan --schema[=full|md]
 
 --level picks which storey to draw (default: the ground level), and scopes --json=walls.
 --out may contain {level}, and then one file per level is written.
 --json alone is { summary, findings }; =all adds schedule and walls; =schedule and
        =walls select one section.
---schema prints the document's field table as JSON (default) or, with =md,
-         as Markdown; needs no input file.`;
+--schema prints one typed-signature line per object, no docs (default; 568 tokens);
+         =full prints the same table as compact JSON with docs (2 554 tokens);
+         =md prints it as a Markdown table for a human reader. Needs no input file.`;
 
 export function run(argv: string[], io: CliIo): number {
   if (argv[0] === "set") return runSet(argv.slice(1), io);
@@ -63,7 +81,7 @@ export function run(argv: string[], io: CliIo): number {
     return 2;
   }
   if (args.schema !== undefined) {
-    io.stdout(args.schema === "md" ? schemaMarkdown() : schemaJson());
+    io.stdout(printSchema(args.schema));
     return 0;
   }
   if (!args.input) {
@@ -170,8 +188,8 @@ interface Args {
   labels: "auto" | "full" | "index" | undefined;
   areas: "clear" | "centreline" | "none" | undefined;
   mark: Severity | "none" | undefined;
-  /** `--schema` (JSON, default) or `--schema=md`; needs no input file. */
-  schema: "json" | "md" | undefined;
+  /** `--schema` (terse, default), `--schema=full` (JSON+docs), or `--schema=md`; needs no input file. */
+  schema: SchemaMode | undefined;
 }
 
 function parseArgs(argv: string[]): Args | Error {
@@ -209,7 +227,8 @@ function parseArgs(argv: string[]): Args | Error {
       const v = oneOf("--mark", next(), ["error", "warning", "info", "none"] as const);
       if (v instanceof Error) return v;
       a.mark = v;
-    } else if (t === "--schema") a.schema = "json";
+    } else if (t === "--schema") a.schema = "terse";
+    else if (t === "--schema=full") a.schema = "full";
     else if (t === "--schema=md") a.schema = "md";
     else if (t.startsWith("-")) return new Error(`unknown option ${t}`);
     else if (a.input === undefined) a.input = t;
@@ -451,9 +470,98 @@ function runPatch(argv: string[], io: CliIo): number {
   return finish(text, planPath, io, { json, dryRun });
 }
 
+/** Which form `--schema` prints: terse (default), full JSON+docs, or a Markdown table. */
+export type SchemaMode = "terse" | "full" | "md";
+
 /**
- * `--schema`: the document's field table as compact JSON, one field per line — the same
- * one-entity-per-line convention `formatPlan` (src/format.ts) already uses for a plan
+ * The one place `--schema[=full|md]` is decided, so the concurrent `--schema=dsl` addition
+ * is one more case here, not a second branch in `run`.
+ */
+function printSchema(mode: SchemaMode): string {
+  switch (mode) {
+    case "full":
+      return schemaJson();
+    case "md":
+      return schemaMarkdown();
+    default:
+      return schemaTerse();
+  }
+}
+
+/**
+ * `--schema` (default): one typed-signature line per object, generated from SCHEMA with no
+ * doc text — required fields bare, optional `name?`, and no per-field prose, which is what
+ * gets this under 800 tokens where `schemaJson` (2 554) and the README prose it replaced
+ * (2 358, docs/agent-review.md B10) cannot. `--schema=full` below still carries every doc
+ * string for the cases that need it.
+ *
+ * An enum with ≤6 values is spelled out inline (`enum(door|window|cased)`); a bigger one
+ * (room.kind, fixture.type) is a name (`enum(ROOM_KINDS)`) resolved against VOCABULARIES
+ * and spelled out once, in the trailing legend — never twice, and never copied by hand.
+ *
+ * A field typed `"object"` names another line of this same table (`opening.on`, `level`)
+ * rather than printing `object`, which would tell an agent nothing about its shape. The
+ * referenced name is read from the field's own doc string — the word after a trailing
+ * `"; see X"`, the convention SCHEMA's docs already use to point at a nested shape — or,
+ * for the one field that has no such doc (`opening.position`), from the dotted-name
+ * convention SCHEMA itself uses for a nested shape with no id of its own
+ * (`${object}.${field}`). Either way the reference is checked against SCHEMA's own object
+ * names, so a future field that fits neither convention fails loudly here rather than
+ * printing a name nothing else in the table has.
+ */
+function schemaTerse(): string {
+  const objectNames = new Set<string>(SCHEMA.map((o) => o.object));
+  const seeRef = /see ([\w.]+)$/;
+  const objectRef = (owner: ObjectDoc["object"], f: FieldDoc): string => {
+    const name = seeRef.exec(f.doc)?.[1] ?? `${owner}.${f.name}`;
+    if (!objectNames.has(name)) throw new Error(`schemaTerse: ${owner}.${f.name} is type "object" but resolves to unknown object ${JSON.stringify(name)}`);
+    return name;
+  };
+
+  const usedVocabularies = new Set<string>();
+  const enumType = (owner: ObjectDoc["object"], f: FieldDoc): string => {
+    const values = [...f.enum!];
+    if (values.length <= 6) return `enum(${values.join("|")})`;
+    const vocab = VOCABULARIES.find((v) => v.values === f.enum);
+    if (!vocab) throw new Error(`schemaTerse: ${owner}.${f.name}'s enum is not one of VOCABULARIES`);
+    usedVocabularies.add(vocab.name);
+    return `enum(${vocab.name})`;
+  };
+
+  const TYPE_TAG: Record<Exclude<FieldDoc["type"], "object" | "enum">, string> = {
+    number: "num",
+    "number[]": "num[]",
+    string: "str",
+    "string[]": "str[]",
+    boolean: "bool",
+    "[x,y]": "[x,y]",
+    "[x,y,w,h]": "[x,y,w,h]",
+    "point[]": "point[]",
+  };
+  const fieldType = (owner: ObjectDoc["object"], f: FieldDoc): string =>
+    f.type === "object" ? objectRef(owner, f) : f.type === "enum" ? enumType(owner, f) : TYPE_TAG[f.type];
+
+  const lines = SCHEMA.map((o) => {
+    const fields = o.fields.map((f) => `${f.name}${f.required ? "" : "?"}: ${fieldType(o.object, f)}`).join(" ; ");
+    const oneOf = o.oneOf && o.oneOf.length > 0 ? ` oneOf: ${o.oneOf.join("; ")}` : "";
+    return `${o.object} { ${fields} }${oneOf}`;
+  });
+  const legend = VOCABULARIES.filter((v) => usedVocabularies.has(v.name)).map((v) => `${v.name} = ${[...v.values].join("|")}`);
+  return `${[...lines, "", ...legend].join("\n")}\n`;
+}
+
+/** Every enum vocabulary SCHEMA's fields point at, named for `schemaTerse`'s legend. */
+const VOCABULARIES: readonly { name: string; values: ReadonlySet<string> }[] = [
+  { name: "ROOM_KINDS", values: ROOM_KINDS },
+  { name: "SIDES", values: SIDES },
+  { name: "OPENING_TYPES", values: OPENING_TYPES },
+  { name: "FIXTURE_TYPES", values: FIXTURE_TYPES },
+  { name: "VERTICAL_TYPES", values: VERTICAL_TYPES },
+];
+
+/**
+ * `--schema=full`: the document's field table as compact JSON, one field per line — the
+ * same one-entity-per-line convention `formatPlan` (src/format.ts) already uses for a plan
  * document, reused here because a field is exactly that kind of entity. `enum` prints as
  * an array; SCHEMA holds it as a reference to the vocabulary Set itself (JSON has no set
  * type to print it as).
