@@ -14,7 +14,8 @@ export function Gallery() {
   const cards = useMemo(
     () =>
       EXAMPLES.map((e) => {
-        const r = floorplan(JSON.parse(e.source), {
+        // the source as text, not parsed: the library sniffs JSON from the line DSL (Cabana is DSL)
+        const r = floorplan(e.source, {
           render: { scale: 16, labels: "index", areas: "none", dimensions: false, title: "" },
           markFindings: "none",
         });
