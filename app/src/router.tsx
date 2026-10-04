@@ -1,4 +1,5 @@
 import { Link, Outlet, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import { RouteError } from "./components/RouteError";
 import { Gallery } from "./routes/gallery";
 import { Playground } from "./routes/playground";
 import { Reference } from "./routes/reference";
@@ -30,6 +31,7 @@ const referenceRoute = createRoute({ getParentRoute: () => rootRoute, path: "/re
 export const router = createRouter({
   routeTree: rootRoute.addChildren([indexRoute, planRoute, referenceRoute]),
   defaultPreload: "intent",
+  defaultErrorComponent: RouteError,
 });
 
 declare module "@tanstack/react-router" {

@@ -176,6 +176,14 @@ tfoot td { font-weight: 600; font-variant-numeric: tabular-nums; border-top: 1px
 .tally .info { color: var(--sev-info); }
 .tally .ok { color: var(--sev-info); }
 
+/* a route that threw while rendering */
+.route-error { border-color: var(--sev-error); }
+.route-error .panel-head h2 { color: var(--sev-error); }
+.route-error pre { margin: 0; padding: 12px 14px; font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--sev-error-bg); }
+.route-error .actions { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-top: 1px solid var(--rule); }
+.route-error button { font-family: var(--mono); font-size: 12.5px; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); padding: 5px 11px; cursor: pointer; }
+.route-error button:hover { background: var(--rule-soft); }
+
 /* reference */
 .doc { max-width: 78ch; }
 .doc h2 { font-family: var(--cond); font-size: 22px; margin: 32px 0 6px; }
